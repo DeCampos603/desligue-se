@@ -740,13 +740,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loggedUserName) loggedUserName.textContent = `Olá, ${name}!`;
     if (loggedUserEmail) loggedUserEmail.textContent = user.email;
 
+    // Carrega histórico associado ao usuário logado
+    appState.history = loadHistoryFromLocalStorage();
     loadCloudUserProfile(user.id);
     syncCloudHistory(user.id);
+    checkDailyLimitUI();
   }
 
   function handleUserLoggedOut() {
     appState.currentUser = null;
     appState.userProfile = null;
+    appState.history = [];
     if (userAvatarIcon) userAvatarIcon.textContent = '👤';
     if (userAuthLabel) userAuthLabel.textContent = 'Entrar';
     if (mobAvatarIcon) mobAvatarIcon.textContent = '👤';
@@ -754,6 +758,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     authViewLoggedOut?.classList.remove('hidden');
     authViewLoggedIn?.classList.add('hidden');
+
+    updateHistoryUI();
+    checkDailyLimitUI();
   }
 
   async function loadCloudUserProfile(userId) {
@@ -2050,8 +2057,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // PERSISTÊNCIA LOCAL (HISTÓRICO & BALANÇO DE VIDA)
   // ==========================================
   function loadHistoryFromLocalStorage() {
+    if (!appState.currentUser) return [];
     try {
-      const raw = localStorage.getItem(STORAGE_KEY_ENTRIES);
+      const userKey = `desliguese_entries_${appState.currentUser.id}`;
+      const raw = localStorage.getItem(userKey);
       if (!raw) return [];
       return JSON.parse(raw);
     } catch (e) {
@@ -2060,19 +2069,58 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function saveLocalHistory(hist) {
+    if (!appState.currentUser) return; // Não persiste histórico para usuário deslogado
     try {
-      localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(hist));
+      const userKey = `desliguese_entries_${appState.currentUser.id}`;
+      localStorage.setItem(userKey, JSON.stringify(hist));
     } catch (e) {}
     updateHistoryUI();
   }
 
   function saveNightEntry(entry) {
-    appState.history.unshift(entry);
-    if (appState.history.length > 50) appState.history.pop();
-    saveLocalHistory(appState.history);
+    if (appState.currentUser) {
+      appState.history.unshift(entry);
+      if (appState.history.length > 50) appState.history.pop();
+      saveLocalHistory(appState.history);
+    }
   }
 
   function updateHistoryUI() {
+    // 1. Se o usuário NÃO estiver logado: Bloqueio do Diário com incentivo ao login
+    if (!appState.currentUser) {
+      statTotalNights.textContent = '0';
+      statAvgMood.textContent = '—';
+      statTasksCleared.textContent = '0';
+
+      if (countGoodThings) countGoodThings.textContent = '0';
+      if (countChallengingThings) countChallengingThings.textContent = '0';
+      if (balanceRatioBadge) balanceRatioBadge.textContent = 'Privado';
+      if (balanceBarGood) balanceBarGood.style.width = '50%';
+      if (balanceBarBad) balanceBarBad.style.width = '50%';
+
+      if (balanceInsightText) {
+        balanceInsightText.innerHTML = '<strong>Seu diário seguro:</strong> Faça login para que suas reflexões fiquem salvas na nuvem com criptografia de ponta a ponta.';
+      }
+
+      historyListContainer.innerHTML = `
+        <div class="empty-state auth-locked-history" style="padding: 2.5rem 1.5rem; text-align: center;">
+          <div class="badge-tag" style="background: rgba(212,163,115,0.25); color: var(--accent-amber); margin-bottom: 0.75rem;">🔒 Diário Protegido</div>
+          <h3 style="margin: 0 0 0.5rem; color: var(--text-main); font-size: 1.25rem;">Acesse sua Conta para Salvar o Histórico</h3>
+          <p style="color: var(--text-muted); font-size: 0.88rem; max-width: 440px; margin: 0 auto 1.5rem; line-height: 1.5;">
+            No modo visitante, seus desabafos são temporários para proteger sua privacidade. Crie sua conta gratuita ou assine o Pro para manter seu diário seguro na nuvem.
+          </p>
+          <button type="button" class="btn-primary btn-history-auth-prompt" style="width: auto; padding: 0.65rem 1.6rem;">
+            👤 Entrar ou Criar Conta
+          </button>
+        </div>
+      `;
+
+      historyListContainer.querySelector('.btn-history-auth-prompt')?.addEventListener('click', () => {
+        if (modalAuth) modalAuth.classList.remove('hidden');
+      });
+      return;
+    }
+
     const list = appState.history;
     statTotalNights.textContent = list.length;
 

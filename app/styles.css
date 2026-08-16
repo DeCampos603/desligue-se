@@ -1745,29 +1745,36 @@ body {
 }
 
 .plan-price {
-  font-size: 1.8rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.plan-price .price-val {
+  font-size: 2.2rem;
   font-weight: 800;
   color: var(--accent-amber);
   line-height: 1;
-  margin-bottom: 0.2rem;
+  letter-spacing: -0.02em;
 }
 
-.plan-price span {
-  font-size: 0.85rem;
+.plan-price .price-period {
+  font-size: 0.9rem;
   color: var(--text-muted);
-  font-weight: 400;
+  font-weight: 500;
 }
 
-.plan-price .price-cents {
-  font-size: 1.1rem;
+.pricing-badge-featured {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 0.76rem;
   font-weight: 700;
-  color: var(--accent-amber);
-}
-
-.plan-price .price-currency {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--accent-amber);
+  color: #131922;
+  background: var(--accent-amber);
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-full);
+  margin-bottom: 0.6rem;
 }
 
 /* ==========================================
