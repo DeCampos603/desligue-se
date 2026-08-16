@@ -193,6 +193,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSubscribeMonthly = document.getElementById('btnSubscribeMonthly');
   const btnSubscribeAnnual = document.getElementById('btnSubscribeAnnual');
 
+  // Banner de Limite Diário
+  const dailyLimitBanner = document.getElementById('dailyLimitBanner');
+  const dumpInputContainer = document.getElementById('dumpInputContainer');
+  const btnUpgradeDailyLimit = document.getElementById('btnUpgradeDailyLimit');
+
   // Modal Stripe Elements (Pagamento In-App)
   const modalStripeElements = document.getElementById('modalStripeElements');
   const btnCloseElementsModal = document.getElementById('btnCloseElementsModal');
@@ -269,8 +274,17 @@ document.addEventListener('DOMContentLoaded', () => {
   initPWA();
   initStripeReturnStatus();
   updateHistoryUI();
+  checkDailyLimitUI();
+
+  btnUpgradeDailyLimit?.addEventListener('click', () => {
+    modalPremium?.classList.remove('hidden');
+  });
 
   journalInput.addEventListener('input', () => {
+    if (hasReachedDailyFreeLimit()) {
+      btnProcessDump.disabled = true;
+      return;
+    }
     const hasText = journalInput.value.trim().length > 3;
     btnProcessDump.disabled = !hasText;
   });
@@ -282,7 +296,12 @@ document.addEventListener('DOMContentLoaded', () => {
   btnNewMorningCheckin.addEventListener('click', () => switchView('morning'));
 
   // Botões de Retorno
-  if (btnBackToDump) btnBackToDump.addEventListener('click', () => showStep('dump'));
+  if (btnBackToDump) {
+    btnBackToDump.addEventListener('click', () => {
+      checkDailyLimitUI();
+      showStep('dump');
+    });
+  }
   if (btnBackToResult) {
     btnBackToResult.addEventListener('click', () => {
       if (appState.routineInterval) clearInterval(appState.routineInterval);
@@ -296,6 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
       journalTitleInput.value = '';
       journalInput.value = '';
       btnProcessDump.disabled = true;
+      checkDailyLimitUI();
       showStep('dump');
       switchView('night');
     });
@@ -332,7 +352,9 @@ document.addEventListener('DOMContentLoaded', () => {
     mobNavBtns.morning?.classList.toggle('active', viewName === 'morning');
     mobNavBtns.history?.classList.toggle('active', viewName === 'history');
 
-    if (viewName === 'morning') {
+    if (viewName === 'night') {
+      checkDailyLimitUI();
+    } else if (viewName === 'morning') {
       renderMorningView();
     } else if (viewName === 'history') {
       updateHistoryUI();
@@ -844,9 +866,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Checa no histórico de entradas salvas
     if (appState.history && Array.isArray(appState.history) && appState.history.length > 0) {
       const todayEntries = appState.history.filter(item => {
-        if (!item.timestamp) return false;
+        const itemTimestamp = item.timestamp || item.date;
+        if (!itemTimestamp) return false;
         try {
-          const itemDate = new Date(item.timestamp).toISOString().split('T')[0];
+          const itemDate = new Date(itemTimestamp).toISOString().split('T')[0];
           return itemDate === todayStr;
         } catch (e) {
           return false;
@@ -860,6 +883,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function markDailyDumpCompleted() {
     localStorage.setItem('desliguese_last_dump_date', getTodayDateString());
+    checkDailyLimitUI();
+  }
+
+  function checkDailyLimitUI() {
+    const isLimitReached = hasReachedDailyFreeLimit();
+    if (isLimitReached) {
+      if (dailyLimitBanner) dailyLimitBanner.classList.remove('hidden');
+      if (dumpInputContainer) {
+        dumpInputContainer.style.opacity = '0.4';
+        dumpInputContainer.style.pointerEvents = 'none';
+      }
+      if (btnProcessDump) {
+        btnProcessDump.disabled = true;
+        btnProcessDump.title = 'Limite diário atingido. Assine o Pro para registros ilimitados.';
+      }
+    } else {
+      if (dailyLimitBanner) dailyLimitBanner.classList.add('hidden');
+      if (dumpInputContainer) {
+        dumpInputContainer.style.opacity = '1';
+        dumpInputContainer.style.pointerEvents = 'auto';
+      }
+      if (btnProcessDump && journalInput) {
+        btnProcessDump.disabled = !journalInput.value.trim();
+        btnProcessDump.title = 'Processar pensamentos';
+      }
+    }
+
+    // Atualiza badges visuais nos botões de duração
+    const isPro = isUserPro();
+    durationBtns.forEach(btn => {
+      const minutes = parseInt(btn.getAttribute('data-minutes'), 10);
+      if (minutes > 3) {
+        btn.classList.toggle('pro-locked', !isPro);
+      }
+    });
   }
 
   // ==========================================
@@ -1538,7 +1596,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Renderiza a Carta de Consolo e Conselhos
     if (counselingText) {
-      counselingText.textContent = data.counselingAdvice || 'Você concluiu o dia. Seus pensamentos estão guardados e seguros. Pode descansar em paz.';
+      const fullAdvice = data.counselingAdvice || 'Você concluiu o dia. Seus pensamentos estão guardados e seguros. Pode descansar em paz.';
+      if (isUserPro()) {
+        counselingText.innerHTML = escapeHTML(fullAdvice);
+      } else {
+        // No Plano Free: Exibe o primeiro trecho e um teaser borrado com chamada de upgrade Pro
+        const snippet = fullAdvice.length > 120 ? fullAdvice.substring(0, 120) + '...' : fullAdvice;
+        counselingText.innerHTML = `
+          <span>${escapeHTML(snippet)}</span>
+          <div class="counseling-pro-teaser-wrapper">
+            <div class="counseling-pro-blurred-text">
+              Compreendemos profundamente como essa sobrecarga impacta o seu sono. O seu corpo precisa de validação e alívio do cortisol para restaurar suas energias para amanhã.
+            </div>
+            <div class="counseling-pro-overlay">
+              <span>🔒 Carta Noturna de Acolhimento & TCC-I Profundo</span>
+              <button type="button" class="btn-unlock-pro-small btn-unlock-counseling">
+                Desbloquear Conselho Completo (Pro)
+              </button>
+            </div>
+          </div>
+        `;
+        counselingText.querySelector('.btn-unlock-counseling')?.addEventListener('click', () => {
+          if (modalPremium) modalPremium.classList.remove('hidden');
+        });
+      }
     }
 
     // Atualiza o Selo de Fechamento Cognitivo (Efeito Zeigarnik & TCC-I)
@@ -1666,6 +1747,7 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.addEventListener('click', () => {
         const minutes = parseInt(btn.getAttribute('data-minutes'), 10);
         if (minutes > 3 && !isUserPro()) {
+          // Bloqueio rigoroso: abre o modal de upgrade e trava seleção
           if (modalPremium) modalPremium.classList.remove('hidden');
           return;
         }
@@ -1678,6 +1760,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function startRelaxationRoutine() {
+    // Trava de segurança inabalável
+    if (appState.selectedRoutineMinutes > 3 && !isUserPro()) {
+      appState.selectedRoutineMinutes = 3;
+      durationBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-minutes') === '3'));
+      if (routineTimeBadge) routineTimeBadge.textContent = '3 min';
+      if (modalPremium) modalPremium.classList.remove('hidden');
+      return;
+    }
+
     showStep('routine');
     cancelBreathingCycle(); // Cancela ciclos anteriores antes de iniciar
     appState.routineSecondsRemaining = appState.selectedRoutineMinutes * 60;

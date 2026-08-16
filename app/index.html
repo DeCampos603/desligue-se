@@ -120,8 +120,20 @@
           </div>
         </div>
 
+        <!-- Banner de Limite Diário (Exibido para usuários gratuitos que já fizeram o registro de hoje) -->
+        <div id="dailyLimitBanner" class="daily-limit-banner hidden">
+          <div class="limit-moon-badge">🌙 Ritual de Hoje Concluído</div>
+          <h3>Você já descarregou sua mente hoje!</h3>
+          <p>
+            No plano gratuito, você tem direito a 1 desabafo noturno por dia. Para registrar sem limites a qualquer hora do dia, receber IA avançada e gráficos de bem-estar, faça o upgrade para o Pro.
+          </p>
+          <button type="button" id="btnUpgradeDailyLimit" class="btn-primary" style="width: auto; padding: 0.65rem 1.5rem;">
+            ⭐ Desbloquear Registros Ilimitados (a partir de R$ 12/mês)
+          </button>
+        </div>
+
         <!-- Área de Entrada do Diário -->
-        <div class="dump-input-container">
+        <div class="dump-input-container" id="dumpInputContainer">
           
           <!-- Campo de Título do Dia -->
           <div class="title-input-wrapper">
