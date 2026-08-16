@@ -613,7 +613,54 @@
     </div>
   </div>
 
-  <!-- Modal Informativo de Legendas / TCC-I -->
+  <!-- Modal de Detalhes da Noite & Conteúdo Guardado no Diário -->
+  <div id="modalHistoryDetail" class="modal-backdrop hidden">
+    <div class="modal-card history-detail-modal-card">
+      <button id="btnCloseHistoryDetailModal" class="modal-close-btn" title="Fechar">&times;</button>
+      
+      <div class="modal-header" style="text-align: left; padding-right: 2.5rem; margin-bottom: 1rem;">
+        <div class="badge-tag" id="historyDetailBadge">📖 Diário Noturno</div>
+        <h2 class="modal-title" id="historyDetailTitle" style="font-size: 1.4rem; margin-top: 0.25rem;">Título da Noite</h2>
+        <span id="historyDetailDate" style="font-size: 0.78rem; color: var(--text-muted);">Data</span>
+      </div>
+
+      <!-- Conselho do Coração Gravado -->
+      <div id="historyDetailCounselingWrapper" class="history-detail-counseling-box">
+        <div class="history-detail-counseling-header">
+          <span>💌 Conselho de Boa Noite Guardado:</span>
+        </div>
+        <p id="historyDetailCounselingText" class="history-detail-counseling-text"></p>
+      </div>
+
+      <!-- Seletor de Categorias da Noite -->
+      <div class="history-detail-tabs">
+        <button class="history-tab-btn active" data-tab="all">🌟 Ver Tudo</button>
+        <button class="history-tab-btn" data-tab="tomorrow">📋 Amanhã (<span id="countTabTomorrow">0</span>)</button>
+        <button class="history-tab-btn" data-tab="wait">📦 No Cofre (<span id="countTabWait">0</span>)</button>
+        <button class="history-tab-btn" data-tab="release">🍃 Solturas (<span id="countTabRelease">0</span>)</button>
+        <button class="history-tab-btn" data-tab="rumination">💜 Acolhimento (<span id="countTabRumination">0</span>)</button>
+      </div>
+
+      <!-- Conteúdo da Categoria Selecionada -->
+      <div class="history-detail-content">
+        <div id="historyDetailListContainer" class="history-detail-list">
+          <!-- Injetado dinamicamente com os itens reais guardados -->
+        </div>
+      </div>
+
+      <!-- Texto Original do Desabafo -->
+      <div class="history-detail-raw-box">
+        <span class="raw-label">✍️ O que você escreveu nesta noite:</span>
+        <p id="historyDetailRawText" class="raw-text"></p>
+      </div>
+
+      <div class="modal-footer-dismiss">
+        <button id="btnDismissHistoryDetail" class="btn-primary btn-plan" style="max-width: 100%;">Fechar Detalhes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Informativo de Legendas Clínicas (TCC-I) -->
   <div id="modalTagDetail" class="modal-backdrop hidden">
     <div class="modal-card tag-detail-modal-card">
       <button id="btnCloseTagModal" class="modal-close-btn" title="Fechar">&times;</button>

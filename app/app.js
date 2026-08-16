@@ -1,7 +1,7 @@
 /**
  * DESLIGUE-SE — Motor Cognitivo de Triagem Noturna & Ritual de Sono (TCC-I)
  * Integração com Supabase (Auth Google/Email, Banco de Dados PostgreSQL & RLS)
- * Inteligência Empática de Acolhimento, Consolo & Conselhos Sinceros para a Noite
+ * Inteligência Empática de Acolhimento, Consolo & Visualização de Conteúdo do Diário
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -41,7 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
     noiseNode: null,
     isRecording: false,
     recognition: null,
-    history: loadHistoryFromLocalStorage()
+    history: loadHistoryFromLocalStorage(),
+    activeDetailEntry: null,
+    activeDetailTab: 'all'
   };
 
   // ==========================================
@@ -150,6 +152,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const tagDetailMeaning = document.getElementById('tagDetailMeaning');
   const tagDetailNeuro = document.getElementById('tagDetailNeuro');
 
+  // Modal de Detalhes da Noite & Conteúdo do Diário
+  const modalHistoryDetail = document.getElementById('modalHistoryDetail');
+  const btnCloseHistoryDetailModal = document.getElementById('btnCloseHistoryDetailModal');
+  const btnDismissHistoryDetail = document.getElementById('btnDismissHistoryDetail');
+  const historyDetailBadge = document.getElementById('historyDetailBadge');
+  const historyDetailTitle = document.getElementById('historyDetailTitle');
+  const historyDetailDate = document.getElementById('historyDetailDate');
+  const historyDetailCounselingWrapper = document.getElementById('historyDetailCounselingWrapper');
+  const historyDetailCounselingText = document.getElementById('historyDetailCounselingText');
+  const historyDetailListContainer = document.getElementById('historyDetailListContainer');
+  const historyDetailRawText = document.getElementById('historyDetailRawText');
+  const countTabTomorrow = document.getElementById('countTabTomorrow');
+  const countTabWait = document.getElementById('countTabWait');
+  const countTabRelease = document.getElementById('countTabRelease');
+  const countTabRumination = document.getElementById('countTabRumination');
+  const historyTabBtns = document.querySelectorAll('.history-tab-btn');
+
   // Auth Elements
   const authViewLoggedOut = document.getElementById('authViewLoggedOut');
   const authViewLoggedIn = document.getElementById('authViewLoggedIn');
@@ -182,6 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCategoryWhyToggles();
   initSupabaseAuth();
   initCopyAdviceButton();
+  initHistoryDetailTabs();
   updateHistoryUI();
 
   journalInput.addEventListener('input', () => {
@@ -344,6 +364,134 @@ document.addEventListener('DOMContentLoaded', () => {
           copyAdviceLabel.textContent = 'Guardar como mantra';
         }, 2500);
       }).catch(() => {});
+    });
+  }
+
+  // ==========================================
+  // MODAL DE DETALHES DO DIÁRIO (CONTEÚDO DAS TAGS)
+  // ==========================================
+  function initHistoryDetailTabs() {
+    historyTabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        historyTabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        appState.activeDetailTab = btn.getAttribute('data-tab');
+        renderHistoryDetailList();
+      });
+    });
+  }
+
+  function openHistoryEntryDetailModal(entryIndex, initialTab = 'all') {
+    const entry = appState.history[entryIndex];
+    if (!entry) return;
+
+    appState.activeDetailEntry = entry;
+    appState.activeDetailTab = initialTab;
+
+    const d = new Date(entry.date);
+    const formattedDate = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    historyDetailTitle.textContent = entry.title || 'Diário Noturno';
+    historyDetailDate.textContent = `Registrado em ${formattedDate}`;
+    historyDetailRawText.textContent = `"${entry.rawText}"`;
+
+    if (entry.counselingAdvice) {
+      historyDetailCounselingWrapper.classList.remove('hidden');
+      historyDetailCounselingText.textContent = `"${entry.counselingAdvice}"`;
+    } else {
+      historyDetailCounselingWrapper.classList.add('hidden');
+    }
+
+    countTabTomorrow.textContent = entry.tomorrow ? entry.tomorrow.length : 0;
+    countTabWait.textContent = entry.wait ? entry.wait.length : 0;
+    countTabRelease.textContent = entry.release ? entry.release.length : 0;
+    countTabRumination.textContent = entry.rumination ? entry.rumination.length : 0;
+
+    historyTabBtns.forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-tab') === initialTab);
+    });
+
+    renderHistoryDetailList();
+    modalHistoryDetail.classList.remove('hidden');
+  }
+
+  function renderHistoryDetailList() {
+    const entry = appState.activeDetailEntry;
+    if (!entry) return;
+
+    historyDetailListContainer.innerHTML = '';
+    const tab = appState.activeDetailTab;
+
+    let itemsToRender = [];
+
+    if (tab === 'all' || tab === 'tomorrow') {
+      (entry.tomorrow || []).forEach(item => {
+        itemsToRender.push({
+          type: 'tomorrow',
+          tagLabel: 'Amanhã',
+          tagStyle: 'background: rgba(212, 163, 115, 0.2); color: var(--accent-amber);',
+          title: item.action || item.raw,
+          note: 'Ação executável agendada para a manhã'
+        });
+      });
+    }
+
+    if (tab === 'all' || tab === 'wait') {
+      (entry.wait || []).forEach(item => {
+        itemsToRender.push({
+          type: 'wait',
+          tagLabel: 'No Cofre',
+          tagStyle: 'background: rgba(149, 167, 136, 0.2); color: var(--sage-calm);',
+          title: item.raw,
+          note: item.note || 'Guardado com carinho no cofre digital'
+        });
+      });
+    }
+
+    if (tab === 'all' || tab === 'release') {
+      (entry.release || []).forEach(item => {
+        itemsToRender.push({
+          type: 'release',
+          tagLabel: 'Soltura',
+          tagStyle: 'background: rgba(181, 131, 141, 0.2); color: var(--lilac-twilight);',
+          title: item.raw,
+          note: item.reframe || 'Preocupação solta com gentileza'
+        });
+      });
+    }
+
+    if (tab === 'all' || tab === 'rumination') {
+      (entry.rumination || []).forEach(item => {
+        itemsToRender.push({
+          type: 'rumination',
+          tagLabel: 'Acolhimento',
+          tagStyle: 'background: rgba(181, 131, 141, 0.28); color: var(--lilac-twilight);',
+          title: item.raw,
+          note: item.reframe || 'Sentimento acolhido com compaixão'
+        });
+      });
+    }
+
+    if (itemsToRender.length === 0) {
+      historyDetailListContainer.innerHTML = `
+        <div style="text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.85rem;">
+          Nenhum item nesta categoria para esta noite.
+        </div>
+      `;
+      return;
+    }
+
+    itemsToRender.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'history-detail-item';
+      div.innerHTML = `
+        <div class="history-detail-item-header">
+          <span class="cat-item-tag" style="${item.tagStyle}">${item.tagLabel}</span>
+          <span class="history-detail-item-text">${escapeHTML(item.title)}</span>
+        </div>
+        ${item.note ? `<div class="history-detail-item-note">✨ ${escapeHTML(item.note)}</div>` : ''}
+      `;
+      historyDetailListContainer.appendChild(div);
     });
   }
 
@@ -996,7 +1144,7 @@ document.addEventListener('DOMContentLoaded', () => {
       catRuminationContainer.classList.add('hidden');
     }
 
-    // Listener para tags clicáveis
+    // Listener para tags clicáveis na tela de triagem
     document.querySelectorAll('.cat-item-tag.interactive').forEach(tagBtn => {
       tagBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1348,7 +1496,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    list.forEach(entry => {
+    list.forEach((entry, index) => {
       const card = document.createElement('div');
       card.className = 'history-card';
 
@@ -1357,40 +1505,67 @@ document.addEventListener('DOMContentLoaded', () => {
       const moodEmoji = entry.sleepMood === 'great' ? '😴' : entry.sleepMood === 'medium' ? '😐' : entry.sleepMood === 'terrible' ? '😫' : '🌙';
       const title = entry.title || 'Diário Noturno';
 
+      const countTomorrow = entry.tomorrow ? entry.tomorrow.length : 0;
+      const countWait = entry.wait ? entry.wait.length : 0;
+      const countRelease = entry.release ? entry.release.length : 0;
+      const countRumination = entry.rumination ? entry.rumination.length : 0;
+
       card.innerHTML = `
         <div class="history-card-header">
           <span class="history-card-title">📖 ${escapeHTML(title)}</span>
           <span class="history-card-mood" title="Humor do sono">${moodEmoji} <small style="font-size:0.75rem; color:var(--text-muted);">${formattedDate}</small></span>
         </div>
         <p class="history-card-text">"${escapeHTML(entry.rawText)}"</p>
-        ${entry.counselingAdvice ? `<div style="background: rgba(212,163,115,0.08); border-left: 2px solid var(--accent-amber); padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.78rem; color: var(--text-main); font-style: italic; margin-bottom: 0.6rem;">💌 "${escapeHTML(entry.counselingAdvice.substring(0, 140))}..."</div>` : ''}
+        ${entry.counselingAdvice ? `<div style="background: rgba(212,163,115,0.08); border-left: 2px solid var(--accent-amber); padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.78rem; color: var(--text-main); font-style: italic; margin-bottom: 0.65rem;">💌 "${escapeHTML(entry.counselingAdvice.substring(0, 130))}..."</div>` : ''}
+        
         <div class="history-tags">
-          <button type="button" class="cat-item-tag interactive" data-tag-type="tomorrow" style="background: rgba(212, 163, 115, 0.2); color: var(--accent-amber);">
-            ${entry.tomorrow ? entry.tomorrow.length : 0} ações amanhã ℹ️
+          <button type="button" class="cat-item-tag interactive" data-entry-idx="${index}" data-tag-type="tomorrow" style="background: rgba(212, 163, 115, 0.2); color: var(--accent-amber);" title="Toque para ver o que foi guardado">
+            ${countTomorrow} amanhã 🔍
           </button>
-          <button type="button" class="cat-item-tag interactive" data-tag-type="wait" style="background: rgba(149, 167, 136, 0.2); color: var(--sage-calm);">
-            ${entry.wait ? entry.wait.length : 0} no cofre ℹ️
+          <button type="button" class="cat-item-tag interactive" data-entry-idx="${index}" data-tag-type="wait" style="background: rgba(149, 167, 136, 0.2); color: var(--sage-calm);" title="Toque para ver o que foi guardado">
+            ${countWait} no cofre 🔍
           </button>
-          <button type="button" class="cat-item-tag interactive" data-tag-type="release" style="background: rgba(181, 131, 141, 0.2); color: var(--lilac-twilight);">
-            ${entry.release ? entry.release.length : 0} solturas ℹ️
+          <button type="button" class="cat-item-tag interactive" data-entry-idx="${index}" data-tag-type="release" style="background: rgba(181, 131, 141, 0.2); color: var(--lilac-twilight);" title="Toque para ver o que foi guardado">
+            ${countRelease} solturas 🔍
+          </button>
+          ${countRumination > 0 ? `
+            <button type="button" class="cat-item-tag interactive" data-entry-idx="${index}" data-tag-type="rumination" style="background: rgba(181, 131, 141, 0.28); color: var(--lilac-twilight);" title="Toque para ver o que foi guardado">
+              ${countRumination} acolhimento 🔍
+            </button>
+          ` : ''}
+        </div>
+
+        <div class="history-card-footer">
+          <button type="button" class="btn-view-entry-full" data-entry-idx="${index}">
+            <span>🔍 Abrir Detalhes da Noite</span>
           </button>
         </div>
       `;
       historyListContainer.appendChild(card);
     });
 
-    // Re-bind listeners para tags no histórico
+    // Re-bind listeners para tags no histórico abrindo os itens reais
     document.querySelectorAll('.history-tags .cat-item-tag.interactive').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
+        const entryIdx = parseInt(btn.getAttribute('data-entry-idx'), 10);
         const tagType = btn.getAttribute('data-tag-type');
-        openTagDetailModal(tagType);
+        openHistoryEntryDetailModal(entryIdx, tagType);
+      });
+    });
+
+    // Re-bind listeners para botão de abrir detalhes completos da noite
+    document.querySelectorAll('.btn-view-entry-full').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const entryIdx = parseInt(btn.getAttribute('data-entry-idx'), 10);
+        openHistoryEntryDetailModal(entryIdx, 'all');
       });
     });
   }
 
   // ==========================================
-  // MODAIS (PREMIUM, AUTH, TAGS & TECLA ESC)
+  // MODAIS (PREMIUM, AUTH, TAGS, DETALHES DO DIÁRIO & TECLA ESC)
   // ==========================================
   function initModals() {
     // Premium
@@ -1408,11 +1583,18 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target === modalAuth) modalAuth.classList.add('hidden');
     });
 
-    // Tag Info Modal
+    // Tag Info Modal (TCC-I)
     btnCloseTagModal?.addEventListener('click', () => modalTagDetail.classList.add('hidden'));
     btnDismissTagModal?.addEventListener('click', () => modalTagDetail.classList.add('hidden'));
     modalTagDetail?.addEventListener('click', (e) => {
       if (e.target === modalTagDetail) modalTagDetail.classList.add('hidden');
+    });
+
+    // History Entry Detail Modal
+    btnCloseHistoryDetailModal?.addEventListener('click', () => modalHistoryDetail.classList.add('hidden'));
+    btnDismissHistoryDetail?.addEventListener('click', () => modalHistoryDetail.classList.add('hidden'));
+    modalHistoryDetail?.addEventListener('click', (e) => {
+      if (e.target === modalHistoryDetail) modalHistoryDetail.classList.add('hidden');
     });
 
     // Tecla Escape para todos os modais
@@ -1421,6 +1603,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalPremium?.classList.add('hidden');
         modalAuth?.classList.add('hidden');
         modalTagDetail?.classList.add('hidden');
+        modalHistoryDetail?.classList.add('hidden');
       }
     });
   }
