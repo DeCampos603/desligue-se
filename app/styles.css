@@ -2412,6 +2412,113 @@ button:active, .nav-pill:active, .mob-nav-btn:active, .btn-primary:active, .btn-
   margin-top: 0.5rem;
 }
 
+/* ==========================================
+   TERMOS DE USO, CONSENTIMENTO LGPD & ISENÇÃO MÉDICA
+   ========================================== */
+.auth-terms-group {
+  margin: 0.75rem 0 1.25rem 0;
+  text-align: left;
+}
+
+.terms-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.terms-checkbox-label input[type="checkbox"] {
+  accent-color: var(--accent-amber);
+  margin-top: 0.2rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.terms-link, .footer-legal-link {
+  color: var(--accent-amber);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.terms-link:hover, .footer-legal-link:hover {
+  color: var(--sage-calm);
+}
+
+.footer-links-row {
+  margin: 0.5rem 0;
+}
+
+.footer-legal-link {
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
+.terms-modal-card {
+  max-width: 620px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.terms-content-scroll {
+  overflow-y: auto;
+  padding: 1rem 0.5rem 1rem 0;
+  margin: 0.5rem 0 1rem 0;
+  text-align: left;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-height: 50vh;
+}
+
+.terms-clause {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.terms-clause:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.terms-clause h4 {
+  color: var(--text-primary);
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.terms-clause p {
+  margin-bottom: 0.5rem;
+}
+
+.terms-clause ul {
+  padding-left: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.terms-clause li {
+  margin-bottom: 0.35rem;
+}
+
+.terms-highlight {
+  background: rgba(212, 163, 115, 0.12);
+  border-left: 3px solid var(--accent-amber);
+  padding: 0.6rem 0.8rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-iteration-count: 1 !important;

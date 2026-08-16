@@ -718,6 +718,14 @@
             <label for="authPassword">Sua senha</label>
             <input type="password" id="authPassword" class="auth-input" placeholder="••••••••" required>
           </div>
+          <div class="auth-terms-group">
+            <label class="terms-checkbox-label">
+              <input type="checkbox" id="checkTermsConsent" required>
+              <span>
+                Li e concordo com os <a href="#" id="linkOpenTermsAuth" class="terms-link">Termos de Uso, Isenção Médica & Privacidade (LGPD)</a>. Compreendo que este aplicativo é uma ferramenta de suporte de autocuidado e não substitui acompanhamento médico ou psicológico.
+              </span>
+            </label>
+          </div>
 
           <div class="auth-actions-row">
             <button type="submit" id="btnSubmitLogin" class="btn-primary" style="max-width: 100%;">Entrar na Minha Conta</button>
@@ -816,10 +824,82 @@
         <button id="btnDismissTagModal" class="btn-primary btn-plan" style="max-width: 100%;">Entendi, pode fechar</button>
       </div>
     </div>
+  <!-- Modal de Termos de Uso, Consentimento, Isenção Médica & LGPD -->
+  <div id="modalTerms" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card terms-modal-card">
+      <button id="btnCloseTermsModal" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
+      <div class="modal-header">
+        <div class="badge-tag">Proteção & Transparência</div>
+        <h2 class="modal-title">Termos de Uso, Consentimento & Isenção Médica</h2>
+        <p class="modal-subtitle">
+          Leia atentamente as diretrizes de uso, proteção de dados e limites do aplicativo.
+        </p>
+      </div>
+
+      <div class="terms-content-scroll">
+        <div class="terms-clause">
+          <h4>1. Natureza do Serviço & Isenção de Responsabilidade Médica</h4>
+          <p>
+            O <strong>Desligue-se</strong> é uma ferramenta digital de suporte de autocuidado, higiene do sono e descarrego mental com base em conceitos psicoeducativos de TCC-I (Terapia Cognitivo-Comportamental para Insônia).
+          </p>
+          <p class="terms-highlight">
+            ⚠️ <strong>AVISO LEGAL EXPRESSO:</strong> Este aplicativo <u>NÃO constitui</u> consulta médica, psicoterapia clínica, tratamento psiquiátrico, diagnóstico de saúde mental ou prescrição de qualquer natureza. O uso do Desligue-se não substitui nem revoga o acompanhamento presencial ou telepresencial por médicos, psiquiatras, psicólogos ou profissionais de saúde habilitados.
+          </p>
+        </div>
+
+        <div class="terms-clause">
+          <h4>2. Inteligência Artificial, Reflexões & Conselhos</h4>
+          <p>
+            As respostas, cartas afetivas de apoio, reflexões e categorizações geradas por Inteligência Artificial (IA) possuem finalidade exclusivamente reflexiva, acolhedora e de organização pessoal. 
+          </p>
+          <p>
+            O usuário declara ter ciência de que as sugestões da IA <strong>não devem ser seguidas de forma cega ou acrítica</strong>, cabendo unicamente ao usuário o discernimento sobre suas decisões pessoais, profissionais, financeiras e de saúde.
+          </p>
+        </div>
+
+        <div class="terms-clause">
+          <h4>3. Protocolo de Crise e Sofrimento Agudo</h4>
+          <p>
+            O Desligue-se <strong>não é um serviço de emergência ou pronto-socorro</strong>. Caso você esteja vivenciando ideação suicida, automutilação, crise de pânico aguda ou qualquer risco à sua integridade física ou psicológica:
+          </p>
+          <ul>
+            <li>Ligue imediatamente para o <strong>CVV (Centro de Valorização da Vida)</strong> pelo telefone <strong>188</strong> (ligação gratuita, sigilosa e disponível 24 horas por dia);</li>
+            <li>Acesse o chat do CVV em <strong><a href="https://www.cvv.org.br" target="_blank" rel="noopener">www.cvv.org.br</a></strong>;</li>
+            <li>Em casos de urgência médica ou risco iminente, contate o <strong>SAMU pelo 192</strong> ou dirija-se à Unidade de Pronto Atendimento (UPA) mais próxima.</li>
+          </ul>
+        </div>
+
+        <div class="terms-clause">
+          <h4>4. Privacidade, Tratamento de Dados & LGPD (Lei nº 13.709/2018)</h4>
+          <p>
+            Seus desabafos e reflexões são confidenciais. Ao utilizar a plataforma ou criar uma conta, você consente expressamente que:
+          </p>
+          <ul>
+            <li>Seus dados são processados única e exclusivamente para viabilizar a organização dos seus relatos, persistência criptografada e sincronização do seu diário pessoal;</li>
+            <li>Nenhum dado pessoal ou conteúdo de desabafo é comercializado, alugado ou compartilhado com terceiros para fins publicitários;</li>
+            <li>Você pode a qualquer momento excluir seu histórico local ou solicitar a exclusão total da sua conta e dados.</li>
+          </ul>
+        </div>
+
+        <div class="terms-clause">
+          <h4>5. Limitação de Responsabilidade Civil</h4>
+          <p>
+            Na extensão máxima permitida pela legislação aplicável, os desenvolvedores, mantenedores e colaboradores do Desligue-se isentam-se de quaisquer responsabilidades por danos diretos, indiretos, incidentais ou consequenciais decorrentes do uso, incapacidade de uso ou interpretações individuais dos conteúdos da plataforma.
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-footer-dismiss">
+        <button id="btnDismissTermsModal" class="btn-primary btn-plan" style="max-width: 100%;">Li, Compreendi e Concordo</button>
+      </div>
+    </div>
   </div>
 
   <footer class="app-footer">
     <p>“Você não tem insônia. Às vezes você simplesmente levou o dia inteiro para a cama.”</p>
+    <div class="footer-links-row">
+      <a href="#" id="linkOpenTermsFooter" class="footer-legal-link">Termos de Uso, Isenção Médica & Privacidade (LGPD)</a>
+    </div>
     <small>Desligue-se © 2026 • Fundamentado em TCC-I e Neurociência do Sono.</small>
   </footer>
 

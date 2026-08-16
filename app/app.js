@@ -157,6 +157,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const tagDetailMeaning = document.getElementById('tagDetailMeaning');
   const tagDetailNeuro = document.getElementById('tagDetailNeuro');
 
+  // Modal de Termos de Uso, Isenção Médica & LGPD
+  const modalTerms = document.getElementById('modalTerms');
+  const btnCloseTermsModal = document.getElementById('btnCloseTermsModal');
+  const btnDismissTermsModal = document.getElementById('btnDismissTermsModal');
+  const linkOpenTermsAuth = document.getElementById('linkOpenTermsAuth');
+  const linkOpenTermsFooter = document.getElementById('linkOpenTermsFooter');
+  const checkTermsConsent = document.getElementById('checkTermsConsent');
+
   // Modal de Detalhes da Noite & Conteúdo do Diário
   const modalHistoryDetail = document.getElementById('modalHistoryDetail');
   const btnCloseHistoryDetailModal = document.getElementById('btnCloseHistoryDetailModal');
@@ -592,18 +600,29 @@ document.addEventListener('DOMContentLoaded', () => {
       const email = authEmail.value.trim();
       const password = authPassword.value;
 
+      // Validação obrigatória dos Termos de Uso & Isenção Médica
+      if (checkTermsConsent && !checkTermsConsent.checked) {
+        showAuthFeedback('Você precisa aceitar os Termos de Uso, Isenção Médica e LGPD para criar uma conta.', 'error');
+        checkTermsConsent.focus();
+        return;
+      }
+
       if (!email || password.length < 6) {
         showAuthFeedback('Informe um e-mail válido e senha de no mínimo 6 caracteres.', 'error');
         return;
       }
 
-      showAuthFeedback('Criando sua conta...', 'success');
+      showAuthFeedback('Criando sua conta segura...', 'success');
       try {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: { full_name: email.split('@')[0] }
+            data: { 
+              full_name: email.split('@')[0],
+              terms_accepted_at: new Date().toISOString(),
+              terms_version: '2026-v1'
+            }
           }
         });
         if (error) {
@@ -1921,6 +1940,24 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target === modalHistoryDetail) modalHistoryDetail.classList.add('hidden');
     });
 
+    // Termos de Uso, Consentimento & Isenção Médica Modal
+    linkOpenTermsAuth?.addEventListener('click', (e) => {
+      e.preventDefault();
+      modalTerms?.classList.remove('hidden');
+    });
+    linkOpenTermsFooter?.addEventListener('click', (e) => {
+      e.preventDefault();
+      modalTerms?.classList.remove('hidden');
+    });
+    btnCloseTermsModal?.addEventListener('click', () => modalTerms?.classList.add('hidden'));
+    btnDismissTermsModal?.addEventListener('click', () => {
+      modalTerms?.classList.add('hidden');
+      if (checkTermsConsent) checkTermsConsent.checked = true;
+    });
+    modalTerms?.addEventListener('click', (e) => {
+      if (e.target === modalTerms) modalTerms?.classList.add('hidden');
+    });
+
     // Tecla Escape para todos os modais
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' || e.key === 'Esc') {
@@ -1928,6 +1965,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalAuth?.classList.add('hidden');
         modalTagDetail?.classList.add('hidden');
         modalHistoryDetail?.classList.add('hidden');
+        modalTerms?.classList.add('hidden');
       }
     });
   }
