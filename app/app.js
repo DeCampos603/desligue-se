@@ -1,7 +1,7 @@
 /**
  * DESLIGUE-SE — Motor Cognitivo de Triagem Noturna & Ritual de Sono (TCC-I)
  * Integração com Supabase (Auth Google/Email, Banco de Dados PostgreSQL & RLS)
- * Inteligência Empática de Acolhimento, Consolo & Terapia do Sono
+ * Inteligência Empática de Acolhimento, Consolo & Conselhos Sinceros para a Noite
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -94,6 +94,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnMorningToNight = document.getElementById('btnMorningToNight');
   const btnHistoryToNight = document.getElementById('btnHistoryToNight');
 
+  // Carta de Consolo e Conselhos
+  const counselingBox = document.getElementById('counselingBox');
+  const counselingText = document.getElementById('counselingText');
+  const btnCopyAdvice = document.getElementById('btnCopyAdvice');
+  const copyAdviceIcon = document.getElementById('copyAdviceIcon');
+  const copyAdviceLabel = document.getElementById('copyAdviceLabel');
+
   // Categorias & Listas
   const resultEntryTitle = document.getElementById('resultEntryTitle');
   const listTomorrow = document.getElementById('listTomorrow');
@@ -174,6 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initModals();
   initCategoryWhyToggles();
   initSupabaseAuth();
+  initCopyAdviceButton();
   updateHistoryUI();
 
   journalInput.addEventListener('input', () => {
@@ -263,8 +271,8 @@ document.addEventListener('DOMContentLoaded', () => {
     tomorrow: {
       title: 'Atenção Amanhã (Ação Imediata)',
       badge: 'Prioridade Executável • TCC-I',
-      meaning: 'Tarefas e compromissos reais de alta relevância. A IA organizou o primeiro micro-passo para você iniciar o dia com leveza.',
-      neuro: 'Descarrega a memória de trabalho do córtex pré-frontal. Quando a tarefa já está registrada e estruturada, o cérebro desliga a hipervigilância noturna.'
+      meaning: 'Tarefas e compromissos práticos de alta relevância. A IA organizou o primeiro micro-passo para você iniciar o dia com clareza e leveza.',
+      neuro: 'Descarrega a memória de trabalho do córtex pré-frontal. Ao saber que a tarefa está agendada no papel, o cérebro desliga a hipervigilância noturna.'
     },
     wait: {
       title: 'Guardado com Carinho (No Cofre)',
@@ -321,6 +329,22 @@ document.addEventListener('DOMContentLoaded', () => {
     tagDetailMeaning.textContent = info.meaning;
     tagDetailNeuro.textContent = info.neuro;
     modalTagDetail.classList.remove('hidden');
+  }
+
+  function initCopyAdviceButton() {
+    if (!btnCopyAdvice) return;
+    btnCopyAdvice.addEventListener('click', () => {
+      if (!counselingText) return;
+      const textToCopy = counselingText.textContent.trim();
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        copyAdviceIcon.textContent = '✨';
+        copyAdviceLabel.textContent = 'Mantra copiado com amor!';
+        setTimeout(() => {
+          copyAdviceIcon.textContent = '📋';
+          copyAdviceLabel.textContent = 'Guardar como mantra';
+        }, 2500);
+      }).catch(() => {});
+    });
   }
 
   // ==========================================
@@ -477,6 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
           title: row.triaged_data?.title || 'Diário Noturno',
           date: row.created_at,
           rawText: row.raw_text,
+          counselingAdvice: row.triaged_data?.counselingAdvice || '',
           sleepMood: row.sleep_mood,
           tomorrow: row.triaged_data?.tomorrow || [],
           wait: row.triaged_data?.wait || [],
@@ -569,7 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // MOTOR DE TRIAGEM COGNITIVA & EMPATIA HUMANA
+  // MOTOR DE TRIAGEM COGNITIVA & CONSELHOS AFETIVOS
   // ==========================================
   function handleProcessDump() {
     const text = journalInput.value.trim();
@@ -619,6 +644,106 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function generateCounselingAdvice(text, fullLower) {
+    // 1. TÉRMINO / CORAÇÃO PARTIDO / DESAMOR
+    if (
+      fullLower.includes('término') ||
+      fullLower.includes('terminou') ||
+      fullLower.includes('terminar') ||
+      fullLower.includes('separação') ||
+      fullLower.includes('separou') ||
+      fullLower.includes('namorado') ||
+      fullLower.includes('namorada') ||
+      fullLower.includes('marido') ||
+      fullLower.includes('meu ex') ||
+      fullLower.includes('minha ex') ||
+      fullLower.includes('desamor') ||
+      fullLower.includes('coração partido')
+    ) {
+      return `Noites como esta são as mais difíceis, porque quando o barulho do dia cessa, o vazio e a saudade parecem ocupar todo o quarto. Mas quero que você guarde isso com carinho no peito: o que você está sentindo agora não diminui o seu valor nem define o seu futuro. Você foi corajosa, amou com verdade e entregou o seu melhor. Esta dor é o seu coração processando um luto legítimo, e você não precisa ter todas as respostas nem "superar" nada hoje à noite. Abrace seu travesseiro, respire com gentileza e se dê colo. Você é uma mulher incrível, forte e cheia de luz. Esta tempestade vai passar e você vai florescer de novo. Por hoje, apenas descanse.`;
+    }
+
+    // 2. AUTOCUIDADO / MUDANÇA DE VISUAL / COR DE CABELO / ESTILO
+    if (
+      fullLower.includes('cabelo') ||
+      fullLower.includes('cor de cabelo') ||
+      fullLower.includes('cor do cabelo') ||
+      fullLower.includes('pintar') ||
+      fullLower.includes('cortar') ||
+      fullLower.includes('roupa') ||
+      fullLower.includes('vestido') ||
+      fullLower.includes('look') ||
+      fullLower.includes('estilo') ||
+      fullLower.includes('mudar de visual') ||
+      fullLower.includes('autoestima')
+    ) {
+      return `Querer se renovar, mudar o corte ou a cor do cabelo e repensar seu estilo é uma das expressões mais lindas de amor-próprio e vitalidade: é o seu desejo de abrir novos ciclos! Mas lembre-se com carinho: nenhuma decisão sobre quem você é precisa ser apressada no escuro da cama. Você já é linda, autêntica e única exatamente como está agora. Durma com a tranquilidade de que amanhã, com a mente descansada e a luz da manhã, qualquer escolha diante do espelho será leve, divertida e cheia de confiança.`;
+    }
+
+    // 3. TRISTEZA PROFUNDA / CHORO / SOLIDÃO / RUIM
+    if (
+      fullLower.includes('está ruim') ||
+      fullLower.includes('tá ruim') ||
+      fullLower.includes('muito mal') ||
+      fullLower.includes('triste') ||
+      fullLower.includes('chorando') ||
+      fullLower.includes('chorei') ||
+      fullLower.includes('vazio') ||
+      fullLower.includes('sozinha') ||
+      fullLower.includes('solidão') ||
+      fullLower.includes('angústia') ||
+      fullLower.includes('sem forças') ||
+      fullLower.includes('esgotada')
+    ) {
+      return `Se o seu coração está pesado e as lágrimas insistirem em cair, não as prenda. O choro não é fraqueza: é a forma que o corpo encontra para lavar a alma e aliviar a sobrecarga de cortisol. Você tem segurado tanta coisa e não precisa ser a heroína forte o tempo todo. Deite-se, sinta o calor do seu cobertor e permita-se ser acolhida. Você não está sozinha e esta fase difícil não é para sempre. Amanhã será um dia um pouquinho mais suave. Entregue-se ao aconchego da noite.`;
+    }
+
+    // 4. SOBRECARGA / TRABALHO / ROTINA EXAUSTIVA
+    if (
+      fullLower.includes('trabalho') ||
+      fullLower.includes('reunião') ||
+      fullLower.includes('chefe') ||
+      fullLower.includes('empresa') ||
+      fullLower.includes('cansada') ||
+      fullLower.includes('escola') ||
+      fullLower.includes('muita coisa') ||
+      fullLower.includes('sobrecarregada')
+    ) {
+      return `Você tem se desdobrado em mil para dar conta de tudo e de todos. Mas quero te lembrar de uma verdade libertadora: você não precisa carregar o mundo nas costas para ser digna de descanso. O trabalho, os prazos e as obrigações vão continuar lá amanhã; o que não pode esperar é o seu direito sagrado de repousar o corpo e a mente. Orgulhe-se da sua caminhada hoje. Você foi gigante. Agora, solte as rédeas e deixe a noite recarregar as suas energias.`;
+    }
+
+    // 5. AUTOCOBRANÇA / CULPA / DIÁLOGOS PASSADOS
+    if (
+      fullLower.includes('deveria') ||
+      fullLower.includes('devia') ||
+      fullLower.includes('conversa') ||
+      fullLower.includes('discussão') ||
+      fullLower.includes('briga') ||
+      fullLower.includes('arrepend') ||
+      fullLower.includes('culpa') ||
+      fullLower.includes('falhei') ||
+      fullLower.includes('burra')
+    ) {
+      return `A voz da autocrítica adora ser a mais alta quando apagamos as luzes. Mas ela mente quando diz que você falhou. Você fez o melhor que pôde com a energia, a consciência e as ferramentas emocionais que estavam disponíveis naquele instante. Perdoe-se pelos detalhes que não saíram perfeitos. A perfeição não existe, mas a sua dedicação é genuína. Abrace sua história com ternura e durma com a certeza de que você é suficiente.`;
+    }
+
+    // 6. ANSIEDADE / MEDO DO FUTURO / INCERTEZAS
+    if (
+      fullLower.includes('medo') ||
+      fullLower.includes('futuro') ||
+      fullLower.includes('dar certo') ||
+      fullLower.includes('e se') ||
+      fullLower.includes('preocupad') ||
+      fullLower.includes('ansios') ||
+      fullLower.includes('pânico')
+    ) {
+      return `O amanhã sempre parece um mistério assustador quando tentamos adivinhá-lo deitadas no escuro. Mas a verdade é que o futuro não se resolve à noite; ele se constrói um passo de cada vez, na luz do dia. Você já superou 100% dos seus dias difíceis no passado e tem dentro de si uma força silenciosa impressionante. Confie no seu caminho. Respire fundo, solte o peso dos ombros e entregue o controle. Você está segura agora.`;
+    }
+
+    // 7. PADRÃO ACOLHEDOR & MOTIVACIONAL
+    return `Você concluiu mais um dia com bravura e sensibilidade. Toda a sua rotina e pensamentos foram descarregados e guardados com segurança aqui. Você não precisa carregar pendências na mente durante a madrugada. Agradeça ao seu corpo por ter te sustentado ao longo de hoje e dê a si mesma o presente de um sono restaurador, sereno e profundo. Amanhã você recomeça no seu tempo.`;
+  }
+
   function analyzeThoughtsWithTCCI(text, title) {
     const fragments = text
       .split(/(?:[.,;!\n\?]+|\be\s+também\b|\be\s+não\b|\be\s+preciso\b|\be\s+tenho\b)/gi)
@@ -631,10 +756,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const rumination = [];
 
     const fullLower = text.toLowerCase();
+    const counselingAdvice = generateCounselingAdvice(text, fullLower);
 
-    // 1. ANÁLISE GLOBAL DE IMPACTO EMOCIONAL (GRIEF / BREAKUP / DEEP SADNESS)
     const isBreakup = fullLower.includes('término') || fullLower.includes('terminou') || fullLower.includes('terminar') || fullLower.includes('separação') || fullLower.includes('separou') || fullLower.includes('namorado') || fullLower.includes('namorada') || fullLower.includes('marido') || fullLower.includes('ex ') || fullLower.includes('meu ex') || fullLower.includes('minha ex') || fullLower.includes('desamor') || fullLower.includes('coração partido');
-    const isDeepSadness = fullLower.includes('está ruim') || fullLower.includes('tá ruim') || fullLower.includes('muito mal') || fullLower.includes('triste') || fullLower.includes('chorando') || fullLower.includes('chorei') || fullLower.includes('vazio') || fullLower.includes('sozinha') || fullLower.includes('solidão') || fullLower.includes('sem rumo') || fullLower.includes('não aguento mais') || fullLower.includes('dor no peito');
 
     fragments.forEach(frag => {
       const fLower = frag.toLowerCase();
@@ -775,6 +899,7 @@ document.addEventListener('DOMContentLoaded', () => {
       title: title || 'Diário Noturno',
       date: new Date().toISOString(),
       rawText: text,
+      counselingAdvice,
       tomorrow,
       wait,
       release,
@@ -791,6 +916,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderTriagedResults(data) {
     if (resultEntryTitle) {
       resultEntryTitle.textContent = `“${data.title}”`;
+    }
+
+    // Renderiza a Carta de Consolo e Conselhos
+    if (counselingText) {
+      counselingText.textContent = data.counselingAdvice || 'Você concluiu o dia. Seus pensamentos estão guardados e seguros. Pode descansar em paz.';
     }
 
     // 1. Amanhã
@@ -981,6 +1111,7 @@ document.addEventListener('DOMContentLoaded', () => {
             raw_text: appState.currentTriagedData.rawText,
             triaged_data: {
               title: appState.currentTriagedData.title,
+              counselingAdvice: appState.currentTriagedData.counselingAdvice,
               tomorrow: appState.currentTriagedData.tomorrow,
               wait: appState.currentTriagedData.wait,
               release: appState.currentTriagedData.release,
@@ -1232,6 +1363,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="history-card-mood" title="Humor do sono">${moodEmoji} <small style="font-size:0.75rem; color:var(--text-muted);">${formattedDate}</small></span>
         </div>
         <p class="history-card-text">"${escapeHTML(entry.rawText)}"</p>
+        ${entry.counselingAdvice ? `<div style="background: rgba(212,163,115,0.08); border-left: 2px solid var(--accent-amber); padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.78rem; color: var(--text-main); font-style: italic; margin-bottom: 0.6rem;">💌 "${escapeHTML(entry.counselingAdvice.substring(0, 140))}..."</div>` : ''}
         <div class="history-tags">
           <button type="button" class="cat-item-tag interactive" data-tag-type="tomorrow" style="background: rgba(212, 163, 115, 0.2); color: var(--accent-amber);">
             ${entry.tomorrow ? entry.tomorrow.length : 0} ações amanhã ℹ️
