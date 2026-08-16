@@ -1,7 +1,7 @@
 /**
  * DESLIGUE-SE — Motor Cognitivo de Triagem Noturna & Ritual de Sono (TCC-I)
  * Integração com Supabase (Auth Google/Email, Banco de Dados PostgreSQL & RLS)
- * Inteligência Empática de Acolhimento, Consolo & Visualização de Conteúdo do Diário
+ * Inteligência de Cartas Pessoais de Apoio, Consolo Dinâmico & Terapia do Sono
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -240,13 +240,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // NAVEGAÇÃO DESKTOP & MOBILE SINCRONIZADA
   // ==========================================
   function initNavigation() {
-    // Desktop
     navBtns.night?.addEventListener('click', () => switchView('night'));
     navBtns.morning?.addEventListener('click', () => switchView('morning'));
     navBtns.history?.addEventListener('click', () => switchView('history'));
     navBtns.logo?.addEventListener('click', () => switchView('night'));
 
-    // Mobile Bottom Nav
     mobNavBtns.night?.addEventListener('click', () => switchView('night'));
     mobNavBtns.morning?.addEventListener('click', () => switchView('morning'));
     mobNavBtns.history?.addEventListener('click', () => switchView('history'));
@@ -258,12 +256,10 @@ document.addEventListener('DOMContentLoaded', () => {
       views[k].classList.toggle('active', k === viewName);
     });
 
-    // Atualiza Desktop
     navBtns.night?.classList.toggle('active', viewName === 'night');
     navBtns.morning?.classList.toggle('active', viewName === 'morning');
     navBtns.history?.classList.toggle('active', viewName === 'history');
 
-    // Atualiza Mobile
     mobNavBtns.night?.classList.toggle('active', viewName === 'night');
     mobNavBtns.morning?.classList.toggle('active', viewName === 'morning');
     mobNavBtns.history?.classList.toggle('active', viewName === 'history');
@@ -742,7 +738,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // MOTOR DE TRIAGEM COGNITIVA & CONSELHOS AFETIVOS
+  // SINTETIZADOR DINÂMICO DE CARTAS AFETIVAS (COM VARIAÇÕES CONTEXTUAIS)
   // ==========================================
   function handleProcessDump() {
     const text = journalInput.value.trim();
@@ -792,104 +788,244 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Gera carta de conselho altamente personalizada, combinando abertura, validação com termos reais, conselho e bênção de sono
   function generateCounselingAdvice(text, fullLower) {
-    // 1. TÉRMINO / CORAÇÃO PARTIDO / DESAMOR
+    const rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    // 1. ANÁLISE ESPECÍFICA: TÉRMINO / ROMPIMENTO / LUTO AMOROSO
     if (
-      fullLower.includes('término') ||
-      fullLower.includes('terminou') ||
-      fullLower.includes('terminar') ||
-      fullLower.includes('separação') ||
-      fullLower.includes('separou') ||
-      fullLower.includes('namorado') ||
-      fullLower.includes('namorada') ||
-      fullLower.includes('marido') ||
-      fullLower.includes('meu ex') ||
-      fullLower.includes('minha ex') ||
-      fullLower.includes('desamor') ||
-      fullLower.includes('coração partido')
+      fullLower.includes('término') || fullLower.includes('terminou') || fullLower.includes('terminar') ||
+      fullLower.includes('separação') || fullLower.includes('separou') || fullLower.includes('namorado') ||
+      fullLower.includes('namorada') || fullLower.includes('marido') || fullLower.includes('meu ex') ||
+      fullLower.includes('minha ex') || fullLower.includes('desamor') || fullLower.includes('coração partido')
     ) {
-      return `Noites como esta são as mais difíceis, porque quando o barulho do dia cessa, o vazio e a saudade parecem ocupar todo o quarto. Mas quero que você guarde isso com carinho no peito: o que você está sentindo agora não diminui o seu valor nem define o seu futuro. Você foi corajosa, amou com verdade e entregou o seu melhor. Esta dor é o seu coração processando um luto legítimo, e você não precisa ter todas as respostas nem "superar" nada hoje à noite. Abrace seu travesseiro, respire com gentileza e se dê colo. Você é uma mulher incrível, forte e cheia de luz. Esta tempestade vai passar e você vai florescer de novo. Por hoje, apenas descanse.`;
+      const openings = [
+        'Minha querida, sinto daqui o peso que o seu peito está carregando ao escrever sobre esse término...',
+        'No silêncio da noite, a dor de um rompimento reverbera com uma força que parece nos engolir...',
+        'Sei o quanto dói quando uma história que a gente construiu com carinho chega ao fim...',
+        'É tão corajoso da sua parte colocar em palavras essa dor que está aí dentro...'
+      ];
+      const validations = [
+        'Quero que você guarde isso com carinho: o que você está sentindo agora não diminui em nada a mulher maravilhosa que você é. Você amou de verdade, foi honesta e entregou seu coração.',
+        'Essa dor no peito é o seu coração processando um luto real. Não tente reprimir suas lágrimas ou fingir que está tudo bem no escuro do quarto. O seu sofrimento é legítimo.',
+        'A saudade e o vazio tentam nos convencer de que não vamos dar conta, mas isso é só o impacto do choque inicial. Você é inteira e sua vida tem uma infinidade de capítulos pela frente.'
+      ];
+      const advices = [
+        'Você não precisa ter todas as respostas esta noite e não precisa "superar" nada antes de dormir. Apenas coloque a mão no seu peito, sinta seu coração bater e respire fundo.',
+        'Permita-se viver um dia de cada vez, sem se cobrar pressa para cicatrizar. Seu único compromisso agora é ser gentil consigo mesma e se acolher.',
+        'Lembre-se de que o fim de um relacionamento não é o fim de quem você é. Você já era incrível antes e continuará sendo depois.'
+      ];
+      const closings = [
+        'Abrace seu travesseiro com ternura, feche os olhos devagar e deixe a noite cuidar do seu descanso. Você é forte e amanhã será um dia mais suave.',
+        'Solte o peso das lembranças por esta madrugada. Dê ao seu corpo a trégua que ele merece. Durma em paz, você é acolhida aqui.',
+        'Esta tempestade vai passar e você vai florescer de novo. Por hoje, apenas deite-se e entregue-se ao aconchego da cama.'
+      ];
+      return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
     }
 
-    // 2. AUTOCUIDADO / MUDANÇA DE VISUAL / COR DE CABELO / ESTILO
+    // 2. ANÁLISE ESPECÍFICA: DÚVIDAS PESSOAIS / CABELO / VISUAL / AUTOESTIMA
     if (
-      fullLower.includes('cabelo') ||
-      fullLower.includes('cor de cabelo') ||
-      fullLower.includes('cor do cabelo') ||
-      fullLower.includes('pintar') ||
-      fullLower.includes('cortar') ||
-      fullLower.includes('roupa') ||
-      fullLower.includes('vestido') ||
-      fullLower.includes('look') ||
-      fullLower.includes('estilo') ||
-      fullLower.includes('mudar de visual') ||
-      fullLower.includes('autoestima')
+      fullLower.includes('cabelo') || fullLower.includes('cor de cabelo') || fullLower.includes('cor do cabelo') ||
+      fullLower.includes('pintar') || fullLower.includes('cortar') || fullLower.includes('roupa') ||
+      fullLower.includes('vestido') || fullLower.includes('look') || fullLower.includes('estilo') ||
+      fullLower.includes('mudar de visual') || fullLower.includes('autoestima') || fullLower.includes('meu corpo')
     ) {
-      return `Querer se renovar, mudar o corte ou a cor do cabelo e repensar seu estilo é uma das expressões mais lindas de amor-próprio e vitalidade: é o seu desejo de abrir novos ciclos! Mas lembre-se com carinho: nenhuma decisão sobre quem você é precisa ser apressada no escuro da cama. Você já é linda, autêntica e única exatamente como está agora. Durma com a tranquilidade de que amanhã, com a mente descansada e a luz da manhã, qualquer escolha diante do espelho será leve, divertida e cheia de confiança.`;
+      let hairMention = 'mudar o visual';
+      if (fullLower.includes('loira')) hairMention = 'ficar loira';
+      else if (fullLower.includes('ruiva') || fullLower.includes('ruivo')) hairMention = 'ficar ruiva';
+      else if (fullLower.includes('morena')) hairMention = 'o tom moreno';
+      else if (fullLower.includes('cabelo')) hairMention = 'a mudança no cabelo';
+
+      const openings = [
+        `Que delícia ver você pensando em ${hairMention} e em novas formas de cuidar de você!`,
+        `Pensar em renovação e em novas fases para a sua imagem é algo tão vibrante e cheio de vida...`,
+        `Querer transformar o visual ou experimentar novos estilos é um reflexo lindo da sua busca por renovação...`
+      ];
+      const validations = [
+        'Dúvidas sobre estética e estilo são naturais quando queremos abrir novos ciclos, mas a mente cansada da noite costuma amplificar inseguranças desnecessárias.',
+        'Às vezes a gente busca mudar por fora o que já está se transformando por dentro, e isso é um processo lindo de autodescoberta.',
+        'Lembre-se de que qualquer escolha visual deve ser uma celebração da sua autenticidade, e não uma cobrança para agradar aos outros.'
+      ];
+      const advices = [
+        'Decisões sobre a sua imagem ficam muito mais leves, divertidas e certeiras amanhã sob a luz natural do dia e com a cabeça descansada.',
+        'Guardamos essa ideia e inspiração com carinho no seu cofre digital para você pesquisar referências e se curtir com calma pela manhã.',
+        'Olhe para você com amor: você já é linda, autêntica e única exatamente no ponto em que está agora.'
+      ];
+      const closings = [
+        'Solte as indecisões por hoje, relaxe os músculos do rosto e durma com o coração sereno. Você merece esse repouso.',
+        'Amanhã você se olha no espelho com novos olhos e muito amor-próprio. Tenha uma noite linda e revigorante.',
+        'Desligue as dúvidas e entregue-se ao sono restaurador. Bom descanso!'
+      ];
+      return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
     }
 
-    // 3. TRISTEZA PROFUNDA / CHORO / SOLIDÃO / RUIM
+    // 3. ANÁLISE ESPECÍFICA: TRISTEZA PROFUNDA / CHORO / SOLIDÃO / RUIM
     if (
-      fullLower.includes('está ruim') ||
-      fullLower.includes('tá ruim') ||
-      fullLower.includes('muito mal') ||
-      fullLower.includes('triste') ||
-      fullLower.includes('chorando') ||
-      fullLower.includes('chorei') ||
-      fullLower.includes('vazio') ||
-      fullLower.includes('sozinha') ||
-      fullLower.includes('solidão') ||
-      fullLower.includes('angústia') ||
-      fullLower.includes('sem forças') ||
-      fullLower.includes('esgotada')
+      fullLower.includes('está ruim') || fullLower.includes('tá ruim') || fullLower.includes('muito mal') ||
+      fullLower.includes('triste') || fullLower.includes('chorando') || fullLower.includes('chorei') ||
+      fullLower.includes('vazio') || fullLower.includes('sozinha') || fullLower.includes('solidão') ||
+      fullLower.includes('angústia') || fullLower.includes('sem forças') || fullLower.includes('esgotada')
     ) {
-      return `Se o seu coração está pesado e as lágrimas insistirem em cair, não as prenda. O choro não é fraqueza: é a forma que o corpo encontra para lavar a alma e aliviar a sobrecarga de cortisol. Você tem segurado tanta coisa e não precisa ser a heroína forte o tempo todo. Deite-se, sinta o calor do seu cobertor e permita-se ser acolhida. Você não está sozinha e esta fase difícil não é para sempre. Amanhã será um dia um pouquinho mais suave. Entregue-se ao aconchego da noite.`;
+      const openings = [
+        'Meu abraço mais sincero e apertado para você agora que as coisas parecem tão pesadas...',
+        'Sei que hoje foi um dia difícil e que o cansaço parece ter tomado conta de tudo...',
+        'Ouvir seu desabafo me faz querer te lembrar de uma verdade que a gente esquece quando está triste...'
+      ];
+      const validations = [
+        'Se as lágrimas vierem, não as segure: chorar não é fraqueza, é a maneira do corpo aliviar o excesso de cortisol e lavar a dor.',
+        'Você tem carregado tanto peso nos ombros e não precisa sustentar uma postura inabalável o tempo todo. É permitido desabar para se reconstruir.',
+        'Sentir-se sozinha ou no escuro faz parte das fases difíceis, mas esse momento de dor não é quem você é; é apenas o que você está atravessando.'
+      ];
+      const advices = [
+        'Não tente resolver a sua vida esta noite. O seu único papel agora é se deitar, respirar devagar e se permitir ser acolhida.',
+        'Dê a si mesma o mesmo carinho e paciência que você daria para a sua melhor amiga se ela estivesse chorando.',
+        'Lembre-se de que até a noite mais escura sempre dá lugar à manhã. Você é forte e vai passar por isso.'
+      ];
+      const closings = [
+        'Sinta o conforto seguro da sua cama, relaxe o peito e permita que o sono traga alívio para a sua alma. Você é preciosa.',
+        'Descanse em paz sabendo que você não está sozinha. Nós guardamos suas dores aqui. Durma bem.',
+        'Amanhã o dia começará com novos ares. Entregue-se ao sono com amor.'
+      ];
+      return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
     }
 
-    // 4. SOBRECARGA / TRABALHO / ROTINA EXAUSTIVA
+    // 4. ANÁLISE ESPECÍFICA: TRABALHO / SOBRECARGA / REUNIÃO / CHEFE
     if (
-      fullLower.includes('trabalho') ||
-      fullLower.includes('reunião') ||
-      fullLower.includes('chefe') ||
-      fullLower.includes('empresa') ||
-      fullLower.includes('cansada') ||
-      fullLower.includes('escola') ||
-      fullLower.includes('muita coisa') ||
-      fullLower.includes('sobrecarregada')
+      fullLower.includes('trabalho') || fullLower.includes('reunião') || fullLower.includes('chefe') ||
+      fullLower.includes('empresa') || fullLower.includes('relatório') || fullLower.includes('prazo') ||
+      fullLower.includes('meta') || fullLower.includes('cliente') || fullLower.includes('sobrecarregada')
     ) {
-      return `Você tem se desdobrado em mil para dar conta de tudo e de todos. Mas quero te lembrar de uma verdade libertadora: você não precisa carregar o mundo nas costas para ser digna de descanso. O trabalho, os prazos e as obrigações vão continuar lá amanhã; o que não pode esperar é o seu direito sagrado de repousar o corpo e a mente. Orgulhe-se da sua caminhada hoje. Você foi gigante. Agora, solte as rédeas e deixe a noite recarregar as suas energias.`;
+      const openings = [
+        'Você tem se desdobrado em mil para dar conta de tantas responsabilidades e entregas...',
+        'Pensar no trabalho e nas reuniões na hora de dormir é o jeito mais comum da mente se sabotar...',
+        'Reconheço o quanto você se dedica e como você leva a sério seus compromissos...'
+      ];
+      const validations = [
+        'Mas lembre-se: nenhum trabalho, relatório ou expectativa externa vale o sacrifício da sua saúde mental e do seu sono.',
+        'O trabalho nunca acaba, e tentar resolvê-lo mentalmente na cama só rouba a clareza de que você vai precisar amanhã.',
+        'Você já deu o seu melhor hoje e não precisa carregar a empresa inteira nas suas costas para provar a sua competência.'
+      ];
+      const advices = [
+        'Tudo o que é prioridade já foi catalogado na sua lista de amanhã. O que ficou para trás pode esperar.',
+        'Desconecte o seu cérebro do modo "resolução de problemas". A sua mente funciona muito melhor após 8 horas de repouso.',
+        'Orgulhe-se da sua dedicação, mas coloque uma cerca sagrada ao redor da sua noite: agora é hora exclusiva de você.'
+      ];
+      const closings = [
+        'Solte os prazos, relaxe a mandíbula e entregue-se ao descanso merecido. Você foi gigante hoje.',
+        'Amanhã você resolverá tudo com maestria e energia renovada. Durma em paz.',
+        'Feche os olhos com a certeza do dever cumprido. Tenha uma noite profunda e revigorante.'
+      ];
+      return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
     }
 
-    // 5. AUTOCOBRANÇA / CULPA / DIÁLOGOS PASSADOS
+    // 5. ANÁLISE ESPECÍFICA: FAMÍLIA / MATERNIDADE / CUIDADO DA CASA
     if (
-      fullLower.includes('deveria') ||
-      fullLower.includes('devia') ||
-      fullLower.includes('conversa') ||
-      fullLower.includes('discussão') ||
-      fullLower.includes('briga') ||
-      fullLower.includes('arrepend') ||
-      fullLower.includes('culpa') ||
-      fullLower.includes('falhei') ||
-      fullLower.includes('burra')
+      fullLower.includes('filho') || fullLower.includes('filha') || fullLower.includes('crianças') ||
+      fullLower.includes('mãe') || fullLower.includes('casa') || fullLower.includes('escola') || fullLower.includes('marido')
     ) {
-      return `A voz da autocrítica adora ser a mais alta quando apagamos as luzes. Mas ela mente quando diz que você falhou. Você fez o melhor que pôde com a energia, a consciência e as ferramentas emocionais que estavam disponíveis naquele instante. Perdoe-se pelos detalhes que não saíram perfeitos. A perfeição não existe, mas a sua dedicação é genuína. Abrace sua história com ternura e durma com a certeza de que você é suficiente.`;
+      const openings = [
+        'Cuidar da família e da rotina de quem a gente ama é um trabalho invisível e extremamente exaustivo...',
+        'Sei o quanto você se doa todos os dias para que tudo funcione ao seu redor...',
+        'É lindo o seu cuidado com a sua casa e família, mas quem cuida de quem cuida de tudo?'
+      ];
+      const validations = [
+        'Ter momentos de cansaço ou de impaciência não faz de você uma mãe ou parceira ruim: faz de você um ser humano com limites reais.',
+        'A perfeição na rotina familiar não existe. Seus filhos e sua família precisam de você saudável e em paz, não exausta e esgotada.',
+        'Você não precisa carregar a culpa por coisas pequenas que não saíram como o planejado hoje.'
+      ];
+      const advices = [
+        'Agora é o seu momento sagrado de descanso. O mundo e a casa vão continuar lá amanhã, mas sua mente precisa recarregar agora.',
+        'Perdoe-se pelas pequenas falhas do dia e lembre-se de que a sua presença e o seu amor são mais que suficientes.',
+        'Deixe a vigilância de lado. Você merece ser acolhida e repousar com tranquilidade.'
+      ];
+      const closings = [
+        'Deite a cabeça no travesseiro com o coração leve e a consciência tranquila. Você foi maravilhosa hoje.',
+        'Durma profundamente, sabendo que você faz o melhor todos os dias. Bom descanso!',
+        'Que a sua noite seja calma, silenciosa e restauradora. Durma bem.'
+      ];
+      return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
     }
 
-    // 6. ANSIEDADE / MEDO DO FUTURO / INCERTEZAS
+    // 6. ANÁLISE ESPECÍFICA: AUTOCOBRANÇA / CULPA / DIÁLOGOS PASSADOS
     if (
-      fullLower.includes('medo') ||
-      fullLower.includes('futuro') ||
-      fullLower.includes('dar certo') ||
-      fullLower.includes('e se') ||
-      fullLower.includes('preocupad') ||
-      fullLower.includes('ansios') ||
-      fullLower.includes('pânico')
+      fullLower.includes('deveria') || fullLower.includes('devia') || fullLower.includes('conversa') ||
+      fullLower.includes('discussão') || fullLower.includes('briga') || fullLower.includes('arrepend') ||
+      fullLower.includes('culpa') || fullLower.includes('falhei') || fullLower.includes('burra')
     ) {
-      return `O amanhã sempre parece um mistério assustador quando tentamos adivinhá-lo deitadas no escuro. Mas a verdade é que o futuro não se resolve à noite; ele se constrói um passo de cada vez, na luz do dia. Você já superou 100% dos seus dias difíceis no passado e tem dentro de si uma força silenciosa impressionante. Confie no seu caminho. Respire fundo, solte o peso dos ombros e entregue o controle. Você está segura agora.`;
+      const openings = [
+        'A voz da autocrítica adora ser a mais alta quando a casa silencia e as luzes se apagam...',
+        'Revisitar conversas e diálogos passados na cama é uma armadilha que consome nossa paz...',
+        'Sei como é remoer o que a gente disse ou deixou de fazer, querendo ter agido diferente...'
+      ];
+      const validations = [
+        'Mas você agiu com a consciência, a energia e os recursos que estavam disponíveis naquele momento. Não se julgue hoje com a cabeça de agora.',
+        'Errar, tropeçar nas palavras ou ter conflitos faz parte da vida de qualquer pessoa. Isso não define o seu valor.',
+        'A culpa não muda o passado; ela apenas rouba a sua serenidade para viver o presente.'
+      ];
+      const advices = [
+        'Acolha o que aconteceu como aprendizado e dê a si mesma o presente do perdão esta noite.',
+        'O dia de hoje já está encerrado e foi concluído. Nada que você pensar no escuro vai alterar o que já foi.',
+        'Solte a necessidade de ter sido perfeita. Ser humana e sincera já é o bastante.'
+      ];
+      const closings = [
+        'Respire fundo, perdoe a si mesma e permita que o sono traga a paz que você merece. Durma serena.',
+        'Abrace sua história imperfeita e linda. Amanhã é uma nova página em branco. Bom descanso!',
+        'Deixe as cobranças do lado de fora do quarto. Tenha uma noite leve e tranquila.'
+      ];
+      return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
     }
 
-    // 7. PADRÃO ACOLHEDOR & MOTIVACIONAL
-    return `Você concluiu mais um dia com bravura e sensibilidade. Toda a sua rotina e pensamentos foram descarregados e guardados com segurança aqui. Você não precisa carregar pendências na mente durante a madrugada. Agradeça ao seu corpo por ter te sustentado ao longo de hoje e dê a si mesma o presente de um sono restaurador, sereno e profundo. Amanhã você recomeça no seu tempo.`;
+    // 7. ANÁLISE ESPECÍFICA: ANSIEDADE / MEDO DO FUTURO / INCERTEZAS
+    if (
+      fullLower.includes('medo') || fullLower.includes('futuro') || fullLower.includes('dar certo') ||
+      fullLower.includes('e se') || fullLower.includes('preocupad') || fullLower.includes('ansios') ||
+      fullLower.includes('pânico') || fullLower.includes('dinheiro') || fullLower.includes('contas')
+    ) {
+      const openings = [
+        'O futuro sempre parece um labirinto assustador quando tentamos prevê-lo no silêncio da madrugada...',
+        'A ansiedade adora criar cenários catastróficos quando o corpo está exausto...',
+        'Sei como a incerteza do amanhã aperta o peito e tira o sono...'
+      ];
+      const validations = [
+        'Mas lembre-se: você já enfrentou dias muito difíceis no passado e superou 100% deles. A sua força é real.',
+        'Preocupar-se à meia-noite não resolve nenhum problema de amanhã; só drena a energia vital que você precisará para enfrentá-los.',
+        'A vida se resolve um passo de cada vez, na luz do dia, e não na imaginação ansiosa da noite.'
+      ];
+      const advices = [
+        'Coloque os pés no presente: agora você está segura, na sua cama, e nada exige uma resposta imediata.',
+        'Confie na sua capacidade de lidar com as coisas quando elas chegarem. Entregue o controle do incontrolável.',
+        'Diga para si mesma: "Eu fiz o que pude hoje. Agora o meu trabalho é descansar."'
+      ];
+      const closings = [
+        'Solte o peso dos ombros, sinta a respiração fluir e deixe o sono te renovar por inteira. Durma em paz.',
+        'Você está protegida e amanhã terá a clareza necessária para qualquer desafio. Bom descanso!',
+        'Entregue suas preocupações à noite e durma com serenidade no coração.'
+      ];
+      return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
+    }
+
+    // 8. PADRÃO DINÂMICO ACOLHEDOR
+    const generalOpenings = [
+      'Você concluiu mais uma jornada com bravura, sensibilidade e dedicação.',
+      'Chegamos ao fim de mais um dia e você merece reconhecer todo o esforço que colocou nas suas horas.',
+      'Parabéns por tirar esse momento para desabafar e descarregar sua mente antes de dormir.'
+    ];
+    const generalValidations = [
+      'Tudo o que passou pela sua cabeça foi ouvido, organizado e guardado com segurança aqui.',
+      'Você não precisa carregar lembretes, dúvidas ou tensões enquanto descansa.',
+      'O seu corpo e a sua mente trabalharam muito por você hoje e merecem esse alívio.'
+    ];
+    const generalAdvices = [
+      'Agradeça a si mesma por ter chegado até aqui e dê permissão ao seu corpo para desligar.',
+      'Amanhã o sol nasce de novo e você recomeça no seu próprio ritmo, com a mente descansada.',
+      'Sua mente está limpa e protegida. Entregue-se ao sono com leveza.'
+    ];
+    const generalClosings = [
+      'Durma profundamente, renove suas energias e tenha sonhos tranquilos. Você foi suficiente hoje.',
+      'Que a sua noite seja um refúgio de paz, silêncio e restauração. Bom descanso!',
+      'Feche os olhos devagar, sinta o aconchego da cama e durma com serenidade.'
+    ];
+    return `${rand(generalOpenings)} ${rand(generalValidations)} ${rand(generalAdvices)} ${rand(generalClosings)}`;
   }
 
   function analyzeThoughtsWithTCCI(text, title) {
@@ -913,20 +1049,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // A) CASO: TÉRMINO OU LUTO AMOROSO
       if (
-        fLower.includes('término') ||
-        fLower.includes('terminou') ||
-        fLower.includes('terminar') ||
-        fLower.includes('separação') ||
-        fLower.includes('separou') ||
-        fLower.includes('namorado') ||
-        fLower.includes('namorada') ||
-        fLower.includes('marido') ||
-        fLower.includes('ex ') ||
-        fLower.includes('meu ex') ||
-        fLower.includes('minha ex') ||
-        fLower.includes('desamor') ||
-        fLower.includes('coração partido') ||
-        (isBreakup && (fLower.includes('ruim') || fLower.includes('dor') || fLower.includes('saudade') || fLower.includes('chorei') || fLower.includes('triste')))
+        fLower.includes('término') || fLower.includes('terminou') || fLower.includes('terminar') ||
+        fLower.includes('separação') || fLower.includes('separou') || fLower.includes('namorado') ||
+        fLower.includes('namorada') || fLower.includes('marido') || fLower.includes('ex ') ||
+        fLower.includes('meu ex') || fLower.includes('minha ex') || fLower.includes('desamor') ||
+        fLower.includes('coração partido') || (isBreakup && (fLower.includes('ruim') || fLower.includes('dor') || fLower.includes('saudade') || fLower.includes('chorei') || fLower.includes('triste')))
       ) {
         rumination.push({
           raw: frag,
@@ -935,18 +1062,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       // B) CASO: TRISTEZA PROFUNDA, CHORO OU SOLIDÃO
       else if (
-        fLower.includes('está ruim') ||
-        fLower.includes('tá ruim') ||
-        fLower.includes('muito mal') ||
-        fLower.includes('triste') ||
-        fLower.includes('chorando') ||
-        fLower.includes('chorei') ||
-        fLower.includes('vazio') ||
-        fLower.includes('sozinha') ||
-        fLower.includes('solidão') ||
-        fLower.includes('angústia') ||
-        fLower.includes('desanimada') ||
-        fLower.includes('sem forças') ||
+        fLower.includes('está ruim') || fLower.includes('tá ruim') || fLower.includes('muito mal') ||
+        fLower.includes('triste') || fLower.includes('chorando') || fLower.includes('chorei') ||
+        fLower.includes('vazio') || fLower.includes('sozinha') || fLower.includes('solidão') ||
+        fLower.includes('angústia') || fLower.includes('desanimada') || fLower.includes('sem forças') ||
         fLower.includes('esgotada')
       ) {
         rumination.push({
@@ -956,21 +1075,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       // C) CASO: AUTOCUIDADO, ESTILO, BELEZA (COR DE CABELO, ROUPAS, MUDANÇAS)
       else if (
-        fLower.includes('cabelo') ||
-        fLower.includes('cor de cabelo') ||
-        fLower.includes('cor do cabelo') ||
-        fLower.includes('loira') ||
-        fLower.includes('morena') ||
-        fLower.includes('ruiva') ||
-        fLower.includes('pintar') ||
-        fLower.includes('cortar') ||
-        fLower.includes('roupa') ||
-        fLower.includes('vestido') ||
-        fLower.includes('look') ||
-        fLower.includes('estilo') ||
-        fLower.includes('visual') ||
-        fLower.includes('corpo') ||
-        fLower.includes('autoestima')
+        fLower.includes('cabelo') || fLower.includes('cor de cabelo') || fLower.includes('cor do cabelo') ||
+        fLower.includes('loira') || fLower.includes('morena') || fLower.includes('ruiva') ||
+        fLower.includes('pintar') || fLower.includes('cortar') || fLower.includes('roupa') ||
+        fLower.includes('vestido') || fLower.includes('look') || fLower.includes('estilo') ||
+        fLower.includes('visual') || fLower.includes('corpo') || fLower.includes('autoestima')
       ) {
         wait.push({
           raw: frag,
@@ -979,32 +1088,18 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       // D) CASO: TAREFAS PRÁTICAS E URGÊNCIAS REAIS
       else if (
-        fLower.includes('amanhã') ||
-        fLower.includes('ligar') ||
-        fLower.includes('pagar') ||
-        fLower.includes('comprar') ||
-        fLower.includes('enviar') ||
-        fLower.includes('reunião') ||
-        fLower.includes('médic') ||
-        fLower.includes('escola') ||
-        fLower.includes('cedo') ||
-        fLower.includes('prioridade') ||
-        fLower.includes('trabalho') ||
-        fLower.includes('relatório')
+        fLower.includes('amanhã') || fLower.includes('ligar') || fLower.includes('pagar') ||
+        fLower.includes('comprar') || fLower.includes('enviar') || fLower.includes('reunião') ||
+        fLower.includes('médic') || fLower.includes('escola') || fLower.includes('cedo') ||
+        fLower.includes('prioridade') || fLower.includes('trabalho') || fLower.includes('relatório')
       ) {
         tomorrow.push({ raw: frag, action: formatActionItem(frag), done: false });
       }
       // E) CASO: AUTOCOBRANÇA E DIÁLOGOS PASSADOS
       else if (
-        fLower.includes('deveria') ||
-        fLower.includes('devia') ||
-        fLower.includes('conversa') ||
-        fLower.includes('discussão') ||
-        fLower.includes('briga') ||
-        fLower.includes('remoendo') ||
-        fLower.includes('arrepend') ||
-        fLower.includes('culpa') ||
-        fLower.includes('falhei') ||
+        fLower.includes('deveria') || fLower.includes('devia') || fLower.includes('conversa') ||
+        fLower.includes('discussão') || fLower.includes('briga') || fLower.includes('remoendo') ||
+        fLower.includes('arrepend') || fLower.includes('culpa') || fLower.includes('falhei') ||
         fLower.includes('burra')
       ) {
         rumination.push({
@@ -1014,12 +1109,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       // F) CASO: ANSIEDADE, MEDO E INCERTEZAS DO FUTURO
       else if (
-        fLower.includes('medo') ||
-        fLower.includes('futuro') ||
-        fLower.includes('dar certo') ||
-        fLower.includes('e se') ||
-        fLower.includes('preocupad') ||
-        fLower.includes('ansios') ||
+        fLower.includes('medo') || fLower.includes('futuro') || fLower.includes('dar certo') ||
+        fLower.includes('e se') || fLower.includes('preocupad') || fLower.includes('ansios') ||
         fLower.includes('pânico')
       ) {
         release.push({
