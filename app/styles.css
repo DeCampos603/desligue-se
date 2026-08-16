@@ -1758,6 +1758,74 @@ body {
   font-weight: 400;
 }
 
+.plan-price .price-cents {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-amber);
+}
+
+.plan-price .price-currency {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-amber);
+}
+
+/* ==========================================
+   MODAL DE BLOQUEIO DE TRIAL / CONVERSÃO
+   ========================================== */
+.trial-modal-card {
+  max-width: 580px;
+  text-align: center;
+}
+
+.trial-benefit-box {
+  margin-top: 1rem;
+}
+
+.trial-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+@media (max-width: 600px) {
+  .trial-options-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trial-option-card {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+  transition: all var(--transition-fast);
+}
+
+.trial-option-card.highlighted {
+  border-color: var(--accent-amber);
+  background: rgba(212, 163, 115, 0.1);
+}
+
+.trial-option-card h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 0.35rem;
+}
+
+.trial-option-card p {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
 .price-installment {
   font-size: 0.75rem;
   color: var(--sage-calm);

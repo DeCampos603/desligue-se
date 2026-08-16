@@ -26,6 +26,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // ESTADO DA APLICAÇÃO & PERSISTÊNCIA
   // ==========================================
   const STORAGE_KEY_ENTRIES = 'desliguese_entries_v1';
+  const STORAGE_KEY_TRIAL_COUNT = 'desliguese_trial_count_v1';
+
+  function getTrialCount() {
+    try {
+      return parseInt(localStorage.getItem(STORAGE_KEY_TRIAL_COUNT) || '0', 10);
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function incrementTrialCount() {
+    try {
+      const current = getTrialCount();
+      localStorage.setItem(STORAGE_KEY_TRIAL_COUNT, (current + 1).toString());
+    } catch (e) {}
+  }
 
   let appState = {
     currentUser: null,
@@ -164,6 +180,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const linkOpenTermsAuth = document.getElementById('linkOpenTermsAuth');
   const linkOpenTermsFooter = document.getElementById('linkOpenTermsFooter');
   const checkTermsConsent = document.getElementById('checkTermsConsent');
+
+  // Modal de Bloqueio de Trial & Planos
+  const modalTrialBlock = document.getElementById('modalTrialBlock');
+  const btnCloseTrialBlock = document.getElementById('btnCloseTrialBlock');
+  const btnTrialOpenLogin = document.getElementById('btnTrialOpenLogin');
+  const btnTrialOpenPremium = document.getElementById('btnTrialOpenPremium');
+  const btnSubscribeMonthly = document.getElementById('btnSubscribeMonthly');
+  const btnSubscribeAnnual = document.getElementById('btnSubscribeAnnual');
 
   // Botão de Instalação PWA
   const btnInstallApp = document.getElementById('btnInstallApp');
@@ -820,6 +844,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const text = journalInput.value.trim();
     if (!text) return;
 
+    // VERIFICAÇÃO DE TRIAL & PLANO:
+    // Se o usuário não estiver logado:
+    // - 1º registro: Degustação Premium (liberado)
+    // - 2º registro em diante: Bloqueio amigável orientando login ou assinatura
+    if (!appState.currentUser) {
+      const trialUsedCount = getTrialCount();
+      if (trialUsedCount >= 1) {
+        if (modalTrialBlock) modalTrialBlock.classList.remove('hidden');
+        return;
+      }
+    }
+
     if (appState.isRecording && appState.recognition) {
       appState.recognition.stop();
     }
@@ -832,6 +868,11 @@ document.addEventListener('DOMContentLoaded', () => {
     appState.currentDumpTitle = title;
     appState.currentDumpText = text;
     showStep('loading');
+
+    // Se for o 1º registro sem login, incrementa o contador de trial
+    if (!appState.currentUser) {
+      incrementTrialCount();
+    }
 
     // Detecção de crise local (safety net — roda SEMPRE, antes da API)
     const localCrisis = detectLocalCrisis(text);
@@ -1962,6 +2003,28 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target === modalTerms) modalTerms?.classList.add('hidden');
     });
 
+    // Modal de Bloqueio de Trial (Degustação Expirada)
+    btnCloseTrialBlock?.addEventListener('click', () => modalTrialBlock?.classList.add('hidden'));
+    btnTrialOpenLogin?.addEventListener('click', () => {
+      modalTrialBlock?.classList.add('hidden');
+      modalAuth?.classList.remove('hidden');
+    });
+    btnTrialOpenPremium?.addEventListener('click', () => {
+      modalTrialBlock?.classList.add('hidden');
+      modalPremium?.classList.remove('hidden');
+    });
+    modalTrialBlock?.addEventListener('click', (e) => {
+      if (e.target === modalTrialBlock) modalTrialBlock?.classList.add('hidden');
+    });
+
+    // Ações dos Planos de Assinatura Premium (Mensal R$ 19,90 e Anual R$ 12/mês)
+    btnSubscribeMonthly?.addEventListener('click', () => {
+      alert('🌟 Redirecionando para o Checkout Seguro do Plano Mensal (R$ 19,90/mês)...\n\nO processamento via Stripe será ativado na conclusão da configuração de pagamentos.');
+    });
+    btnSubscribeAnnual?.addEventListener('click', () => {
+      alert('⭐ Redirecionando para o Checkout Seguro do Plano Anual (12x R$ 12,00 = R$ 144/ano - 40% OFF)...\n\nO processamento via Stripe será ativado na conclusão da configuração de pagamentos.');
+    });
+
     // Tecla Escape para todos os modais
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' || e.key === 'Esc') {
@@ -1970,6 +2033,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalTagDetail?.classList.add('hidden');
         modalHistoryDetail?.classList.add('hidden');
         modalTerms?.classList.add('hidden');
+        modalTrialBlock?.classList.add('hidden');
       }
     });
   }

@@ -636,49 +636,86 @@
           <h3 class="plan-name">Mensal</h3>
           <div class="plan-price">
             <span class="price-currency">R$</span>
-            <span class="price-val">29</span>
+            <span class="price-val">19</span>
+            <span class="price-cents">,90</span>
             <span class="price-period">/mês</span>
           </div>
-          <p class="plan-desc">Cancele quando quiser. Ideal para testar a transformação do seu sono.</p>
+          <p class="plan-desc">Cancele quando quiser. Ideal para transformar a qualidade do seu sono.</p>
           
           <ul class="plan-features">
-            <li>✓ Despejo mental e triagem ilimitados</li>
-            <li>✓ IA com suporte empático e TCC-I</li>
-            <li>✓ Paisagens sonoras binaurais ilimitadas</li>
-            <li>✓ Histórico e padrões cognitivos completos</li>
+            <li>✓ Despejo mental e triagem diária ilimitados</li>
+            <li>✓ IA com suporte empático, afetuoso e TCC-I</li>
+            <li>✓ Paisagens sonoras binaurais noturnas</li>
+            <li>✓ Histórico e padrões cognitivos sincronizados</li>
           </ul>
 
-          <button class="btn-primary btn-plan" disabled>
-            Em breve
+          <button id="btnSubscribeMonthly" class="btn-primary btn-plan">
+            Assinar Mensal por R$ 19,90
           </button>
         </div>
 
         <!-- Plano Anual -->
         <div class="pricing-card featured">
-          <div class="pricing-badge-featured">⭐ Mais Popular • 2 Meses Grátis</div>
+          <div class="pricing-badge-featured">⭐ Mais Popular • Economize 40%</div>
           <h3 class="plan-name">Anual</h3>
           <div class="plan-price">
             <span class="price-currency">R$</span>
-            <span class="price-val">19</span>
+            <span class="price-val">12</span>
+            <span class="price-cents">,00</span>
             <span class="price-period">/mês</span>
           </div>
-          <p class="plan-desc">Faturado anualmente (R$ 228/ano). Economize 35% no seu autocuidado.</p>
+          <p class="plan-desc">Apenas R$ 12 por mês (cobrado anualmente: 12x R$ 12 = R$ 144/ano).</p>
           
           <ul class="plan-features">
-            <li>✓ <strong>Tudo do plano mensal</strong></li>
-            <li>✓ <strong>Áudios de hipnose do sono exclusivos</strong></li>
-            <li>✓ <strong>Relatório mensal de padrões da mente</strong></li>
-            <li>✓ <strong>Acesso prioritário a novas meditações</strong></li>
+            <li>✓ <strong>Tudo do plano mensal sem limites</strong></li>
+            <li>✓ <strong>IA com respostas profundas e personalizadas</strong></li>
+            <li>✓ <strong>Gráfico de Balanço de Vida a Longo Prazo</strong></li>
+            <li>✓ <strong>Áudios e paisagens de relaxamento exclusivos</strong></li>
+            <li>✓ <strong>Backup na nuvem e suporte prioritário</strong></li>
           </ul>
 
-          <button class="btn-primary btn-plan" disabled>
-            Em breve
+          <button id="btnSubscribeAnnual" class="btn-primary btn-plan">
+            Garantir Anual por R$ 12/mês
           </button>
         </div>
       </div>
 
       <div class="modal-footer-guarantee">
-        <span>🔒 Pagamento 100% seguro via Stripe • Garantia de 7 dias com reembolso integral</span>
+        <span>🔒 Pagamento 100% seguro via Stripe • Garantia incondicional de 7 dias</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Bloqueio de Degustação / Trial Expirado -->
+  <div id="modalTrialBlock" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card trial-modal-card">
+      <button id="btnCloseTrialBlock" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
+      <div class="modal-header">
+        <div class="badge-tag" style="background: rgba(212,163,115,0.25); color: var(--accent-amber);">Degustação Gratuita Concluída</div>
+        <h2 class="modal-title">Você já aproveitou seu 1º registro de teste!</h2>
+        <p class="modal-subtitle">
+          Sem login e sem plano ativo, o acesso inicial é apenas uma degustação de demonstração.
+        </p>
+      </div>
+
+      <div class="trial-benefit-box">
+        <p>Para continuar organizando suas noites, escolha uma das opções:</p>
+        <div class="trial-options-grid">
+          <div class="trial-option-card">
+            <h4>👤 Criar Conta Gratuita</h4>
+            <p>Salve seu histórico com login e acesse os recursos essenciais do diário.</p>
+            <button id="btnTrialOpenLogin" class="btn-secondary" style="width: 100%; margin-top: 0.5rem;">
+              Entrar ou Criar Conta
+            </button>
+          </div>
+          <div class="trial-option-card highlighted">
+            <h4>✨ Assinar Desligue-se Pro</h4>
+            <p>Desbloqueie IA ilimitada, gráficos de vida e relaxamento a partir de R$ 12/mês.</p>
+            <button id="btnTrialOpenPremium" class="btn-primary" style="width: 100%; margin-top: 0.5rem;">
+              Ver Planos Premium (R$ 12/mês)
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
