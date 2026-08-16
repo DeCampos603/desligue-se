@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Desligue-se: Seu diário noturno inteligente que organiza a mente, fecha as pendências do dia e te ajuda a dormir tranquila.">
+  <meta name="theme-color" content="#0D1117">
+  <title>Desligue-se — Organize sua Mente e Durma Tranquila</title>
+
+  <!-- Google Fonts: Editorial Serif + Clean Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- PWA Manifest & Icons -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%230B0E14'/><path d='M65 52A20 20 0 1 1 48 30a16 16 0 0 0 17 22z' fill='%23D4A373'/></svg>">
+  
+  <!-- Supabase JS Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-night">
+  <!-- Glow decorativo suave de fundo -->
+  <div class="ambient-glow ambient-glow-1"></div>
+  <div class="ambient-glow ambient-glow-2"></div>
+
+  <!-- Header da Aplicação -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-group" id="btnLogoHome">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            <circle cx="12" cy="12" r="1" fill="currentColor"></circle>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">Desligue-se</span>
+          <span class="brand-subtitle">Diário Noturno de Descompressão</span>
+        </div>
+      </div>
+
+      <nav class="nav-controls">
+        <button id="btnTabNight" class="nav-pill active" title="Ritual Noturno de Despejo">
+          <span class="pill-icon">🌙</span> Noite
+        </button>
+        <button id="btnTabMorning" class="nav-pill" title="Check-in Matinal do Sono">
+          <span class="pill-icon">☀️</span> Manhã
+        </button>
+        <button id="btnTabHistory" class="nav-pill" title="Histórico e Padrões">
+          <span class="pill-icon">📖</span> Diário
+        </button>
+        <button id="btnOpenPremium" class="nav-pill premium-pill" title="Planos Premium">
+          <span class="pill-spark">✨</span> Premium
+        </button>
+        <button id="btnOpenAuth" class="nav-pill auth-pill" title="Minha Conta">
+          <span id="userAvatarIcon" class="pill-icon">👤</span> <span id="userAuthLabel">Entrar</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Container Principal -->
+  <main class="main-content">
+
+    <!-- ======================================================== -->
+    <!-- VIEW 1: RITUAL NOTURNO (DESPEJO MENTAL & TRIAGEM TCC-I) -->
+    <!-- ======================================================== -->
+    <section id="viewNight" class="app-view active">
+      
+      <!-- ETAPA 1: INPUT DO DIÁRIO / BRAIN DUMP -->
+      <div id="stepDump" class="step-card fade-in">
+        <div class="card-hero">
+          <div class="badge-tag">Ritual de Fechamento do Dia</div>
+          <h1 class="hero-title">Como está sua cabeça agora?</h1>
+          <p class="hero-subtitle">
+            Fale ou escreva tudo o que estiver rondando seus pensamentos. 
+            Não organize nada agora — a IA vai separar o que é urgente, o que pode esperar e o que você pode soltar para descansar.
+          </p>
+        </div>
+
+        <!-- Área de Entrada do Diário -->
+        <div class="dump-input-container">
+          <div class="input-actions-bar">
+            <button type="button" id="btnVoiceInput" class="voice-btn" title="Gravar por voz">
+              <svg id="micIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="22"></line>
+              </svg>
+              <span id="voiceBtnLabel">Falar pensamentos</span>
+            </button>
+            <span class="input-hint">Pressione para falar ou digite abaixo</span>
+          </div>
+
+          <textarea 
+            id="journalInput" 
+            class="journal-textarea" 
+            placeholder="Ex: Preciso lembrar de pagar a conta da luz amanhã cedo, estou preocupada com a reunião com a diretoria, tenho que comprar fraldas e ligar para a minha mãe... e não consigo parar de pensar naquela conversa chata de hoje..."
+            rows="6"
+          ></textarea>
+
+          <div class="prompt-chips">
+            <span class="chips-label">Sugestões de desabafo:</span>
+            <button class="chip-btn" data-text="Tenho muitas coisas para fazer amanhã no trabalho e estou com medo de esquecer alguma prioridade.">💼 Trabalho amanhã</button>
+            <button class="chip-btn" data-text="Estou remoendo uma discussão que tive hoje e não consigo parar de pensar no que deveria ter dito.">💬 Conversa que ficou na cabeça</button>
+            <button class="chip-btn" data-text="Preciso lembrar de ligar para a escola das crianças, comprar frutas e pagar o boleto do condomínio.">🛒 Tarefas e recados</button>
+            <button class="chip-btn" data-text="Estou com uma sensação de aperto no peito sobre o futuro e se as coisas vão dar certo.">🌧️ Incerteza e preocupação</button>
+          </div>
+        </div>
+
+        <!-- Botão Principal de Triagem -->
+        <div class="card-footer-action">
+          <button id="btnProcessDump" class="btn-primary" disabled>
+            <span class="btn-icon">✨</span>
+            <span class="btn-text">Organizar Minha Cabeça & Fechar o Dia</span>
+          </button>
+          <p class="privacy-note">🔒 Seus registros são privados e protegidos. Foco 100% no seu descanso.</p>
+        </div>
+      </div>
+
+      <!-- ETAPA 2: PROCESSANDO COM IA (SKELETON / TRANSIÇÃO) -->
+      <div id="stepLoading" class="step-card hidden fade-in text-center">
+        <div class="loading-animation">
+          <div class="pulsing-orb"></div>
+        </div>
+        <h2 class="loading-title">Descarregando sua mente...</h2>
+        <p class="loading-text">Separando o que precisa de ação, o que fica no cofre e o que você pode soltar.</p>
+      </div>
+
+      <!-- ETAPA 3: RESULTADO DA TRIAGEM COGNITIVA (TCC-I) -->
+      <div id="stepResult" class="step-card hidden fade-in">
+        <div class="result-header">
+          <div class="badge-tag success">Mente Descarregada & Segura</div>
+          <h2 class="section-title">Sua cabeça está no papel. Pode respirar.</h2>
+          <p class="section-subtitle">
+            Nada do que você pensou vai se perder. Nós estruturamos suas pendências para que você possa descansar em paz.
+          </p>
+        </div>
+
+        <!-- Grid de Categorias Cognitivas -->
+        <div class="categories-grid">
+          
+          <!-- Categoria 1: Atenção Amanhã -->
+          <div class="cat-card cat-tomorrow">
+            <div class="cat-header">
+              <span class="cat-icon">📋</span>
+              <div>
+                <h3 class="cat-title">O que precisa da sua atenção amanhã</h3>
+                <span class="cat-desc">Já organizado em ações claras para o início do dia</span>
+              </div>
+            </div>
+            <ul id="listTomorrow" class="cat-list">
+              <!-- Itens injetados via JS -->
+            </ul>
+          </div>
+
+          <!-- Categoria 2: Pode Esperar -->
+          <div class="cat-card cat-wait">
+            <div class="cat-header">
+              <span class="cat-icon">📦</span>
+              <div>
+                <h3 class="cat-title">O que pode esperar (Guardado no Cofre)</h3>
+                <span class="cat-desc">Sem urgência real. Não consuma sua noite com isso.</span>
+              </div>
+            </div>
+            <ul id="listWait" class="cat-list">
+              <!-- Itens injetados via JS -->
+            </ul>
+          </div>
+
+          <!-- Categoria 3: Fora de Controle / Soltura -->
+          <div class="cat-card cat-release">
+            <div class="cat-header">
+              <span class="cat-icon">🍃</span>
+              <div>
+                <h3 class="cat-title">O que você não precisa resolver hoje</h3>
+                <span class="cat-desc">Incertezas fora do seu controle imediato. Permissão para soltar.</span>
+              </div>
+            </div>
+            <ul id="listRelease" class="cat-list">
+              <!-- Itens injetados via JS -->
+            </ul>
+          </div>
+
+          <!-- Categoria 4: Ruminações / Validação -->
+          <div id="catRuminationContainer" class="cat-card cat-rumination hidden">
+            <div class="cat-header">
+              <span class="cat-icon">💜</span>
+              <div>
+                <h3 class="cat-title">Pensamento Repetitivo Acolhido</h3>
+                <span class="cat-desc">Reconhecemos a sua autocobrança. Você já foi suficiente hoje.</span>
+              </div>
+            </div>
+            <ul id="listRumination" class="cat-list">
+              <!-- Itens injetados via JS -->
+            </ul>
+          </div>
+
+        </div>
+
+        <!-- Caixa de Encerramento e Transição para o Ritual -->
+        <div class="close-day-box">
+          <div class="close-day-text">
+            <h3>“Agora podemos encerrar o dia.”</h3>
+            <p>Escolha o tempo da sua rotina guiada de relaxamento para desacelerar o corpo e adormecer:</p>
+          </div>
+
+          <div class="duration-selector">
+            <button class="duration-btn active" data-minutes="3">
+              <span class="duration-num">3 min</span>
+              <span class="duration-label">Reset Vagal Rápido</span>
+            </button>
+            <button class="duration-btn" data-minutes="5">
+              <span class="duration-num">5 min</span>
+              <span class="duration-label">Descompressão Corporal</span>
+            </button>
+            <button class="duration-btn" data-minutes="10">
+              <span class="duration-num">10 min</span>
+              <span class="duration-label">Desapego Profundo</span>
+            </button>
+          </div>
+
+          <button id="btnStartRoutine" class="btn-primary btn-large">
+            <span class="btn-icon">🧘‍♀️</span>
+            <span>Iniciar Ritual de Desaceleração (<span id="routineTimeBadge">3 min</span>)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ETAPA 4: RITUAL GUIADO DE DESACELERAÇÃO E RESPIRAÇÃO -->
+      <div id="stepRoutine" class="step-card hidden fade-in">
+        <div class="routine-container">
+          <div class="routine-top-bar">
+            <span class="routine-phase-tag" id="routinePhaseTag">Respiração 4-7-8</span>
+            <div class="audio-toggle-btn" id="btnToggleSound" title="Ligar/Desligar Som Suave">
+              <span id="soundIcon">🔊</span> Som de Chuva & Frequência Delta
+            </div>
+          </div>
+
+          <!-- Círculo de Respiração com feedback visual -->
+          <div class="breathing-stage">
+            <div class="breath-circle-outer">
+              <div class="breath-circle-core" id="breathCircle">
+                <span class="breath-guide-text" id="breathGuideText">Inspire...</span>
+                <span class="breath-seconds" id="breathSeconds">4</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Roteiro de Orientação Somática -->
+          <div class="somatic-guide">
+            <h3 id="somaticStepTitle">Solte a mandíbula e relaxe os ombros</h3>
+            <p id="somaticStepDesc">
+              Deixe a língua repousar suavemente no céu da boca. Sinta o peso do seu corpo sendo sustentado pela cama. O dia está encerrado.
+            </p>
+          </div>
+
+          <div class="routine-timer-bar">
+            <div class="timer-progress-fill" id="timerProgress"></div>
+          </div>
+          <div class="timer-label-row">
+            <span>Tempo restante: <strong id="timerRemaining">03:00</strong></span>
+          </div>
+
+          <div class="routine-actions">
+            <button id="btnFinishRoutine" class="btn-finish-sleep">
+              <span>🌙</span> Apagar as Luzes e Dormir
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ETAPA 5: TELA FINAL DE BOA NOITE (ULTRA DARK) -->
+      <div id="stepGoodNight" class="step-card hidden fade-in text-center goodnight-screen">
+        <div class="goodnight-moon">🌙</div>
+        <h2 class="goodnight-title">Boa noite. Durma em paz.</h2>
+        <p class="goodnight-subtitle">Sua mente está guardada. Amanhã é um novo dia.</p>
+        <button id="btnNewMorningCheckin" class="btn-secondary mt-4">
+          ☀️ Simular Amanhecer (Check-in Matinal)
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 2: CHECK-IN MATINAL DO SONO (LOOP DE APRENDIZADO) -->
+    <!-- ======================================================== -->
+    <section id="viewMorning" class="app-view">
+      <div class="step-card fade-in">
+        <div class="card-hero">
+          <div class="badge-tag morning-tag">Bom Dia</div>
+          <h1 class="hero-title">Como você dormiu esta noite?</h1>
+          <p class="hero-subtitle">
+            Seu feedback ajuda o sistema a entender como a descarga mental noturna impacta seu descanso real.
+          </p>
+        </div>
+
+        <!-- Seletor de Avaliação do Sono -->
+        <div class="sleep-mood-selector">
+          <button class="mood-btn" data-mood="terrible">
+            <span class="mood-emoji">😫</span>
+            <span class="mood-name">Péssimo</span>
+            <span class="mood-sub">Acordei cansada / mente acelerou</span>
+          </button>
+          <button class="mood-btn" data-mood="medium">
+            <span class="mood-emoji">😐</span>
+            <span class="mood-name">Médio</span>
+            <span class="mood-sub">Dormi razoável, alguns despertares</span>
+          </button>
+          <button class="mood-btn" data-mood="great">
+            <span class="mood-emoji">😴</span>
+            <span class="mood-name">Muito bem</span>
+            <span class="mood-sub">Acordei leve e descansada</span>
+          </button>
+        </div>
+
+        <!-- Tarefas Entregues Suavemente para o Dia de Hoje -->
+        <div id="morningTasksBox" class="morning-tasks-box">
+          <h3 class="morning-box-title">🌱 Suas prioridades anotadas ontem à noite</h3>
+          <p class="morning-box-sub">Você não precisa fazer tudo de uma vez. Comece pelo primeiro micro-passo:</p>
+          <ul id="morningTasksList" class="morning-task-list">
+            <li class="empty-state">Nenhum registro da noite anterior. Faça um encerramento hoje à noite!</li>
+          </ul>
+        </div>
+
+        <div id="morningFeedbackMessage" class="feedback-insight-box hidden">
+          <span class="insight-icon">💡</span>
+          <p id="insightText">
+            <strong>Insight do seu sono:</strong> Nas noites em que você descarrega a mente por mais de 3 minutos, sua qualidade de descanso melhora significativamente.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 3: HISTÓRICO & PADRÕES COGNITIVOS -->
+    <!-- ======================================================== -->
+    <section id="viewHistory" class="app-view">
+      <div class="step-card fade-in">
+        <div class="card-hero">
+          <div class="badge-tag">Seu Histórico</div>
+          <h1 class="hero-title">Padrões da sua Mente</h1>
+          <p class="hero-subtitle">
+            Veja as noites anteriores, suas principais preocupações acolhidas e a evolução do seu descanso.
+          </p>
+        </div>
+
+        <!-- Estatísticas Rápidas -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <span class="stat-num" id="statTotalNights">0</span>
+            <span class="stat-lbl">Noites Encerradas</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-num" id="statAvgMood">-</span>
+            <span class="stat-lbl">Qualidade Média</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-num" id="statTasksCleared">0</span>
+            <span class="stat-lbl">Pendências Liberadas</span>
+          </div>
+        </div>
+
+        <!-- Lista de Noites Anteriores -->
+        <div id="historyListContainer" class="history-list">
+          <!-- Injetado via JS -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal de Assinatura Premium MicroSaaS -->
+  <div id="modalPremium" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <button id="btnCloseModal" class="modal-close-btn">&times;</button>
+      
+      <div class="modal-header">
+        <div class="badge-tag premium-badge">Desligue-se Premium</div>
+        <h2 class="modal-title">Durma todas as noites com a mente leve</h2>
+        <p class="modal-subtitle">
+          Transforme seu sono em um ritual definitivo de autocuidado e clareza mental.
+        </p>
+      </div>
+
+      <div class="pricing-grid">
+        <!-- Plano Mensal -->
+        <div class="pricing-card">
+          <div class="plan-name">Mensal</div>
+          <div class="plan-price">R$ 19,90<span>/mês</span></div>
+          <p class="plan-desc">Cancele quando quiser. Ideal para testar a transformação.</p>
+          <ul class="plan-features">
+            <li>✓ Uso ilimitado todas as noites</li>
+            <li>✓ Diário por voz com IA</li>
+            <li>✓ Triagem completa de TCC-I</li>
+            <li>✓ Rotinas personalizadas (3, 5 e 10 min)</li>
+            <li>✓ Frequências relaxantes sintetizadas</li>
+          </ul>
+          <button class="btn-primary btn-plan" onclick="alert('Redirecionando para o checkout seguro (Stripe/Asaas)...')">Assinar Mensal</button>
+        </div>
+
+        <!-- Plano Anual (Destaque) -->
+        <div class="pricing-card featured">
+          <div class="popular-ribbon">Mais Escolhido • Economize 38%</div>
+          <div class="plan-name">Anual</div>
+          <div class="plan-price">R$ 147,00<span>/ano</span></div>
+          <span class="price-installment">Apenas R$ 12,25 por mês</span>
+          <p class="plan-desc">Um ano inteiro de noites tranquilas e mente organizada.</p>
+          <ul class="plan-features">
+            <li>✓ Todos os recursos do plano mensal</li>
+            <li>✓ Relatório semanal de saúde mental</li>
+            <li>✓ Mapeamento de gatilhos de estresse</li>
+            <li>✓ Suporte prioritário via WhatsApp</li>
+          </ul>
+          <button class="btn-primary btn-plan" onclick="alert('Redirecionando para o checkout seguro (Stripe/Asaas)...')">Garantir Plano Anual</button>
+        </div>
+      </div>
+
+      <div class="guarantee-box">
+        <span>🛡️</span> Garantia incondicional de 7 dias. Se não dormir melhor, devolvemos 100% do seu valor.
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Autenticação (Supabase Google & E-mail) -->
+  <div id="modalAuth" class="modal-backdrop hidden">
+    <div class="modal-card auth-modal-card">
+      <button id="btnCloseAuthModal" class="modal-close-btn">&times;</button>
+      
+      <div id="authViewLoggedOut">
+        <div class="modal-header">
+          <div class="badge-tag">Sua Conta Segura</div>
+          <h2 class="modal-title">Acesse o seu Diário Noturno</h2>
+          <p class="modal-subtitle">
+            Seus desabafos e triagens sincronizados com criptografia de ponta a ponta.
+          </p>
+        </div>
+
+        <!-- Botão Google OAuth -->
+        <button id="btnGoogleLogin" class="btn-google-auth">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>Continuar com o Google</span>
+        </button>
+
+        <div class="auth-divider">
+          <span>ou entre com e-mail</span>
+        </div>
+
+        <form id="formEmailAuth" class="auth-form">
+          <div class="form-group">
+            <label for="authEmail">Seu e-mail</label>
+            <input type="email" id="authEmail" class="auth-input" placeholder="voce@exemplo.com" required>
+          </div>
+          <div class="form-group">
+            <label for="authPassword">Sua senha</label>
+            <input type="password" id="authPassword" class="auth-input" placeholder="••••••••" required>
+          </div>
+
+          <div class="auth-actions-row">
+            <button type="submit" id="btnSubmitLogin" class="btn-primary" style="max-width: 100%;">Entrar na Minha Conta</button>
+            <button type="button" id="btnSubmitSignup" class="btn-secondary" style="width: 100%;">Criar Conta Nova</button>
+          </div>
+          <div id="authFeedbackMsg" class="auth-feedback hidden"></div>
+        </form>
+      </div>
+
+      <!-- Estado Logado -->
+      <div id="authViewLoggedIn" class="hidden text-center">
+        <div class="logged-user-avatar">✨</div>
+        <h2 class="modal-title" id="loggedUserName">Olá, Bem-vinda!</h2>
+        <p class="modal-subtitle" id="loggedUserEmail">seuemail@exemplo.com</p>
+        
+        <div class="user-plan-status-card">
+          <span>Seu Plano Atual:</span>
+          <strong id="loggedUserPlanBadge" class="plan-badge-highlight">Gratuito</strong>
+        </div>
+
+        <button id="btnSignOut" class="btn-secondary mt-4" style="width: 100%;">
+          Sair da Conta (Logout)
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    <p>“Você não tem insônia. Às vezes você simplesmente levou o dia inteiro para a cama.”</p>
+    <small>Desligue-se © 2026 • Fundamentado em TCC-I e Neurociência do Sono.</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
