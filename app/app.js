@@ -619,24 +619,39 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Login com E-mail
-    formEmailAuth?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = authEmail.value.trim();
-      const password = authPassword.value;
+    // Função Executora de Login com E-mail
+    async function executeEmailLogin() {
+      const email = authEmail?.value?.trim() || '';
+      const password = authPassword?.value || '';
 
-      showAuthFeedback('Entrando...', 'success');
+      if (!email || !password) {
+        showAuthFeedback('Preencha seu e-mail e senha para entrar.', 'error');
+        return;
+      }
+
+      showAuthFeedback('Entrando na sua conta...', 'success');
       try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
           showAuthFeedback('Erro ao entrar: ' + error.message, 'error');
         } else {
           showAuthFeedback('Login realizado com sucesso!', 'success');
-          setTimeout(() => modalAuth.classList.add('hidden'), 800);
+          setTimeout(() => modalAuth?.classList.add('hidden'), 800);
         }
       } catch (err) {
         showAuthFeedback(err.message, 'error');
       }
+    }
+
+    // Submissão do Formulário de Login (Enter ou Botão)
+    formEmailAuth?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      executeEmailLogin();
+    });
+
+    btnSubmitLogin?.addEventListener('click', (e) => {
+      e.preventDefault();
+      executeEmailLogin();
     });
 
     // Cadastro
@@ -1984,11 +1999,19 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target === modalPremium) modalPremium.classList.add('hidden');
     });
 
-    // Auth
-    navBtns.auth?.addEventListener('click', () => modalAuth.classList.remove('hidden'));
-    btnCloseAuthModal?.addEventListener('click', () => modalAuth.classList.add('hidden'));
+    // Auth (Desktop & Mobile)
+    const openAuthModal = (e) => {
+      if (e) e.preventDefault();
+      modalAuth?.classList.remove('hidden');
+    };
+    navBtns.auth?.addEventListener('click', openAuthModal);
+    mobNavBtns.auth?.addEventListener('click', openAuthModal);
+    document.getElementById('btnOpenAuth')?.addEventListener('click', openAuthModal);
+    document.getElementById('btnMobAuth')?.addEventListener('click', openAuthModal);
+
+    btnCloseAuthModal?.addEventListener('click', () => modalAuth?.classList.add('hidden'));
     modalAuth?.addEventListener('click', (e) => {
-      if (e.target === modalAuth) modalAuth.classList.add('hidden');
+      if (e.target === modalAuth) modalAuth?.classList.add('hidden');
     });
 
     // Tag Info Modal (TCC-I)

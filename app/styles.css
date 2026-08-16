@@ -2173,18 +2173,40 @@ body {
   display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   body {
-    padding-bottom: 80px; /* Evita que a barra inferior sobreponha conteúdo */
+    padding-bottom: 90px; /* Evita que a barra inferior sobreponha conteúdo */
   }
 
   .nav-controls {
-    display: none; /* No mobile usamos a barra inferior nativa */
+    display: none; /* No mobile/tablet usamos a barra inferior nativa */
+  }
+
+  .brand-subtitle {
+    display: none; /* Dá espaço total para o botão de login no topo */
+  }
+
+  .brand-group {
+    gap: 0.5rem;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  .brand-title {
+    font-size: 1.15rem;
+    white-space: nowrap;
+  }
+
+  .header-actions {
+    flex-shrink: 0;
+    margin-left: auto;
+    z-index: 100;
   }
 
   .header-container {
     justify-content: space-between;
-    padding: 0.2rem 0;
+    padding: 0.35rem 0;
+    align-items: center;
   }
 
   .main-content {
@@ -2304,20 +2326,21 @@ body {
 
   /* Barra de Navegação Inferior Fixa (Mobile App) */
   .mobile-bottom-nav {
-    display: flex;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 90;
+    display: flex !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 9999 !important;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    background: rgba(11, 14, 20, 0.95);
+    background: rgba(11, 14, 20, 0.96) !important;
     border-top: 1px solid var(--border-subtle);
-    padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom));
+    padding: 0.45rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom));
     justify-content: space-around;
     align-items: center;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.6);
+    pointer-events: auto;
   }
 
   .mob-nav-btn {
@@ -2328,11 +2351,12 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 0.2rem;
-    padding: 0.35rem 0.65rem;
+    padding: 0.35rem 0.45rem;
     border-radius: var(--radius-md);
     cursor: pointer;
     transition: var(--transition-smooth);
-    min-width: 60px;
+    min-width: 52px;
+    pointer-events: auto;
   }
 
   .mob-nav-btn.active {
@@ -2355,9 +2379,12 @@ body {
   }
 
   .header-actions .auth-pill {
-    padding: 0.35rem 0.75rem;
-    font-size: 0.78rem;
-    min-height: 34px;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.84rem;
+    min-height: 36px;
+    display: inline-flex;
+    background: var(--bg-surface-2);
+    border-color: rgba(212, 163, 115, 0.3);
   }
 }
 
