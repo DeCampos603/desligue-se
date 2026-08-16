@@ -252,6 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCopyAdviceButton();
   initHistoryDetailTabs();
   initPWA();
+  initStripeReturnStatus();
   updateHistoryUI();
 
   journalInput.addEventListener('input', () => {
@@ -2017,12 +2018,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target === modalTrialBlock) modalTrialBlock?.classList.add('hidden');
     });
 
-    // Ações dos Planos de Assinatura Premium (Mensal R$ 19,90 e Anual R$ 12/mês)
+    // Ações dos Planos de Assinatura Premium via Stripe Checkout
     btnSubscribeMonthly?.addEventListener('click', () => {
-      alert('🌟 Redirecionando para o Checkout Seguro do Plano Mensal (R$ 19,90/mês)...\n\nO processamento via Stripe será ativado na conclusão da configuração de pagamentos.');
+      handleInitiateCheckout('monthly', btnSubscribeMonthly);
     });
     btnSubscribeAnnual?.addEventListener('click', () => {
-      alert('⭐ Redirecionando para o Checkout Seguro do Plano Anual (12x R$ 12,00 = R$ 144/ano - 40% OFF)...\n\nO processamento via Stripe será ativado na conclusão da configuração de pagamentos.');
+      handleInitiateCheckout('annual', btnSubscribeAnnual);
     });
 
     // Tecla Escape para todos os modais
@@ -2036,6 +2037,93 @@ document.addEventListener('DOMContentLoaded', () => {
         modalTrialBlock?.classList.add('hidden');
       }
     });
+  }
+
+  // ==========================================
+  // INTEGRAÇÃO STRIPE CHECKOUT (PAGAMENTOS & ASSINATURAS)
+  // ==========================================
+  async function handleInitiateCheckout(planType, buttonElement) {
+    const originalText = buttonElement ? buttonElement.textContent : '';
+    if (buttonElement) {
+      buttonElement.disabled = true;
+      buttonElement.textContent = '🔒 Conectando ao Checkout Seguro...';
+    }
+
+    try {
+      const userEmail = appState.currentUser?.email || '';
+      const userId = appState.currentUser?.id || '';
+
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planType,
+          userEmail,
+          userId
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.url) {
+        throw new Error(data.error || 'Não foi possível iniciar a sessão de pagamento.');
+      }
+
+      // Redireciona o navegador para o Checkout Seguro do Stripe
+      window.location.href = data.url;
+
+    } catch (err) {
+      console.error('Erro no checkout:', err);
+      alert('⚠️ Ocorreu um problema ao conectar com a operadora de pagamentos:\n' + err.message);
+      if (buttonElement) {
+        buttonElement.disabled = false;
+        buttonElement.textContent = originalText;
+      }
+    }
+  }
+
+  // Verifica o status de retorno do Stripe na URL (?status=success & session_id=...)
+  async function initStripeReturnStatus() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const status = urlParams.get('status');
+    const sessionId = urlParams.get('session_id');
+    const plan = urlParams.get('plan') || 'monthly';
+
+    if (status === 'success' && sessionId) {
+      try {
+        const verifyRes = await fetch(`/api/verify-session?session_id=${sessionId}`);
+        const verifyData = await verifyRes.json();
+
+        if (verifyData.paid) {
+          // Ativa o plano Pro localmente
+          localStorage.setItem('desliguese_user_plan', 'pro');
+          
+          if (loggedUserPlanBadge) {
+            loggedUserPlanBadge.textContent = '⭐ Premium Pro';
+          }
+
+          // Se estiver logado, atualiza o Supabase
+          if (supabase && appState.currentUser) {
+            await supabase.from('profiles').upsert({
+              id: appState.currentUser.id,
+              plano: plan === 'annual' ? 'premium_anual' : 'premium_mensal',
+              updated_at: new Date().toISOString()
+            });
+          }
+
+          // Mensagem comemorativa de boas-vindas ao Pro
+          alert('🎉 PARABÉNS E BEM-VINDA AO DESLIGUE-SE PRO!\n\nSeu pagamento foi confirmado com sucesso. Você agora tem acesso ilimitado à inteligência artificial do sono, histórico completo na nuvem, todas as paisagens sonoras e relatórios de bem-estar.');
+        }
+      } catch (err) {
+        console.warn('Erro ao verificar sessão do Stripe:', err);
+      } finally {
+        // Limpa a URL para manter limpo o histórico do navegador
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } else if (status === 'cancelled') {
+      alert('ℹ️ O processo de pagamento foi cancelado. Nenhuma cobrança foi efetuada.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }
 
   // ==========================================
