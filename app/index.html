@@ -31,9 +31,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
-  <!-- PWA Manifest & Icons -->
+  <!-- Favicon & PWA Icons -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.svg">
+  <link rel="apple-touch-icon" href="favicon.svg">
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%230B0E14'/><path d='M65 52A20 20 0 1 1 48 30a16 16 0 0 0 17 22z' fill='%23D4A373'/></svg>">
   
   <!-- Supabase JS Client CDN -->
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -77,6 +79,9 @@
 
       <!-- Ações do Cabeçalho (Visíveis no Mobile e Desktop) -->
       <div class="header-actions">
+        <button id="btnInstallApp" class="nav-pill install-pill hidden" title="Instalar aplicativo no celular ou computador">
+          <span class="pill-icon">📲</span> <span class="install-pill-label">Instalar App</span>
+        </button>
         <button id="btnOpenAuth" class="nav-pill auth-pill" title="Minha Conta / Login">
           <span id="userAvatarIcon" class="pill-icon">👤</span> <span id="userAuthLabel">Entrar</span>
         </button>

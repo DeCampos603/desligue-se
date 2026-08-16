@@ -1,18 +1,21 @@
 {
   "name": "Desligue-se",
   "short_name": "Desligue-se",
-  "description": "Seu Diário Noturno Inteligente que organiza a mente e te ajuda a dormir tranquila.",
-  "start_url": "./index.html",
+  "description": "Seu Diário Noturno Inteligente que organiza a mente, fecha as pendências do dia e te ajuda a dormir tranquila.",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0B0E14",
   "theme_color": "#0B0E14",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%230B0E14'/><path d='M65 52A20 20 0 1 1 48 30a16 16 0 0 0 17 22z' fill='%23D4A373'/></svg>",
+      "src": "/favicon.svg",
       "sizes": "192x192 512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "categories": ["lifestyle", "health", "wellness", "productivity"],
+  "lang": "pt-BR"
 }

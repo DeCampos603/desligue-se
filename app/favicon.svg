@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1A2234"/>
+      <stop offset="100%" stop-color="#0B0E14"/>
+    </radialGradient>
+    <linearGradient id="moonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8C08A"/>
+      <stop offset="50%" stop-color="#D4A373"/>
+      <stop offset="100%" stop-color="#B88252"/>
+    </linearGradient>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Fundo com cantos arredondados premium -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)"/>
+  <rect width="508" height="508" x="2" y="2" rx="126" fill="none" stroke="rgba(212, 163, 115, 0.25)" stroke-width="4"/>
+
+  <!-- Lua Crescente Noturna com Glow -->
+  <g filter="url(#softGlow)">
+    <path d="M330 260C330 331.797 271.797 390 200 390C163.535 390 130.824 374.966 107.5 350.5C124.5 358 143.5 362 163.5 362C235.297 362 293.5 303.797 293.5 232C293.5 178.5 261.2 132.5 215.5 112.5C280.8 126.8 330 187.5 330 260Z" fill="url(#moonGrad)"/>
+  </g>
+
+  <!-- Estrelas Noturnas Reluzentes (Psicologia Positiva & Calma) -->
+  <!-- Estrela Principal -->
+  <path d="M375 145 C375 160 365 170 350 170 C365 170 375 180 375 195 C375 180 385 170 400 170 C385 170 375 160 375 145 Z" fill="#E8C08A"/>
+  
+  <!-- Estrela Secundária -->
+  <path d="M395 240 C395 250 388 257 378 257 C388 257 395 264 395 274 C395 264 402 257 412 257 C402 257 395 250 395 240 Z" fill="#B5838D"/>
+
+  <!-- Estrela Menor Superior -->
+  <circle cx="270" cy="105" r="5" fill="#E8C08A" opacity="0.8"/>
+  <circle cx="340" cy="95" r="3.5" fill="#D4A373" opacity="0.6"/>
+</svg>

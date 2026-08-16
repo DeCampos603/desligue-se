@@ -165,6 +165,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const linkOpenTermsFooter = document.getElementById('linkOpenTermsFooter');
   const checkTermsConsent = document.getElementById('checkTermsConsent');
 
+  // Botão de Instalação PWA
+  const btnInstallApp = document.getElementById('btnInstallApp');
+
   // Modal de Detalhes da Noite & Conteúdo do Diário
   const modalHistoryDetail = document.getElementById('modalHistoryDetail');
   const btnCloseHistoryDetailModal = document.getElementById('btnCloseHistoryDetailModal');
@@ -224,6 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSupabaseAuth();
   initCopyAdviceButton();
   initHistoryDetailTabs();
+  initPWA();
   updateHistoryUI();
 
   journalInput.addEventListener('input', () => {
@@ -1967,6 +1971,74 @@ document.addEventListener('DOMContentLoaded', () => {
         modalHistoryDetail?.classList.add('hidden');
         modalTerms?.classList.add('hidden');
       }
+    });
+  }
+
+  // ==========================================
+  // PWA & INSTALAÇÃO DO APLICATIVO NO CELULAR / DESKTOP
+  // ==========================================
+  function initPWA() {
+    // 1. Registro do Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => {
+            console.log('✅ Service Worker do Desligue-se registrado:', reg.scope);
+          })
+          .catch((err) => {
+            console.warn('Falha ao registrar Service Worker:', err);
+          });
+      });
+    }
+
+    // 2. Detecção de modo Standalone (já instalado)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (isStandalone) {
+      if (btnInstallApp) btnInstallApp.classList.add('hidden');
+      return;
+    }
+
+    let deferredInstallPrompt = null;
+
+    // 3. Captura do evento de instalação do navegador (Chrome, Edge, Android)
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      if (btnInstallApp) {
+        btnInstallApp.classList.remove('hidden');
+      }
+    });
+
+    // 4. Clique no botão de instalar
+    if (btnInstallApp) {
+      // Se for iOS Safari, mostra botão com dica de instalação
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS && !isStandalone) {
+        btnInstallApp.classList.remove('hidden');
+      }
+
+      btnInstallApp.addEventListener('click', async () => {
+        if (deferredInstallPrompt) {
+          deferredInstallPrompt.prompt();
+          const { outcome } = await deferredInstallPrompt.userChoice;
+          console.log('Escolha de instalação PWA:', outcome);
+          deferredInstallPrompt = null;
+          if (outcome === 'accepted') {
+            btnInstallApp.classList.add('hidden');
+          }
+        } else if (isIOS) {
+          alert('📲 Para instalar no iPhone/iPad:\n\n1. Toque no botão de Compartilhar (ícone com quadrado e seta para cima no Safari).\n2. Role a lista e toque em "Adicionar à Tela de Início".\n3. Pronto! O Desligue-se funcionará como um aplicativo nativo.');
+        } else {
+          alert('📲 Para instalar o Desligue-se:\n\nAbra as opções do seu navegador (três pontos ⋮) e selecione "Instalar aplicativo" ou "Adicionar à tela inicial".');
+        }
+      });
+    }
+
+    // 5. Quando o app for instalado com sucesso
+    window.addEventListener('appinstalled', () => {
+      console.log('🎉 Desligue-se instalado com sucesso como PWA!');
+      if (btnInstallApp) btnInstallApp.classList.add('hidden');
+      deferredInstallPrompt = null;
     });
   }
 

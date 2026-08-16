@@ -222,6 +222,31 @@ body {
   border-color: var(--accent-amber);
 }
 
+.install-pill {
+  border-color: rgba(212, 163, 115, 0.35);
+  background: rgba(212, 163, 115, 0.15);
+  color: var(--accent-amber);
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: var(--radius-full);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.install-pill:hover {
+  background: rgba(212, 163, 115, 0.25);
+  border-color: var(--accent-amber);
+  transform: translateY(-1px);
+}
+
+.install-pill:active {
+  transform: scale(0.97);
+}
+
 /* ==========================================================================
    MAIN CONTAINER & VIEWS
    ========================================================================== */
