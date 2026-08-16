@@ -59,7 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
     audioCtx: null,
     noiseNode: null,
     isRecording: false,
-    recognition: null,
+    userWantsRecording: false,
+    voiceBaseText: '',
     history: loadHistoryFromLocalStorage(),
     activeDetailEntry: null,
     activeDetailTab: 'all'
@@ -804,55 +805,186 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // ENTRADA POR VOZ
+  // VERIFICAÇÃO DE PLANOS & LIMITES (PRO vs GRATUITO)
   // ==========================================
+  function isUserPro() {
+    try {
+      // 1. Verificação no localStorage (ativação instantânea)
+      const localPlan = localStorage.getItem('desliguese_user_plan');
+      if (localPlan === 'pro' || localPlan === 'premium_mensal' || localPlan === 'premium_anual') {
+        return true;
+      }
+      // 2. Verificação no perfil do Supabase
+      if (appState.userProfile && (appState.userProfile.plano === 'premium_mensal' || appState.userProfile.plano === 'premium_anual')) {
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function getTodayDateString() {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function hasReachedDailyFreeLimit() {
+    if (isUserPro()) return false; // Assinantes Pro possuem registros ilimitados
+
+    const todayStr = getTodayDateString();
+
+    // 1. Checa a data do último registro gravado no storage
+    const lastDate = localStorage.getItem('desliguese_last_dump_date');
+    if (lastDate === todayStr) {
+      return true;
+    }
+
+    // 2. Checa no histórico de entradas salvas
+    if (appState.history && Array.isArray(appState.history) && appState.history.length > 0) {
+      const todayEntries = appState.history.filter(item => {
+        if (!item.timestamp) return false;
+        try {
+          const itemDate = new Date(item.timestamp).toISOString().split('T')[0];
+          return itemDate === todayStr;
+        } catch (e) {
+          return false;
+        }
+      });
+      if (todayEntries.length >= 1) return true;
+    }
+
+    return false;
+  }
+
+  function markDailyDumpCompleted() {
+    localStorage.setItem('desliguese_last_dump_date', getTodayDateString());
+  }
+
+  // ==========================================
+  // ENTRADA POR VOZ EM TEMPO REAL DE ALTA PRECISÃO
+  // ==========================================
+  function formatSpokenPunctuation(text) {
+    if (!text) return '';
+    return text
+      .replace(/\s+ponto final/gi, '.')
+      .replace(/\s+ponto e vírgula/gi, ';')
+      .replace(/\s+ponto de interrogação/gi, '?')
+      .replace(/\s+ponto de exclamação/gi, '!')
+      .replace(/\s+ponto\b/gi, '.')
+      .replace(/\s+vírgula\b/gi, ',')
+      .replace(/\s+virgula\b/gi, ',')
+      .replace(/\s+dois pontos\b/gi, ':')
+      .replace(/\s+nova linha\b/gi, '\n')
+      .replace(/\s+novo parágrafo\b/gi, '\n\n')
+      .replace(/\s+parágrafo\b/gi, '\n\n')
+      // Corrige primeira letra após quebra ou pontuação
+      .replace(/(^\s*|\.\s+|\?\s+|\!\s+)([a-zà-ú])/g, (match, sep, letter) => sep + letter.toUpperCase());
+  }
+
   function initVoiceInput() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      if (btnVoiceInput) btnVoiceInput.title = 'Ditado por voz não suportado neste navegador.';
+      if (btnVoiceInput) {
+        btnVoiceInput.title = 'Ditado por voz não suportado neste navegador. Recomendamos usar o Google Chrome ou Safari.';
+      }
       return;
     }
 
-    appState.recognition = new SpeechRecognition();
-    appState.recognition.lang = 'pt-BR';
-    appState.recognition.continuous = true;
-    appState.recognition.interimResults = true;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'pt-BR';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
 
-    appState.recognition.onstart = () => {
+    appState.recognition = recognition;
+
+    recognition.onstart = () => {
       appState.isRecording = true;
       btnVoiceInput?.classList.add('recording');
-      if (voiceBtnLabel) voiceBtnLabel.textContent = 'Ouvindo... (toque para parar)';
+      if (voiceBtnLabel) voiceBtnLabel.textContent = '🎙️ Ouvindo... (toque para pausar)';
     };
 
-    appState.recognition.onresult = (event) => {
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
       let finalTranscript = '';
+
       for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const transcriptPart = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
+          finalTranscript += transcriptPart + ' ';
+        } else {
+          interimTranscript += transcriptPart;
         }
       }
+
       if (finalTranscript) {
-        journalInput.value += (journalInput.value ? ' ' : '') + finalTranscript;
-        btnProcessDump.disabled = false;
+        appState.voiceBaseText += (appState.voiceBaseText && !appState.voiceBaseText.endsWith(' ') ? ' ' : '') + finalTranscript;
+      }
+
+      const combinedText = appState.voiceBaseText + (interimTranscript ? ' ' + interimTranscript : '');
+      const formatted = formatSpokenPunctuation(combinedText.trim());
+
+      journalInput.value = formatted;
+      journalInput.scrollTop = journalInput.scrollHeight;
+      btnProcessDump.disabled = !formatted;
+    };
+
+    recognition.onerror = (event) => {
+      console.warn('SpeechRecognition error:', event.error);
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        alert('⚠️ Permissão de microfone negada. Por favor, libere o acesso ao microfone nas configurações do seu navegador.');
+        stopRecording();
       }
     };
 
-    appState.recognition.onerror = () => stopRecording();
-    appState.recognition.onend = () => stopRecording();
+    recognition.onend = () => {
+      // Auto-restart se o usuário não tiver clicado para parar deliberadamente
+      if (appState.userWantsRecording) {
+        try {
+          recognition.start();
+        } catch (e) {
+          stopRecording();
+        }
+      } else {
+        stopRecording();
+      }
+    };
 
     btnVoiceInput?.addEventListener('click', () => {
       if (appState.isRecording) {
-        appState.recognition.stop();
+        stopRecording();
       } else {
-        try { appState.recognition.start(); } catch (e) {}
+        startRecording();
       }
     });
   }
 
+  function startRecording() {
+    if (!appState.recognition) return;
+    appState.userWantsRecording = true;
+    appState.voiceBaseText = journalInput.value.trim();
+    try {
+      appState.recognition.start();
+    } catch (e) {
+      console.warn('Erro ao iniciar reconhecimento:', e);
+    }
+  }
+
   function stopRecording() {
+    appState.userWantsRecording = false;
     appState.isRecording = false;
     btnVoiceInput?.classList.remove('recording');
     if (voiceBtnLabel) voiceBtnLabel.textContent = 'Falar pensamentos';
+    if (appState.recognition) {
+      try { appState.recognition.stop(); } catch (e) {}
+    }
+    // Formata o texto final no encerramento
+    if (journalInput) {
+      journalInput.value = formatSpokenPunctuation(journalInput.value.trim());
+      btnProcessDump.disabled = !journalInput.value.trim();
+    }
   }
 
   // ==========================================
@@ -879,20 +1011,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const text = journalInput.value.trim();
     if (!text) return;
 
-    // VERIFICAÇÃO DE TRIAL & PLANO:
-    // Se o usuário não estiver logado:
-    // - 1º registro: Degustação Premium (liberado)
-    // - 2º registro em diante: Bloqueio amigável orientando login ou assinatura
-    if (!appState.currentUser) {
-      const trialUsedCount = getTrialCount();
-      if (trialUsedCount >= 1) {
-        if (modalTrialBlock) modalTrialBlock.classList.remove('hidden');
-        return;
+    // VERIFICAÇÃO ESTRITA DE PLANO & LIMITE DIÁRIO:
+    // Usuários no Plano Gratuito (com ou sem login) têm direito a 1 registro por dia.
+    // O 2º registro no mesmo dia requer a assinatura do Plano Pro.
+    if (hasReachedDailyFreeLimit()) {
+      if (modalTrialBlock) {
+        const trialTitle = modalTrialBlock.querySelector('.modal-title');
+        const trialSub = modalTrialBlock.querySelector('.modal-subtitle');
+        if (trialTitle) trialTitle.textContent = '🌙 Limite Diário Atingido (1/1 no Plano Gratuito)';
+        if (trialSub) trialSub.textContent = 'Você já completou o seu descarrego mental de hoje! Para desabafar quantas vezes quiser ao longo do dia, ter IA ilimitada e histórico completo, assine o Desligue-se Pro.';
+        modalTrialBlock.classList.remove('hidden');
+      } else if (modalPremium) {
+        modalPremium.classList.remove('hidden');
       }
+      return;
     }
 
-    if (appState.isRecording && appState.recognition) {
-      appState.recognition.stop();
+    if (appState.isRecording) {
+      stopRecording();
     }
 
     let title = journalTitleInput.value.trim();
@@ -904,10 +1040,8 @@ document.addEventListener('DOMContentLoaded', () => {
     appState.currentDumpText = text;
     showStep('loading');
 
-    // Se for o 1º registro sem login, incrementa o contador de trial
-    if (!appState.currentUser) {
-      incrementTrialCount();
-    }
+    // Marca o registro diário concluído
+    markDailyDumpCompleted();
 
     // Detecção de crise local (safety net — roda SEMPRE, antes da API)
     const localCrisis = detectLocalCrisis(text);
@@ -1530,9 +1664,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function initRoutineDuration() {
     durationBtns.forEach(btn => {
       btn.addEventListener('click', () => {
+        const minutes = parseInt(btn.getAttribute('data-minutes'), 10);
+        if (minutes > 3 && !isUserPro()) {
+          if (modalPremium) modalPremium.classList.remove('hidden');
+          return;
+        }
         durationBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        appState.selectedRoutineMinutes = parseInt(btn.getAttribute('data-minutes'), 10);
+        appState.selectedRoutineMinutes = minutes;
         routineTimeBadge.textContent = `${appState.selectedRoutineMinutes} min`;
       });
     });
@@ -1913,11 +2052,14 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    list.forEach((entry, index) => {
+    const isPro = isUserPro();
+    const visibleEntries = isPro ? list : list.slice(0, 3);
+
+    visibleEntries.forEach((entry, index) => {
       const card = document.createElement('div');
       card.className = 'history-card';
 
-      const d = new Date(entry.date);
+      const d = new Date(entry.date || entry.timestamp);
       const formattedDate = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
       const moodEmoji = entry.sleepMood === 'great' ? '😴' : entry.sleepMood === 'medium' ? '😐' : entry.sleepMood === 'terrible' ? '😫' : '🌙';
       const title = entry.title || 'Diário Noturno';
@@ -1966,6 +2108,27 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       historyListContainer.appendChild(card);
     });
+
+    // Se for usuário gratuito e houver mais entradas ou para incentivar upgrade
+    if (!isPro) {
+      const upsellCard = document.createElement('div');
+      upsellCard.className = 'history-card pro-upsell-history-card';
+      upsellCard.style.cssText = 'border: 1px dashed var(--accent-amber); background: rgba(212, 163, 115, 0.06); text-align: center; padding: 1.5rem;';
+      upsellCard.innerHTML = `
+        <div class="badge-tag" style="background: rgba(212,163,115,0.25); color: var(--accent-amber); margin-bottom: 0.5rem;">⭐ Desligue-se Pro</div>
+        <h4 style="margin: 0.35rem 0; color: var(--text-main); font-size: 1.05rem;">Histórico Completo na Nuvem & Padrões Emocionais</h4>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
+          No plano gratuito, você visualiza os 3 registros mais recentes. Assine o Pro para acessar todo o seu histórico ilimitado, sincronização e gráficos avançados de autocuidado.
+        </p>
+        <button type="button" class="btn-primary btn-history-upgrade" style="width: auto; padding: 0.6rem 1.4rem;">
+          Ver Planos Premium (a partir de R$ 12/mês)
+        </button>
+      `;
+      upsellCard.querySelector('.btn-history-upgrade')?.addEventListener('click', () => {
+        if (modalPremium) modalPremium.classList.remove('hidden');
+      });
+      historyListContainer.appendChild(upsellCard);
+    }
 
     // Re-bind listeners para tags no histórico abrindo os itens reais
     document.querySelectorAll('.history-tags .cat-item-tag.interactive').forEach(btn => {
