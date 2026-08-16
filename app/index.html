@@ -686,6 +686,35 @@
       <div class="modal-footer-guarantee">
         <span>🔒 Pagamento 100% seguro via Stripe • Garantia incondicional de 7 dias</span>
       </div>
+  <!-- Modal Embutido de Pagamento Stripe Elements -->
+  <div id="modalStripeElements" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card stripe-elements-card">
+      <button id="btnCloseElementsModal" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
+      
+      <div class="modal-header">
+        <div class="badge-tag premium-badge">Pagamento Seguro In-App</div>
+        <h2 class="modal-title" id="elementsModalPlanTitle">Desligue-se Pro</h2>
+        <p class="modal-subtitle" id="elementsModalPlanPrice">
+          Total: R$ 19,90 / mês
+        </p>
+      </div>
+
+      <!-- Formulário Oficial do Stripe Payment Element -->
+      <form id="payment-form" class="stripe-payment-form">
+        <div id="payment-element" class="stripe-element-container">
+          <!-- O Stripe renderiza os inputs de cartão/Pix aqui dentro -->
+        </div>
+
+        <button id="btnSubmitPayment" type="submit" class="btn-primary btn-plan" style="max-width: 100%; margin-top: 1.25rem;">
+          <span id="btnSubmitPaymentText">🔒 Confirmar Assinatura</span>
+        </button>
+
+        <div id="payment-message" class="payment-feedback hidden"></div>
+      </form>
+
+      <div class="modal-footer-guarantee" style="margin-top: 1rem;">
+        <span>🔒 Criptografia SSL 256-bit • Dados processados diretamente pela Stripe</span>
+      </div>
     </div>
   </div>
 

@@ -189,6 +189,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSubscribeMonthly = document.getElementById('btnSubscribeMonthly');
   const btnSubscribeAnnual = document.getElementById('btnSubscribeAnnual');
 
+  // Modal Stripe Elements (Pagamento In-App)
+  const modalStripeElements = document.getElementById('modalStripeElements');
+  const btnCloseElementsModal = document.getElementById('btnCloseElementsModal');
+  const elementsModalPlanTitle = document.getElementById('elementsModalPlanTitle');
+  const elementsModalPlanPrice = document.getElementById('elementsModalPlanPrice');
+  const paymentForm = document.getElementById('payment-form');
+  const paymentElementContainer = document.getElementById('payment-element');
+  const btnSubmitPayment = document.getElementById('btnSubmitPayment');
+  const btnSubmitPaymentText = document.getElementById('btnSubmitPaymentText');
+  const paymentMessage = document.getElementById('payment-message');
+
   // Botão de Instalação PWA
   const btnInstallApp = document.getElementById('btnInstallApp');
 
@@ -2026,6 +2037,12 @@ document.addEventListener('DOMContentLoaded', () => {
       handleInitiateCheckout('annual', btnSubscribeAnnual);
     });
 
+    // Modal de Pagamento In-App com Stripe Elements
+    btnCloseElementsModal?.addEventListener('click', () => modalStripeElements?.classList.add('hidden'));
+    modalStripeElements?.addEventListener('click', (e) => {
+      if (e.target === modalStripeElements) modalStripeElements?.classList.add('hidden');
+    });
+
     // Tecla Escape para todos os modais
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' || e.key === 'Esc') {
@@ -2035,13 +2052,19 @@ document.addEventListener('DOMContentLoaded', () => {
         modalHistoryDetail?.classList.add('hidden');
         modalTerms?.classList.add('hidden');
         modalTrialBlock?.classList.add('hidden');
+        modalStripeElements?.classList.add('hidden');
       }
     });
   }
 
   // ==========================================
-  // INTEGRAÇÃO STRIPE CHECKOUT (PAGAMENTOS & ASSINATURAS)
+  // INTEGRAÇÃO STRIPE PAYMENT ELEMENTS (EMBEDDED IN-APP CHECKOUT)
   // ==========================================
+  const STRIPE_PUBLISHABLE_KEY = 'pk_test_51U57k8IZTTcAGD4KX607B2pXl4qoX0OIabqI8WwhVHR6i4YamOfUrDj8Mehp5hMShhtEczt41rj0QbBRxK5qymcs00RzYTY7bM';
+  let stripeObj = null;
+  let stripeElementsInstance = null;
+  let currentElementsPlan = 'monthly';
+
   async function handleInitiateCheckout(planType, buttonElement) {
     const originalText = buttonElement ? buttonElement.textContent : '';
     if (buttonElement) {
@@ -2050,35 +2073,127 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      const userEmail = appState.currentUser?.email || '';
-      const userId = appState.currentUser?.id || '';
+      // 1. Tenta abrir o formulário embutido via Stripe Elements
+      await openStripeElementsCheckout(planType);
+    } catch (elementsErr) {
+      console.warn('Fallback para Checkout Session tradicional:', elementsErr);
+      // Fallback para o Stripe Checkout tradicional
+      try {
+        const userEmail = appState.currentUser?.email || '';
+        const userId = appState.currentUser?.id || '';
 
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planType,
-          userEmail,
-          userId
-        })
-      });
+        const response = await fetch('/api/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ planType, userEmail, userId })
+        });
 
-      const data = await response.json();
+        const data = await response.json();
+        if (!response.ok || !data.url) {
+          throw new Error(data.error || 'Não foi possível iniciar o pagamento.');
+        }
 
-      if (!response.ok || !data.url) {
-        throw new Error(data.error || 'Não foi possível iniciar a sessão de pagamento.');
+        window.location.href = data.url;
+      } catch (fallbackErr) {
+        alert('⚠️ Ocorreu um problema ao conectar com a operadora de pagamentos:\n' + fallbackErr.message);
       }
-
-      // Redireciona o navegador para o Checkout Seguro do Stripe
-      window.location.href = data.url;
-
-    } catch (err) {
-      console.error('Erro no checkout:', err);
-      alert('⚠️ Ocorreu um problema ao conectar com a operadora de pagamentos:\n' + err.message);
+    } finally {
       if (buttonElement) {
         buttonElement.disabled = false;
         buttonElement.textContent = originalText;
       }
+    }
+  }
+
+  async function openStripeElementsCheckout(planType) {
+    currentElementsPlan = planType;
+    const userEmail = appState.currentUser?.email || '';
+    const userId = appState.currentUser?.id || '';
+
+    // Fecha o modal de pricing e abre o modal do formulário embutido
+    if (modalPremium) modalPremium.classList.add('hidden');
+    if (modalStripeElements) modalStripeElements.classList.remove('hidden');
+
+    if (elementsModalPlanTitle) {
+      elementsModalPlanTitle.textContent = planType === 'annual' ? 'Desligue-se Pro (Anual - 12x R$ 12)' : 'Desligue-se Pro (Mensal)';
+    }
+    if (elementsModalPlanPrice) {
+      elementsModalPlanPrice.textContent = planType === 'annual' ? 'Total: 12x R$ 12,00 (R$ 144,00 / ano)' : 'Total: R$ 19,90 / mês';
+    }
+
+    if (paymentElementContainer) {
+      paymentElementContainer.innerHTML = '<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Carregando formulário seguro da Stripe...</div>';
+    }
+    if (paymentMessage) paymentMessage.classList.add('hidden');
+
+    // Cria a assinatura no backend e obtém o clientSecret
+    const res = await fetch('/api/create-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planType, userEmail, userId })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.clientSecret) {
+      throw new Error(data.error || 'Falha ao inicializar o Payment Element.');
+    }
+
+    // Inicializa o Stripe.js
+    if (!window.Stripe) {
+      throw new Error('Script da Stripe.js não carregado.');
+    }
+
+    stripeObj = window.Stripe(STRIPE_PUBLISHABLE_KEY);
+
+    // Configuração dos Elements com tema noturno personalizado
+    stripeElementsInstance = stripeObj.elements({
+      clientSecret: data.clientSecret,
+      appearance: {
+        theme: 'night',
+        variables: {
+          colorPrimary: '#D4A373',
+          colorBackground: '#131922',
+          colorText: '#E6EDF3',
+          colorDanger: '#FF8080',
+          fontFamily: 'Plus Jakarta Sans, sans-serif',
+          borderRadius: '8px'
+        }
+      }
+    });
+
+    if (paymentElementContainer) paymentElementContainer.innerHTML = '';
+    const paymentElement = stripeElementsInstance.create('payment');
+    paymentElement.mount('#payment-element');
+
+    // Conecta o submit do formulário
+    if (paymentForm) {
+      paymentForm.onsubmit = async (e) => {
+        e.preventDefault();
+
+        if (btnSubmitPayment) {
+          btnSubmitPayment.disabled = true;
+          if (btnSubmitPaymentText) btnSubmitPaymentText.textContent = '⏳ Processando Pagamento Seguro...';
+        }
+
+        const { error } = await stripeObj.confirmPayment({
+          elements: stripeElementsInstance,
+          confirmParams: {
+            return_url: `${window.location.origin}/?status=success&plan=${currentElementsPlan}`
+          }
+        });
+
+        if (error) {
+          if (paymentMessage) {
+            paymentMessage.textContent = error.message;
+            paymentMessage.className = 'payment-feedback error';
+            paymentMessage.classList.remove('hidden');
+          }
+          if (btnSubmitPayment) {
+            btnSubmitPayment.disabled = false;
+            if (btnSubmitPaymentText) btnSubmitPaymentText.textContent = '🔒 Confirmar Assinatura';
+          }
+        }
+      };
     }
   }
 
