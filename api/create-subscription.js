@@ -33,7 +33,7 @@ module.exports = async function handler(req, res) {
   const returnUrl = `${origin}/?status=success&session_id={CHECKOUT_SESSION_ID}&plan=${planType || 'monthly'}`;
 
   const params = new URLSearchParams();
-  params.append('ui_mode', 'embedded');
+  params.append('ui_mode', 'embedded_page');
   params.append('mode', 'subscription');
   params.append('return_url', returnUrl);
   params.append('payment_method_types[0]', 'card');
