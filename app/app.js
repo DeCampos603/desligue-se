@@ -1,7 +1,8 @@
 /**
  * DESLIGUE-SE — Motor Cognitivo de Triagem Noturna & Ritual de Sono (TCC-I)
  * Integração com Supabase (Auth Google/Email, Banco de Dados PostgreSQL & RLS)
- * Inteligência de Cartas Pessoais de Apoio, Consolo Dinâmico & Terapia do Sono
+ * Inteligência Emocional de Polaridade (Positivo vs Negativo), Gratidão,
+ * Balanço de Vida a Longo Prazo e Combate ao Viés de Negatividade
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -105,6 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Categorias & Listas
   const resultEntryTitle = document.getElementById('resultEntryTitle');
+  const catGratitudeContainer = document.getElementById('catGratitudeContainer');
+  const listGratitude = document.getElementById('listGratitude');
   const listTomorrow = document.getElementById('listTomorrow');
   const listWait = document.getElementById('listWait');
   const listRelease = document.getElementById('listRelease');
@@ -163,11 +166,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const historyDetailCounselingText = document.getElementById('historyDetailCounselingText');
   const historyDetailListContainer = document.getElementById('historyDetailListContainer');
   const historyDetailRawText = document.getElementById('historyDetailRawText');
+  const countTabGratitude = document.getElementById('countTabGratitude');
   const countTabTomorrow = document.getElementById('countTabTomorrow');
   const countTabWait = document.getElementById('countTabWait');
   const countTabRelease = document.getElementById('countTabRelease');
   const countTabRumination = document.getElementById('countTabRumination');
   const historyTabBtns = document.querySelectorAll('.history-tab-btn');
+
+  // Balanço Emocional (Longo Prazo)
+  const balanceRatioBadge = document.getElementById('balanceRatioBadge');
+  const balanceBarGood = document.getElementById('balanceBarGood');
+  const balanceBarBad = document.getElementById('balanceBarBad');
+  const countGoodThings = document.getElementById('countGoodThings');
+  const countChallengingThings = document.getElementById('countChallengingThings');
+  const balanceInsightText = document.getElementById('balanceInsightText');
 
   // Auth Elements
   const authViewLoggedOut = document.getElementById('authViewLoggedOut');
@@ -284,6 +296,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // CAIXAS EXPLICATIVAS DE TCC-I & MODAL DE TAGS
   // ==========================================
   const TAG_INFO_DICTIONARY = {
+    gratitude: {
+      title: 'Coisas Boas, Vitórias & Gratidão',
+      badge: 'Psicologia Positiva & Ocitocina',
+      meaning: 'Momentos felizes, demonstrações de afeto, conquistas e motivos de orgulho. Guardamos essas memórias com carinho para que a mente durma ancorada na segurança e na alegria.',
+      neuro: 'Estimula a liberação de dopamina e ocitocina, reduzindo a hiperatividade da amígdala e neutralizando o viés biológico de negatividade.'
+    },
     tomorrow: {
       title: 'Atenção Amanhã (Ação Imediata)',
       badge: 'Prioridade Executável • TCC-I',
@@ -312,6 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function initCategoryWhyToggles() {
     const toggles = [
+      { triggerId: 'headerGratitude', boxId: 'whyBoxGratitude' },
       { triggerId: 'headerTomorrow', boxId: 'whyBoxTomorrow' },
       { triggerId: 'headerWait', boxId: 'whyBoxWait' },
       { triggerId: 'headerRelease', boxId: 'whyBoxRelease' },
@@ -398,6 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
       historyDetailCounselingWrapper.classList.add('hidden');
     }
 
+    if (countTabGratitude) countTabGratitude.textContent = entry.gratitude ? entry.gratitude.length : 0;
     countTabTomorrow.textContent = entry.tomorrow ? entry.tomorrow.length : 0;
     countTabWait.textContent = entry.wait ? entry.wait.length : 0;
     countTabRelease.textContent = entry.release ? entry.release.length : 0;
@@ -419,6 +439,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const tab = appState.activeDetailTab;
 
     let itemsToRender = [];
+
+    if (tab === 'all' || tab === 'gratitude') {
+      (entry.gratitude || []).forEach(item => {
+        itemsToRender.push({
+          type: 'gratitude',
+          tagLabel: 'Coisas Boas',
+          tagStyle: 'background: rgba(212, 163, 115, 0.25); color: var(--accent-amber);',
+          title: item.raw,
+          note: item.note || 'Momento bom guardado no coração'
+        });
+      });
+    }
 
     if (tab === 'all' || tab === 'tomorrow') {
       (entry.tomorrow || []).forEach(item => {
@@ -647,6 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {
           rawText: row.raw_text,
           counselingAdvice: row.triaged_data?.counselingAdvice || '',
           sleepMood: row.sleep_mood,
+          gratitude: row.triaged_data?.gratitude || [],
           tomorrow: row.triaged_data?.tomorrow || [],
           wait: row.triaged_data?.wait || [],
           release: row.triaged_data?.release || [],
@@ -738,7 +771,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // SINTETIZADOR DINÂMICO DE CARTAS AFETIVAS (COM VARIAÇÕES CONTEXTUAIS)
+  // SINTETIZADOR DINÂMICO DE CARTAS AFETIVAS (COM POLARIDADE E GRATIDÃO)
   // ==========================================
   function handleProcessDump() {
     const text = journalInput.value.trim();
@@ -767,9 +800,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function generateAutoTitle(text) {
     const lower = text.toLowerCase();
-    if (lower.includes('término') || lower.includes('terminou') || lower.includes('separação') || lower.includes('ex') || lower.includes('namorado') || lower.includes('marido') || lower.includes('coração')) {
+
+    // 1. Títulos de Conquista / Amor / Alegria / Gratidão
+    if (
+      lower.includes('namorada incrível') || lower.includes('namorado incrível') ||
+      lower.includes('maravilhosa') || lower.includes('feliz') || lower.includes('conquista') ||
+      lower.includes('vitória') || lower.includes('festa') || lower.includes('comemorei') ||
+      lower.includes('passeio') || lower.includes('pizza') || lower.includes('ótimo') ||
+      lower.includes('grata') || lower.includes('gratidão')
+    ) {
+      return 'Momentos Felizes, Amor & Gratidão';
+    }
+
+    // 2. Títulos de Luto / Término / Rompimento (Apenas quando explícito)
+    if (
+      lower.includes('término') || lower.includes('terminou') || lower.includes('separação') ||
+      lower.includes('separou') || lower.includes('meu ex') || lower.includes('minha ex') ||
+      lower.includes('desamor') || lower.includes('coração partido')
+    ) {
       return 'Cuidando do Coração & Acolhendo o Fim';
-    } else if (lower.includes('triste') || lower.includes('choro') || lower.includes('chorar') || lower.includes('ruim') || lower.includes('vazio') || lower.includes('sozinha')) {
+    } else if (lower.includes('triste') || lower.includes('choro') || lower.includes('chorar') || lower.includes('vazio') || lower.includes('sozinha')) {
       return 'Acolhimento Noturno & Desabafo Sincero';
     } else if (lower.includes('cabelo') || lower.includes('mudar') || lower.includes('estilo') || lower.includes('roupa') || lower.includes('corpo')) {
       return 'Inspiração, Autocuidado & Reflexão';
@@ -789,16 +839,68 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Gera carta de conselho altamente personalizada, combinando abertura, validação com termos reais, conselho e bênção de sono
-  function generateCounselingAdvice(text, fullLower) {
+  function generateCounselingAdvice(text, fullLower, hasPositive, hasNegative) {
     const rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-    // 1. ANÁLISE ESPECÍFICA: TÉRMINO / ROMPIMENTO / LUTO AMOROSO
-    if (
+    // CENÁRIO 1: DIA COM COISAS BOAS, AMOR E GRATIDÃO PREDOMINANTES
+    if (hasPositive && !hasNegative) {
+      const openings = [
+        'Que alegria imensa ler o seu relato e sentir a luz que o seu coração está emanando hoje!',
+        'Noites como esta são presentes raros: quando o dia termina com amor, sorrisos e sensação de plenitude...',
+        'É tão lindo ver você reconhecendo as coisas boas da vida e celebrando esses momentos especiais...'
+      ];
+      const validations = [
+        'Guardar no peito o afeto de quem a gente ama e o orgulho das nossas vitórias é a forma mais pura de nutrir a alma.',
+        'A felicidade mora nos detalhes, e você soube saborear a doçura de estar com quem te faz bem.',
+        'O seu coração está em paz e você merece cada pedacinho dessa alegria e desse carinho.'
+      ];
+      const advices = [
+        'Leve essa sensação gostosa de gratidão para o seu travesseiro. Deixe que a dopamina e a ocitocina acalmem o seu corpo.',
+        'Permita que essas memórias boas formem um escudo de serenidade ao redor do seu sono esta noite.',
+        'Sorria ao fechar os olhos, sabendo que a vida tem momentos verdadeiramente mágicos.'
+      ];
+      const closings = [
+        'Durma com o coração quentinho e repleto de amor. Que você tenha sonhos lindos e revigorantes.',
+        'Entregue-se ao descanso leve com a certeza de que você é muito amada e abençoada. Boa noite!',
+        'Descanse em paz e renove suas energias para viver mais dias tão especiais quanto o de hoje.'
+      ];
+      return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
+    }
+
+    // CENÁRIO 2: DIA MISTO (DESAFIOS + MOMENTOS BONS / COMPANHIA AMADA)
+    if (hasPositive && hasNegative) {
+      const openings = [
+        'A vida é feita desse mosaico: dias em que temos desafios cansativos, mas também temos a sorte de ter amor e coisas boas para nos sustentar...',
+        'Que especial ver que, mesmo com a correria e o cansaço do dia, você encontrou motivos para sorrir e se sentir acolhida...',
+        'Reconheço que você enfrentou momentos exigentes hoje, mas é maravilhoso ver como os momentos bons foram a sua âncora...'
+      ];
+      const validations = [
+        'As pendências e cansaços do trabalho ou da rotina vão passar, mas o afeto verdadeiro e as suas vitórias permanecem.',
+        'O seu cérebro pode até tentar focar no que deu trabalho, mas a sua história hoje provou que há muito mais luz e carinho ao seu redor.',
+        'Ter quem amamos ao lado transforma qualquer dia difícil em uma caminhada mais leve.'
+      ];
+      const advices = [
+        'Solte as cobranças do dia e foque no calor desses momentos felizes antes de dormir.',
+        'Coloque o foco do seu coração nas vitórias que você teve hoje e deixe as preocupações para a luz do dia.',
+        'Durma sabendo que você venceu os desafios e ainda compartilhou amor.'
+      ];
+      const closings = [
+        'Abrace a paz da noite, sinta a gratidão pelo dia e durma com o peito sereno. Bom descanso!',
+        'Que o amor e as boas memórias de hoje embale o seu sono mais profundo. Boa noite!',
+        'Descanse o corpo e a mente. Amanhã continuará sendo um dia lindo.'
+      ];
+      return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
+    }
+
+    // CENÁRIO 3: TÉRMINO REAL / ROMPIMENTO (APENAS QUANDO NEGATIVO EXPLÍCITO)
+    const isExplicitBreakup = (
       fullLower.includes('término') || fullLower.includes('terminou') || fullLower.includes('terminar') ||
-      fullLower.includes('separação') || fullLower.includes('separou') || fullLower.includes('namorado') ||
-      fullLower.includes('namorada') || fullLower.includes('marido') || fullLower.includes('meu ex') ||
-      fullLower.includes('minha ex') || fullLower.includes('desamor') || fullLower.includes('coração partido')
-    ) {
+      fullLower.includes('separação') || fullLower.includes('separou') || fullLower.includes('meu ex') ||
+      fullLower.includes('minha ex') || fullLower.includes('desamor') || fullLower.includes('coração partido') ||
+      (fullLower.includes('namorad') && (fullLower.includes('acabou') || fullLower.includes('briga') || fullLower.includes('traição') || fullLower.includes('dor')))
+    );
+
+    if (isExplicitBreakup) {
       const openings = [
         'Minha querida, sinto daqui o peso que o seu peito está carregando ao escrever sobre esse término...',
         'No silêncio da noite, a dor de um rompimento reverbera com uma força que parece nos engolir...',
@@ -823,7 +925,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
     }
 
-    // 2. ANÁLISE ESPECÍFICA: DÚVIDAS PESSOAIS / CABELO / VISUAL / AUTOESTIMA
+    // CENÁRIO 4: DÚVIDAS PESSOAIS / CABELO / VISUAL / AUTOESTIMA
     if (
       fullLower.includes('cabelo') || fullLower.includes('cor de cabelo') || fullLower.includes('cor do cabelo') ||
       fullLower.includes('pintar') || fullLower.includes('cortar') || fullLower.includes('roupa') ||
@@ -859,7 +961,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
     }
 
-    // 3. ANÁLISE ESPECÍFICA: TRISTEZA PROFUNDA / CHORO / SOLIDÃO / RUIM
+    // CENÁRIO 5: TRISTEZA PROFUNDA / CHORO / SOLIDÃO / RUIM
     if (
       fullLower.includes('está ruim') || fullLower.includes('tá ruim') || fullLower.includes('muito mal') ||
       fullLower.includes('triste') || fullLower.includes('chorando') || fullLower.includes('chorei') ||
@@ -889,7 +991,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
     }
 
-    // 4. ANÁLISE ESPECÍFICA: TRABALHO / SOBRECARGA / REUNIÃO / CHEFE
+    // CENÁRIO 6: TRABALHO / SOBRECARGA / REUNIÃO / CHEFE
     if (
       fullLower.includes('trabalho') || fullLower.includes('reunião') || fullLower.includes('chefe') ||
       fullLower.includes('empresa') || fullLower.includes('relatório') || fullLower.includes('prazo') ||
@@ -918,93 +1020,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
     }
 
-    // 5. ANÁLISE ESPECÍFICA: FAMÍLIA / MATERNIDADE / CUIDADO DA CASA
-    if (
-      fullLower.includes('filho') || fullLower.includes('filha') || fullLower.includes('crianças') ||
-      fullLower.includes('mãe') || fullLower.includes('casa') || fullLower.includes('escola') || fullLower.includes('marido')
-    ) {
-      const openings = [
-        'Cuidar da família e da rotina de quem a gente ama é um trabalho invisível e extremamente exaustivo...',
-        'Sei o quanto você se doa todos os dias para que tudo funcione ao seu redor...',
-        'É lindo o seu cuidado com a sua casa e família, mas quem cuida de quem cuida de tudo?'
-      ];
-      const validations = [
-        'Ter momentos de cansaço ou de impaciência não faz de você uma mãe ou parceira ruim: faz de você um ser humano com limites reais.',
-        'A perfeição na rotina familiar não existe. Seus filhos e sua família precisam de você saudável e em paz, não exausta e esgotada.',
-        'Você não precisa carregar a culpa por coisas pequenas que não saíram como o planejado hoje.'
-      ];
-      const advices = [
-        'Agora é o seu momento sagrado de descanso. O mundo e a casa vão continuar lá amanhã, mas sua mente precisa recarregar agora.',
-        'Perdoe-se pelas pequenas falhas do dia e lembre-se de que a sua presença e o seu amor são mais que suficientes.',
-        'Deixe a vigilância de lado. Você merece ser acolhida e repousar com tranquilidade.'
-      ];
-      const closings = [
-        'Deite a cabeça no travesseiro com o coração leve e a consciência tranquila. Você foi maravilhosa hoje.',
-        'Durma profundamente, sabendo que você faz o melhor todos os dias. Bom descanso!',
-        'Que a sua noite seja calma, silenciosa e restauradora. Durma bem.'
-      ];
-      return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
-    }
-
-    // 6. ANÁLISE ESPECÍFICA: AUTOCOBRANÇA / CULPA / DIÁLOGOS PASSADOS
-    if (
-      fullLower.includes('deveria') || fullLower.includes('devia') || fullLower.includes('conversa') ||
-      fullLower.includes('discussão') || fullLower.includes('briga') || fullLower.includes('arrepend') ||
-      fullLower.includes('culpa') || fullLower.includes('falhei') || fullLower.includes('burra')
-    ) {
-      const openings = [
-        'A voz da autocrítica adora ser a mais alta quando a casa silencia e as luzes se apagam...',
-        'Revisitar conversas e diálogos passados na cama é uma armadilha que consome nossa paz...',
-        'Sei como é remoer o que a gente disse ou deixou de fazer, querendo ter agido diferente...'
-      ];
-      const validations = [
-        'Mas você agiu com a consciência, a energia e os recursos que estavam disponíveis naquele momento. Não se julgue hoje com a cabeça de agora.',
-        'Errar, tropeçar nas palavras ou ter conflitos faz parte da vida de qualquer pessoa. Isso não define o seu valor.',
-        'A culpa não muda o passado; ela apenas rouba a sua serenidade para viver o presente.'
-      ];
-      const advices = [
-        'Acolha o que aconteceu como aprendizado e dê a si mesma o presente do perdão esta noite.',
-        'O dia de hoje já está encerrado e foi concluído. Nada que você pensar no escuro vai alterar o que já foi.',
-        'Solte a necessidade de ter sido perfeita. Ser humana e sincera já é o bastante.'
-      ];
-      const closings = [
-        'Respire fundo, perdoe a si mesma e permita que o sono traga a paz que você merece. Durma serena.',
-        'Abrace sua história imperfeita e linda. Amanhã é uma nova página em branco. Bom descanso!',
-        'Deixe as cobranças do lado de fora do quarto. Tenha uma noite leve e tranquila.'
-      ];
-      return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
-    }
-
-    // 7. ANÁLISE ESPECÍFICA: ANSIEDADE / MEDO DO FUTURO / INCERTEZAS
-    if (
-      fullLower.includes('medo') || fullLower.includes('futuro') || fullLower.includes('dar certo') ||
-      fullLower.includes('e se') || fullLower.includes('preocupad') || fullLower.includes('ansios') ||
-      fullLower.includes('pânico') || fullLower.includes('dinheiro') || fullLower.includes('contas')
-    ) {
-      const openings = [
-        'O futuro sempre parece um labirinto assustador quando tentamos prevê-lo no silêncio da madrugada...',
-        'A ansiedade adora criar cenários catastróficos quando o corpo está exausto...',
-        'Sei como a incerteza do amanhã aperta o peito e tira o sono...'
-      ];
-      const validations = [
-        'Mas lembre-se: você já enfrentou dias muito difíceis no passado e superou 100% deles. A sua força é real.',
-        'Preocupar-se à meia-noite não resolve nenhum problema de amanhã; só drena a energia vital que você precisará para enfrentá-los.',
-        'A vida se resolve um passo de cada vez, na luz do dia, e não na imaginação ansiosa da noite.'
-      ];
-      const advices = [
-        'Coloque os pés no presente: agora você está segura, na sua cama, e nada exige uma resposta imediata.',
-        'Confie na sua capacidade de lidar com as coisas quando elas chegarem. Entregue o controle do incontrolável.',
-        'Diga para si mesma: "Eu fiz o que pude hoje. Agora o meu trabalho é descansar."'
-      ];
-      const closings = [
-        'Solte o peso dos ombros, sinta a respiração fluir e deixe o sono te renovar por inteira. Durma em paz.',
-        'Você está protegida e amanhã terá a clareza necessária para qualquer desafio. Bom descanso!',
-        'Entregue suas preocupações à noite e durma com serenidade no coração.'
-      ];
-      return `${rand(openings)} ${rand(validations)} ${rand(advices)} ${rand(closings)}`;
-    }
-
-    // 8. PADRÃO DINÂMICO ACOLHEDOR
+    // CENÁRIO 7: PADRÃO DINÂMICO ACOLHEDOR
     const generalOpenings = [
       'Você concluiu mais uma jornada com bravura, sensibilidade e dedicação.',
       'Chegamos ao fim de mais um dia e você merece reconhecer todo o esforço que colocou nas suas horas.',
@@ -1034,46 +1050,78 @@ document.addEventListener('DOMContentLoaded', () => {
       .map(s => s.trim())
       .filter(s => s.length > 3);
 
+    const gratitude = [];
     const tomorrow = [];
     const wait = [];
     const release = [];
     const rumination = [];
 
     const fullLower = text.toLowerCase();
-    const counselingAdvice = generateCounselingAdvice(text, fullLower);
 
-    const isBreakup = fullLower.includes('término') || fullLower.includes('terminou') || fullLower.includes('terminar') || fullLower.includes('separação') || fullLower.includes('separou') || fullLower.includes('namorado') || fullLower.includes('namorada') || fullLower.includes('marido') || fullLower.includes('ex ') || fullLower.includes('meu ex') || fullLower.includes('minha ex') || fullLower.includes('desamor') || fullLower.includes('coração partido');
+    // Detecção refinada de polaridade emocional
+    const isExplicitBreakup = (
+      fullLower.includes('término') || fullLower.includes('terminou') || fullLower.includes('terminar') ||
+      fullLower.includes('separação') || fullLower.includes('separou') || fullLower.includes('meu ex') ||
+      fullLower.includes('minha ex') || fullLower.includes('desamor') || fullLower.includes('coração partido') ||
+      (fullLower.includes('namorad') && (fullLower.includes('acabou') || fullLower.includes('briga feia') || fullLower.includes('traição') || fullLower.includes('dor de término')))
+    );
 
     fragments.forEach(frag => {
       const fLower = frag.toLowerCase();
 
-      // A) CASO: TÉRMINO OU LUTO AMOROSO
-      if (
-        fLower.includes('término') || fLower.includes('terminou') || fLower.includes('terminar') ||
-        fLower.includes('separação') || fLower.includes('separou') || fLower.includes('namorado') ||
-        fLower.includes('namorada') || fLower.includes('marido') || fLower.includes('ex ') ||
-        fLower.includes('meu ex') || fLower.includes('minha ex') || fLower.includes('desamor') ||
-        fLower.includes('coração partido') || (isBreakup && (fLower.includes('ruim') || fLower.includes('dor') || fLower.includes('saudade') || fLower.includes('chorei') || fLower.includes('triste')))
-      ) {
-        rumination.push({
+      // 1. COISAS BOAS / GRATIDÃO / AFETO / CONQUISTAS (Psicologia Positiva)
+      const isPositiveGratitude = (
+        fLower.includes('incrível') || fLower.includes('maravilhos') || fLower.includes('linda') ||
+        fLower.includes('lindo') || fLower.includes('feliz') || fLower.includes('conquista') ||
+        fLower.includes('vitória') || fLower.includes('festa') || fLower.includes('comemorei') ||
+        fLower.includes('passeio') || fLower.includes('pizza') || fLower.includes('ótimo') ||
+        fLower.includes('grata') || fLower.includes('gratidão') || fLower.includes('alegria') ||
+        fLower.includes('orgulho') || fLower.includes('divertido') || fLower.includes('amei') ||
+        fLower.includes('adorei') || fLower.includes('deu certo') || fLower.includes('sucesso') ||
+        fLower.includes('carinho') || (fLower.includes('namorad') && (fLower.includes('incrível') || fLower.includes('maravilhosa') || fLower.includes('linda') || fLower.includes('amo') || fLower.includes('carinho') || fLower.includes('doce') || fLower.includes('especial')))
+      );
+
+      if (isPositiveGratitude && !isExplicitBreakup) {
+        gratitude.push({
           raw: frag,
-          reframe: 'Términos doem de verdade e a noite é o momento em que a saudade e o silêncio mais pesam. Seu coração está em luto e essa dor é legítima. Você não precisa "superar" nada hoje à noite. Abrace seu travesseiro com carinho, respire fundo e se dê colo. Você é preciosa e vai reencontrar sua paz.'
+          note: 'Que momento lindo! Celebrar essa vitória e guardar esse afeto antes de dormir estimula a ocitocina e ancora sua noite na paz.'
         });
       }
-      // B) CASO: TRISTEZA PROFUNDA, CHORO OU SOLIDÃO
+      // 2. TAREFAS PRÁTICAS COM COMPROMISSOS (EX: LEVAR NAMORADA AO CABELEREIRO)
+      else if (
+        fLower.includes('amanhã') || fLower.includes('ligar') || fLower.includes('pagar') ||
+        fLower.includes('comprar') || fLower.includes('enviar') || fLower.includes('reunião') ||
+        fLower.includes('médic') || fLower.includes('escola') || fLower.includes('cedo') ||
+        fLower.includes('prioridade') || fLower.includes('relatório') ||
+        fLower.startsWith('levar ') || fLower.startsWith('buscar ') || fLower.startsWith('tenho que ') ||
+        fLower.startsWith('preciso ') || fLower.includes('fazer o cabelo as') || fLower.includes('fazer o cabelo às')
+      ) {
+        tomorrow.push({ raw: frag, action: formatActionItem(frag), done: false });
+      }
+      // 3. TÉRMINO OU LUTO AMOROSO REAL (APENAS QUANDO EXPLÍCITO)
+      else if (isExplicitBreakup && (
+        fLower.includes('término') || fLower.includes('terminou') || fLower.includes('separação') ||
+        fLower.includes('ex ') || fLower.includes('desamor') || fLower.includes('coração partido') ||
+        fLower.includes('ruim') || fLower.includes('dor') || fLower.includes('saudade') || fLower.includes('chorei')
+      )) {
+        rumination.push({
+          raw: frag,
+          reframe: 'Términos doem de verdade e a noite é o momento em que a saudade mais pesa. Seu coração está em luto e essa dor é legítima. Você não precisa "superar" nada hoje à noite. Abrace seu travesseiro com carinho e se dê colo.'
+        });
+      }
+      // 4. TRISTEZA PROFUNDA, CHORO OU SOLIDÃO
       else if (
         fLower.includes('está ruim') || fLower.includes('tá ruim') || fLower.includes('muito mal') ||
         fLower.includes('triste') || fLower.includes('chorando') || fLower.includes('chorei') ||
         fLower.includes('vazio') || fLower.includes('sozinha') || fLower.includes('solidão') ||
-        fLower.includes('angústia') || fLower.includes('desanimada') || fLower.includes('sem forças') ||
-        fLower.includes('esgotada')
+        fLower.includes('angústia') || fLower.includes('sem forças') || fLower.includes('esgotada')
       ) {
         rumination.push({
           raw: frag,
-          reframe: 'Permita-se sentir e soltar as lágrimas se o corpo pedir. O choro é a forma natural do cérebro descarregar a dor e baixar o cortisol. Você não precisa ser forte agora. Deite-se, sinta o aconchego da cama e lembre-se: você é acolhida aqui.'
+          reframe: 'Permita-se sentir e soltar as lágrimas se o corpo pedir. O choro é a forma natural do cérebro descarregar a dor e baixar o cortisol. Você não precisa ser forte agora. Deite-se e receba nosso abraço.'
         });
       }
-      // C) CASO: AUTOCUIDADO, ESTILO, BELEZA (COR DE CABELO, ROUPAS, MUDANÇAS)
+      // 5. AUTOCUIDADO, ESTILO, BELEZA (COR DE CABELO, ROUPAS, MUDANÇAS)
       else if (
         fLower.includes('cabelo') || fLower.includes('cor de cabelo') || fLower.includes('cor do cabelo') ||
         fLower.includes('loira') || fLower.includes('morena') || fLower.includes('ruiva') ||
@@ -1083,19 +1131,10 @@ document.addEventListener('DOMContentLoaded', () => {
       ) {
         wait.push({
           raw: frag,
-          note: 'Querer se renovar e mudar o visual (como o cabelo ou estilo) é uma forma linda de autocuidado! Mas decisões sobre você mesma ficam muito mais leves e certeiras com a mente descansada amanhã diante do espelho.'
+          note: 'Querer se renovar e cuidar do visual é uma forma linda de carinho consigo mesma! Guardamos a ideia no cofre para você decidir com calma na luz do dia.'
         });
       }
-      // D) CASO: TAREFAS PRÁTICAS E URGÊNCIAS REAIS
-      else if (
-        fLower.includes('amanhã') || fLower.includes('ligar') || fLower.includes('pagar') ||
-        fLower.includes('comprar') || fLower.includes('enviar') || fLower.includes('reunião') ||
-        fLower.includes('médic') || fLower.includes('escola') || fLower.includes('cedo') ||
-        fLower.includes('prioridade') || fLower.includes('trabalho') || fLower.includes('relatório')
-      ) {
-        tomorrow.push({ raw: frag, action: formatActionItem(frag), done: false });
-      }
-      // E) CASO: AUTOCOBRANÇA E DIÁLOGOS PASSADOS
+      // 6. AUTOCOBRANÇA E DIÁLOGOS PASSADOS
       else if (
         fLower.includes('deveria') || fLower.includes('devia') || fLower.includes('conversa') ||
         fLower.includes('discussão') || fLower.includes('briga') || fLower.includes('remoendo') ||
@@ -1104,10 +1143,10 @@ document.addEventListener('DOMContentLoaded', () => {
       ) {
         rumination.push({
           raw: frag,
-          reframe: 'Esse diálogo ou situação já passou e você não pode editá-lo no escuro da cama. Você fez o melhor que podia com a energia que tinha. Acolha seu esforço com gentileza e perdoe a si mesma esta noite.'
+          reframe: 'Esse diálogo já passou e você fez o melhor que podia com a consciência que tinha. Acolha seu esforço com gentileza e perdoe a si mesma esta noite.'
         });
       }
-      // F) CASO: ANSIEDADE, MEDO E INCERTEZAS DO FUTURO
+      // 7. ANSIEDADE, MEDO E INCERTEZAS DO FUTURO
       else if (
         fLower.includes('medo') || fLower.includes('futuro') || fLower.includes('dar certo') ||
         fLower.includes('e se') || fLower.includes('preocupad') || fLower.includes('ansios') ||
@@ -1118,7 +1157,7 @@ document.addEventListener('DOMContentLoaded', () => {
           reframe: 'Preocupar-se à noite não resolve o futuro; só rouba a sua energia para vivê-lo amanhã. Solte o controle do que está longe e entregue-se ao descanso.'
         });
       }
-      // G) PADRÃO: REFLEXÕES & IDEIAS GUARDADAS COM CARINHO
+      // 8. PADRÃO: REFLEXÕES & IDEIAS GUARDADAS COM CARINHO
       else {
         wait.push({
           raw: frag,
@@ -1127,10 +1166,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    if (tomorrow.length === 0 && wait.length === 0 && release.length === 0 && rumination.length === 0) {
-      rumination.push({
+    const hasPositive = gratitude.length > 0;
+    const hasNegative = rumination.length > 0 || release.length > 0;
+    const counselingAdvice = generateCounselingAdvice(text, fullLower, hasPositive, hasNegative);
+
+    if (gratitude.length === 0 && tomorrow.length === 0 && wait.length === 0 && release.length === 0 && rumination.length === 0) {
+      gratitude.push({
         raw: text,
-        reframe: 'Seu desabafo foi ouvido com respeito e carinho. Nada foi esquecido; descanse sua mente e acolha seu coração.'
+        note: 'Seu momento e reflexões foram acolhidos com respeito e carinho. Durma em paz!'
       });
     }
 
@@ -1139,6 +1182,7 @@ document.addEventListener('DOMContentLoaded', () => {
       date: new Date().toISOString(),
       rawText: text,
       counselingAdvice,
+      gratitude,
       tomorrow,
       wait,
       release,
@@ -1147,7 +1191,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function formatActionItem(str) {
-    let clean = str.replace(/^(preciso|tenho que|não posso esquecer de|lembrar de|amanhã)\s+/i, '');
+    let clean = str.replace(/^(preciso|tenho que|não posso esquecer de|lembrar de|amanhã|levar|buscar)\s+/i, (match) => match.trim() + ' ');
     clean = clean.charAt(0).toUpperCase() + clean.slice(1);
     return clean;
   }
@@ -1166,9 +1210,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const closureSealTitle = document.getElementById('closureSealTitle');
     const closureSealDesc = document.getElementById('closureSealDesc');
     if (closureSealTitle && closureSealDesc) {
-      const totalCount = (data.tomorrow?.length || 0) + (data.wait?.length || 0) + (data.release?.length || 0) + (data.rumination?.length || 0);
-      closureSealTitle.textContent = `✨ ${totalCount} reflexões acolhidas e guardadas no diário.`;
-      closureSealDesc.textContent = 'Suas tarefas e sentimentos estão seguros no papel. O cérebro recebe agora a autorização biológica para desligar a vigília e iniciar o descanso.';
+      const totalCount = (data.gratitude?.length || 0) + (data.tomorrow?.length || 0) + (data.wait?.length || 0) + (data.release?.length || 0) + (data.rumination?.length || 0);
+      const goodCount = (data.gratitude?.length || 0);
+      if (goodCount > 0) {
+        closureSealTitle.textContent = `✨ ${goodCount} momentos bons e ${totalCount - goodCount} pendências acolhidos.`;
+        closureSealDesc.textContent = 'Suas vitórias foram celebradas e suas tarefas organizadas. O cérebro recebe a autorização biológica para desligar a vigília e permitir o sono profundo.';
+      } else {
+        closureSealTitle.textContent = `✨ ${totalCount} reflexões acolhidas e guardadas no diário.`;
+        closureSealDesc.textContent = 'Suas tarefas e sentimentos estão seguros no papel. O cérebro recebe agora a autorização biológica para desligar a vigília e iniciar o descanso.';
+      }
+    }
+
+    // 0. Coisas Boas & Gratidão
+    if (data.gratitude && data.gratitude.length > 0) {
+      catGratitudeContainer.classList.remove('hidden');
+      listGratitude.innerHTML = '';
+      data.gratitude.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'cat-item';
+        li.innerHTML = `
+          <button type="button" class="cat-item-tag interactive" data-tag-type="gratitude" style="background: rgba(212, 163, 115, 0.25); color: var(--accent-amber);" title="Toque para entender por que está aqui">
+            Coisas Boas 🌟
+          </button>
+          <span><strong>${escapeHTML(item.raw)}</strong> <br><small style="color: var(--sage-calm); display: inline-block; margin-top: 0.25rem;">✨ ${escapeHTML(item.note)}</small></span>
+        `;
+        listGratitude.appendChild(li);
+      });
+    } else {
+      catGratitudeContainer.classList.add('hidden');
     }
 
     // 1. Amanhã
@@ -1360,6 +1429,7 @@ document.addEventListener('DOMContentLoaded', () => {
             triaged_data: {
               title: appState.currentTriagedData.title,
               counselingAdvice: appState.currentTriagedData.counselingAdvice,
+              gratitude: appState.currentTriagedData.gratitude,
               tomorrow: appState.currentTriagedData.tomorrow,
               wait: appState.currentTriagedData.wait,
               release: appState.currentTriagedData.release,
@@ -1532,7 +1602,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // PERSISTÊNCIA LOCAL (HISTÓRICO LIMPO)
+  // PERSISTÊNCIA LOCAL (HISTÓRICO & BALANÇO DE VIDA)
   // ==========================================
   function loadHistoryFromLocalStorage() {
     try {
@@ -1566,16 +1636,50 @@ document.addEventListener('DOMContentLoaded', () => {
     let tasksCount = 0;
     let moodScoreSum = 0;
     let moodsRated = 0;
+    let goodThingsTotal = 0;
+    let challengingThingsTotal = 0;
 
     list.forEach(item => {
       if (item.tomorrow) tasksCount += item.tomorrow.length;
+      if (item.gratitude) goodThingsTotal += item.gratitude.length;
+      if (item.release) challengingThingsTotal += item.release.length;
+      if (item.rumination) challengingThingsTotal += item.rumination.length;
+
       if (item.sleepMood) {
         moodsRated++;
-        if (item.sleepMood === 'great') moodScoreSum += 3;
-        else if (item.sleepMood === 'medium') moodScoreSum += 2;
-        else if (item.sleepMood === 'terrible') moodScoreSum += 1;
+        if (item.sleepMood === 'great') {
+          moodScoreSum += 3;
+          goodThingsTotal += 1;
+        } else if (item.sleepMood === 'medium') {
+          moodScoreSum += 2;
+        } else if (item.sleepMood === 'terrible') {
+          moodScoreSum += 1;
+          challengingThingsTotal += 1;
+        }
       }
     });
+
+    // Atualiza Balanço de Vida a Longo Prazo (Desfazendo o Viés de Negatividade)
+    if (countGoodThings) countGoodThings.textContent = goodThingsTotal;
+    if (countChallengingThings) countChallengingThings.textContent = challengingThingsTotal;
+
+    const totalBalanceEvents = goodThingsTotal + challengingThingsTotal;
+    let goodPercentage = 75; // Baseline saudável
+    if (totalBalanceEvents > 0) {
+      goodPercentage = Math.round((goodThingsTotal / totalBalanceEvents) * 100);
+    }
+
+    if (balanceRatioBadge) balanceRatioBadge.textContent = `${goodPercentage}% Coisas Boas`;
+    if (balanceBarGood) balanceBarGood.style.width = `${goodPercentage}%`;
+    if (balanceBarBad) balanceBarBad.style.width = `${100 - goodPercentage}%`;
+
+    if (balanceInsightText) {
+      if (goodPercentage >= 60) {
+        balanceInsightText.innerHTML = `<strong>A vida a longo prazo:</strong> O seu diário comprova que <strong>${goodPercentage}% das suas vivências registradas são coisas boas, afetos e vitórias</strong>! O cérebro tende a focar na dor, mas a sua história é repleta de luz.`;
+      } else {
+        balanceInsightText.innerHTML = `<strong>Força na travessia:</strong> Você enfrentou dias desafiadores, mas cada noite descarregada alivia o cortisol e abre espaço para novos momentos felizes.`;
+      }
+    }
 
     statTasksCleared.textContent = tasksCount;
     if (moodsRated > 0) {
@@ -1605,6 +1709,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const moodEmoji = entry.sleepMood === 'great' ? '😴' : entry.sleepMood === 'medium' ? '😐' : entry.sleepMood === 'terrible' ? '😫' : '🌙';
       const title = entry.title || 'Diário Noturno';
 
+      const countGratitude = entry.gratitude ? entry.gratitude.length : 0;
       const countTomorrow = entry.tomorrow ? entry.tomorrow.length : 0;
       const countWait = entry.wait ? entry.wait.length : 0;
       const countRelease = entry.release ? entry.release.length : 0;
@@ -1619,6 +1724,11 @@ document.addEventListener('DOMContentLoaded', () => {
         ${entry.counselingAdvice ? `<div style="background: rgba(212,163,115,0.08); border-left: 2px solid var(--accent-amber); padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.78rem; color: var(--text-main); font-style: italic; margin-bottom: 0.65rem;">💌 "${escapeHTML(entry.counselingAdvice.substring(0, 130))}..."</div>` : ''}
         
         <div class="history-tags">
+          ${countGratitude > 0 ? `
+            <button type="button" class="cat-item-tag interactive" data-entry-idx="${index}" data-tag-type="gratitude" style="background: rgba(212, 163, 115, 0.25); color: var(--accent-amber);" title="Toque para ver as coisas boas">
+              ${countGratitude} coisas boas 🌟
+            </button>
+          ` : ''}
           <button type="button" class="cat-item-tag interactive" data-entry-idx="${index}" data-tag-type="tomorrow" style="background: rgba(212, 163, 115, 0.2); color: var(--accent-amber);" title="Toque para ver o que foi guardado">
             ${countTomorrow} amanhã 🔍
           </button>
