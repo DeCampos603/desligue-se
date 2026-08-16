@@ -1,7 +1,7 @@
 /**
  * DESLIGUE-SE — Motor Cognitivo de Triagem Noturna & Ritual de Sono (TCC-I)
  * Integração com Supabase (Auth Google/Email, Banco de Dados PostgreSQL & RLS)
- * Otimizado para Mobile-First & Explicações Clínicas Interativas de TCC-I
+ * Inteligência Empática de Acolhimento, Consolo & Terapia do Sono
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -263,26 +263,26 @@ document.addEventListener('DOMContentLoaded', () => {
     tomorrow: {
       title: 'Atenção Amanhã (Ação Imediata)',
       badge: 'Prioridade Executável • TCC-I',
-      meaning: 'Tarefas de alta relevância com prazo iminente. A IA extraiu o primeiro micro-passo para você começar o dia sem hesitação ou sobrecarga.',
-      neuro: 'Reduz a ativação da memória de trabalho no córtex pré-frontal. Ao saber que a tarefa já está agendada no papel, o cérebro desliga a vigilância noturna.'
+      meaning: 'Tarefas e compromissos reais de alta relevância. A IA organizou o primeiro micro-passo para você iniciar o dia com leveza.',
+      neuro: 'Descarrega a memória de trabalho do córtex pré-frontal. Quando a tarefa já está registrada e estruturada, o cérebro desliga a hipervigilância noturna.'
     },
     wait: {
-      title: 'No Cofre (Pode Esperar)',
-      badge: 'Fechamento de Ciclo • Efeito Zeigarnik',
-      meaning: 'Pendências, ideias e pesquisas que não têm prazo ou urgência real para hoje. Ficam guardadas com segurança no seu cofre digital.',
-      neuro: 'Mitiga o Efeito Zeigarnik (loops mentais abertos que causam insônia). Guardar no cofre sinaliza que você não vai esquecer, autorizando o descanso.'
+      title: 'Guardado com Carinho (No Cofre)',
+      badge: 'Autocuidado & Fechamento • Efeito Zeigarnik',
+      meaning: 'Dúvidas pessoais, planos de estilo (como cor de cabelo), ideias e projetos guardados com amor. Eles estão protegidos no seu cofre digital para você revisitar no momento certo.',
+      neuro: 'O Efeito Zeigarnik faz o cérebro remoer assuntos sem encerramento. Guardar no cofre sinaliza que nada se perderá, autorizando o descanso profundo.'
     },
     release: {
-      title: 'Soltar (Fora de Controle)',
+      title: 'Soltar com Gentileza (Fora de Controle)',
       badge: 'Aceitação Radical • ACT',
-      meaning: 'Incertezas futuras, resultados pendentes ou comportamentos de terceiros que você não pode controlar ou alterar deitada no escuro.',
-      neuro: 'Desativação do Eixo HPA: lutar mentalmente contra o incontrolável dispara cortisol. A aceitação radical permite a transição para ondas teta e sono profundo.'
+      meaning: 'Incertezas futuras, resultados pendentes ou expectativas alheias que você não tem como resolver deitada no escuro da noite.',
+      neuro: 'Acalma o Eixo HPA e cessa a produção de cortisol. Reconhecer o que está fora do seu alcance permite ao corpo ativar o sistema parassimpático e adormecer.'
     },
     rumination: {
-      title: 'Acolhimento (Ruminação & Diálogos)',
-      badge: 'Desfusão Cognitiva • Autocompaixão',
-      meaning: 'Loops de autocobrança ("e se...", arrependimentos por conversas passadas). Reconhecemos seu esforço sem julgamento.',
-      neuro: 'A rotulação gentil (Labeling) interrompe a espiral de ruminação na Default Mode Network (DMN), restaurando a serenidade emocional.'
+      title: 'Acolhimento, Conforto & Consolo',
+      badge: 'Escuta Empática • Autocompaixão',
+      meaning: 'Dores do coração (como términos e perdas), tristeza, solidão e autocobranças. Aqui seus sentimentos são ouvidos com carinho, respeito e acolhimento humano.',
+      neuro: 'A validação empática reduz a hiperatividade da amígdala e da Default Mode Network (DMN), aliviando a dor emocional e trazendo paz.'
     }
   };
 
@@ -299,11 +299,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const box = document.getElementById(boxId);
       if (trigger && box) {
         trigger.addEventListener('click', (e) => {
-          // Não fecha se clicou num item da lista
-          if (e.target.closest('.cat-list') || e.target.closest('input')) return;
+          if (e.target.closest('.cat-list') || e.target.closest('input') || e.target.closest('button')) return;
           box.classList.toggle('hidden');
         });
       }
+    });
+
+    document.querySelectorAll('.btn-info-tag').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tag = btn.getAttribute('data-tag');
+        openTagDetailModal(tag);
+      });
     });
   }
 
@@ -458,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function syncCloudHistory(userId) {
     if (!supabase) return;
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('journal_entries')
         .select('*')
         .eq('user_id', userId)
@@ -562,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // MOTOR DE TRIAGEM COGNITIVA TCC-I
+  // MOTOR DE TRIAGEM COGNITIVA & EMPATIA HUMANA
   // ==========================================
   function handleProcessDump() {
     const text = journalInput.value.trim();
@@ -591,14 +598,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function generateAutoTitle(text) {
     const lower = text.toLowerCase();
-    if (lower.includes('trabalho') || lower.includes('reunião') || lower.includes('chefe')) {
-      return 'Reflexão sobre Trabalho e Prioridades';
+    if (lower.includes('término') || lower.includes('terminou') || lower.includes('separação') || lower.includes('ex') || lower.includes('namorado') || lower.includes('marido') || lower.includes('coração')) {
+      return 'Cuidando do Coração & Acolhendo o Fim';
+    } else if (lower.includes('triste') || lower.includes('choro') || lower.includes('chorar') || lower.includes('ruim') || lower.includes('vazio') || lower.includes('sozinha')) {
+      return 'Acolhimento Noturno & Desabafo Sincero';
+    } else if (lower.includes('cabelo') || lower.includes('mudar') || lower.includes('estilo') || lower.includes('roupa') || lower.includes('corpo')) {
+      return 'Inspiração, Autocuidado & Reflexão';
+    } else if (lower.includes('trabalho') || lower.includes('reunião') || lower.includes('chefe') || lower.includes('empresa')) {
+      return 'Fechamento do Trabalho & Prioridades';
     } else if (lower.includes('família') || lower.includes('mãe') || lower.includes('filho') || lower.includes('criança')) {
-      return 'Cuidado Familiar e Logística';
+      return 'Cuidado Familiar & Rotina de Casa';
     } else if (lower.includes('conversa') || lower.includes('discussão') || lower.includes('briga')) {
       return 'Desapegando de Diálogos do Dia';
     } else if (lower.includes('medo') || lower.includes('ansios') || lower.includes('futuro')) {
-      return 'Acolhendo Incertezas e Ansiedade';
+      return 'Serenidade diante das Incertezas';
     } else {
       const now = new Date();
       const dias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
@@ -610,17 +623,90 @@ document.addEventListener('DOMContentLoaded', () => {
     const fragments = text
       .split(/(?:[.,;!\n\?]+|\be\s+também\b|\be\s+não\b|\be\s+preciso\b|\be\s+tenho\b)/gi)
       .map(s => s.trim())
-      .filter(s => s.length > 4);
+      .filter(s => s.length > 3);
 
     const tomorrow = [];
     const wait = [];
     const release = [];
     const rumination = [];
 
+    const fullLower = text.toLowerCase();
+
+    // 1. ANÁLISE GLOBAL DE IMPACTO EMOCIONAL (GRIEF / BREAKUP / DEEP SADNESS)
+    const isBreakup = fullLower.includes('término') || fullLower.includes('terminou') || fullLower.includes('terminar') || fullLower.includes('separação') || fullLower.includes('separou') || fullLower.includes('namorado') || fullLower.includes('namorada') || fullLower.includes('marido') || fullLower.includes('ex ') || fullLower.includes('meu ex') || fullLower.includes('minha ex') || fullLower.includes('desamor') || fullLower.includes('coração partido');
+    const isDeepSadness = fullLower.includes('está ruim') || fullLower.includes('tá ruim') || fullLower.includes('muito mal') || fullLower.includes('triste') || fullLower.includes('chorando') || fullLower.includes('chorei') || fullLower.includes('vazio') || fullLower.includes('sozinha') || fullLower.includes('solidão') || fullLower.includes('sem rumo') || fullLower.includes('não aguento mais') || fullLower.includes('dor no peito');
+
     fragments.forEach(frag => {
       const fLower = frag.toLowerCase();
 
+      // A) CASO: TÉRMINO OU LUTO AMOROSO
       if (
+        fLower.includes('término') ||
+        fLower.includes('terminou') ||
+        fLower.includes('terminar') ||
+        fLower.includes('separação') ||
+        fLower.includes('separou') ||
+        fLower.includes('namorado') ||
+        fLower.includes('namorada') ||
+        fLower.includes('marido') ||
+        fLower.includes('ex ') ||
+        fLower.includes('meu ex') ||
+        fLower.includes('minha ex') ||
+        fLower.includes('desamor') ||
+        fLower.includes('coração partido') ||
+        (isBreakup && (fLower.includes('ruim') || fLower.includes('dor') || fLower.includes('saudade') || fLower.includes('chorei') || fLower.includes('triste')))
+      ) {
+        rumination.push({
+          raw: frag,
+          reframe: 'Términos doem de verdade e a noite é o momento em que a saudade e o silêncio mais pesam. Seu coração está em luto e essa dor é legítima. Você não precisa "superar" nada hoje à noite. Abrace seu travesseiro com carinho, respire fundo e se dê colo. Você é preciosa e vai reencontrar sua paz.'
+        });
+      }
+      // B) CASO: TRISTEZA PROFUNDA, CHORO OU SOLIDÃO
+      else if (
+        fLower.includes('está ruim') ||
+        fLower.includes('tá ruim') ||
+        fLower.includes('muito mal') ||
+        fLower.includes('triste') ||
+        fLower.includes('chorando') ||
+        fLower.includes('chorei') ||
+        fLower.includes('vazio') ||
+        fLower.includes('sozinha') ||
+        fLower.includes('solidão') ||
+        fLower.includes('angústia') ||
+        fLower.includes('desanimada') ||
+        fLower.includes('sem forças') ||
+        fLower.includes('esgotada')
+      ) {
+        rumination.push({
+          raw: frag,
+          reframe: 'Permita-se sentir e soltar as lágrimas se o corpo pedir. O choro é a forma natural do cérebro descarregar a dor e baixar o cortisol. Você não precisa ser forte agora. Deite-se, sinta o aconchego da cama e lembre-se: você é acolhida aqui.'
+        });
+      }
+      // C) CASO: AUTOCUIDADO, ESTILO, BELEZA (COR DE CABELO, ROUPAS, MUDANÇAS)
+      else if (
+        fLower.includes('cabelo') ||
+        fLower.includes('cor de cabelo') ||
+        fLower.includes('cor do cabelo') ||
+        fLower.includes('loira') ||
+        fLower.includes('morena') ||
+        fLower.includes('ruiva') ||
+        fLower.includes('pintar') ||
+        fLower.includes('cortar') ||
+        fLower.includes('roupa') ||
+        fLower.includes('vestido') ||
+        fLower.includes('look') ||
+        fLower.includes('estilo') ||
+        fLower.includes('visual') ||
+        fLower.includes('corpo') ||
+        fLower.includes('autoestima')
+      ) {
+        wait.push({
+          raw: frag,
+          note: 'Querer se renovar e mudar o visual (como o cabelo ou estilo) é uma forma linda de autocuidado! Mas decisões sobre você mesma ficam muito mais leves e certeiras com a mente descansada amanhã diante do espelho.'
+        });
+      }
+      // D) CASO: TAREFAS PRÁTICAS E URGÊNCIAS REAIS
+      else if (
         fLower.includes('amanhã') ||
         fLower.includes('ligar') ||
         fLower.includes('pagar') ||
@@ -630,10 +716,14 @@ document.addEventListener('DOMContentLoaded', () => {
         fLower.includes('médic') ||
         fLower.includes('escola') ||
         fLower.includes('cedo') ||
-        fLower.includes('prioridade')
+        fLower.includes('prioridade') ||
+        fLower.includes('trabalho') ||
+        fLower.includes('relatório')
       ) {
         tomorrow.push({ raw: frag, action: formatActionItem(frag), done: false });
-      } else if (
+      }
+      // E) CASO: AUTOCOBRANÇA E DIÁLOGOS PASSADOS
+      else if (
         fLower.includes('deveria') ||
         fLower.includes('devia') ||
         fLower.includes('conversa') ||
@@ -641,31 +731,44 @@ document.addEventListener('DOMContentLoaded', () => {
         fLower.includes('briga') ||
         fLower.includes('remoendo') ||
         fLower.includes('arrepend') ||
-        fLower.includes('culpa')
+        fLower.includes('culpa') ||
+        fLower.includes('falhei') ||
+        fLower.includes('burra')
       ) {
         rumination.push({
           raw: frag,
-          reframe: 'Esse diálogo já passou e você não pode editá-lo no escuro da cama. Acolha com carinho e deixe ir.'
+          reframe: 'Esse diálogo ou situação já passou e você não pode editá-lo no escuro da cama. Você fez o melhor que podia com a energia que tinha. Acolha seu esforço com gentileza e perdoe a si mesma esta noite.'
         });
-      } else if (
+      }
+      // F) CASO: ANSIEDADE, MEDO E INCERTEZAS DO FUTURO
+      else if (
         fLower.includes('medo') ||
         fLower.includes('futuro') ||
         fLower.includes('dar certo') ||
         fLower.includes('e se') ||
         fLower.includes('preocupad') ||
-        fLower.includes('ansios')
+        fLower.includes('ansios') ||
+        fLower.includes('pânico')
       ) {
         release.push({
           raw: frag,
-          reframe: 'Preocupar-se à noite não resolve o futuro; só rouba a sua energia para enfrentá-lo amanhã. Pode soltar.'
+          reframe: 'Preocupar-se à noite não resolve o futuro; só rouba a sua energia para vivê-lo amanhã. Solte o controle do que está longe e entregue-se ao descanso.'
         });
-      } else {
-        wait.push({ raw: frag, note: 'Guardado com segurança no cofre. Sem urgência imediata.' });
+      }
+      // G) PADRÃO: REFLEXÕES & IDEIAS GUARDADAS COM CARINHO
+      else {
+        wait.push({
+          raw: frag,
+          note: 'Guardado com carinho no seu cofre seguro. Fica protegido aqui para sua mente repousar em paz e clareza.'
+        });
       }
     });
 
     if (tomorrow.length === 0 && wait.length === 0 && release.length === 0 && rumination.length === 0) {
-      tomorrow.push({ raw: text, action: 'Rever anotações com clareza amanhã pela manhã (Guardado)', done: false });
+      rumination.push({
+        raw: text,
+        reframe: 'Seu desabafo foi ouvido com respeito e carinho. Nada foi esquecido; descanse sua mente e acolha seu coração.'
+      });
     }
 
     return {
@@ -705,7 +808,7 @@ document.addEventListener('DOMContentLoaded', () => {
         listTomorrow.appendChild(li);
       });
     } else {
-      listTomorrow.innerHTML = '<li class="cat-item"><span>Nenhuma urgência identificada para a manhã. Ótimo!</span></li>';
+      listTomorrow.innerHTML = '<li class="cat-item"><span>Nenhuma urgência prática para a manhã. Seu dia começará mais suave!</span></li>';
     }
 
     // 2. No Cofre
@@ -718,12 +821,12 @@ document.addEventListener('DOMContentLoaded', () => {
           <button type="button" class="cat-item-tag interactive" data-tag-type="wait" title="Toque para entender por que está aqui">
             No Cofre ℹ️
           </button>
-          <span>${escapeHTML(item.raw)} — <em>(Não precisa da sua atenção esta noite)</em></span>
+          <span>${escapeHTML(item.raw)} <br><small style="color: var(--sage-calm);">✨ ${escapeHTML(item.note)}</small></span>
         `;
         listWait.appendChild(li);
       });
     } else {
-      listWait.innerHTML = '<li class="cat-item"><span>Sem pendências secundárias acumuladas.</span></li>';
+      listWait.innerHTML = '<li class="cat-item"><span>Sem pendências ou ideias secundárias acumuladas.</span></li>';
     }
 
     // 3. Soltar
@@ -736,7 +839,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <button type="button" class="cat-item-tag interactive" data-tag-type="release" title="Toque para entender por que está aqui">
             Soltar ℹ️
           </button>
-          <span>${escapeHTML(item.raw)} <br><small style="color: var(--sage-calm);">${item.reframe}</small></span>
+          <span>${escapeHTML(item.raw)} <br><small style="color: var(--sage-calm);">🕊️ ${escapeHTML(item.reframe)}</small></span>
         `;
         listRelease.appendChild(li);
       });
@@ -744,7 +847,7 @@ document.addEventListener('DOMContentLoaded', () => {
       listRelease.innerHTML = '<li class="cat-item"><span>Sua mente está livre de grandes incertezas hoje.</span></li>';
     }
 
-    // 4. Ruminação
+    // 4. Acolhimento do Coração / Ruminação
     if (data.rumination.length > 0) {
       catRuminationContainer.classList.remove('hidden');
       listRumination.innerHTML = '';
@@ -752,10 +855,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const li = document.createElement('li');
         li.className = 'cat-item';
         li.innerHTML = `
-          <button type="button" class="cat-item-tag interactive" data-tag-type="rumination" style="background: rgba(181, 131, 141, 0.2); color: var(--lilac-twilight);" title="Toque para entender por que está aqui">
-            Acolhimento ℹ️
+          <button type="button" class="cat-item-tag interactive" data-tag-type="rumination" style="background: rgba(181, 131, 141, 0.25); color: var(--lilac-twilight);" title="Toque para entender por que está aqui">
+            Acolhimento & Consolo ℹ️
           </button>
-          <span>${escapeHTML(item.raw)} <br><small style="color: var(--lilac-twilight);">${item.reframe}</small></span>
+          <span><strong>${escapeHTML(item.raw)}</strong> <br><small style="color: var(--lilac-twilight); line-height: 1.45; display: inline-block; margin-top: 0.35rem;">💜 ${escapeHTML(item.reframe)}</small></span>
         `;
         listRumination.appendChild(li);
       });
@@ -763,7 +866,7 @@ document.addEventListener('DOMContentLoaded', () => {
       catRuminationContainer.classList.add('hidden');
     }
 
-    // Adiciona listener de clique nas tags interativas dos itens
+    // Listener para tags clicáveis
     document.querySelectorAll('.cat-item-tag.interactive').forEach(tagBtn => {
       tagBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -853,7 +956,7 @@ document.addEventListener('DOMContentLoaded', () => {
       routinePhaseTag.textContent = 'Fase 2: Relaxamento Somático';
     } else {
       somaticStepTitle.textContent = 'Permissão para adormecer';
-      somaticStepDesc.textContent = 'Sua mente está organizada e guardada. O dia foi concluído com sucesso. Entregue-se ao repouso.';
+      somaticStepDesc.textContent = 'Sua mente está acolhida e guardada. O dia foi concluído com sucesso. Entregue-se ao repouso.';
       routinePhaseTag.textContent = 'Fase 3: Transição para o Sono';
     }
   }
@@ -1045,7 +1148,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (mood === 'medium') {
       insightText.innerHTML = '<strong>Descanso Regular:</strong> Você organizou o dia, mas o corpo reteve alguma tensão. Recomendamos testar a rotina de 5 minutos hoje à noite.';
     } else {
-      insightText.innerHTML = '<strong>Noite Desafiadora:</strong> Seu dia foi exigente. Hoje à noite, dedique 5 a 10 minutos para a respiração 4-7-8 e a soltura de pensamentos.';
+      insightText.innerHTML = '<strong>Noite Desafiadora:</strong> Seu dia foi exigente. Hoje à noite, dedique 5 a 10 minutos para a respiração 4-7-8 e o acolhimento de sentimentos.';
     }
   }
 
