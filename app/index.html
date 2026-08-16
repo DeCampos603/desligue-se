@@ -170,18 +170,27 @@
           </p>
         </div>
 
-        <!-- Grid de Categorias Cognitivas -->
+        <!-- Grid de Categorias Cognitivas Interativas -->
         <div class="categories-grid">
           
           <!-- Categoria 1: Atenção Amanhã -->
           <div class="cat-card cat-tomorrow">
-            <div class="cat-header">
+            <div class="cat-header" id="headerTomorrow" role="button" tabindex="0" title="Toque para ver a explicação psicológica">
               <span class="cat-icon">📋</span>
-              <div>
-                <h3 class="cat-title">O que precisa da sua atenção amanhã</h3>
+              <div class="cat-header-info">
+                <div class="cat-title-row">
+                  <h3 class="cat-title">O que precisa da sua atenção amanhã</h3>
+                  <button class="btn-info-tag" data-tag="tomorrow" title="Por que está aqui?">ℹ️ Por que aqui?</button>
+                </div>
                 <span class="cat-desc">Já organizado em ações claras para o início do dia</span>
               </div>
             </div>
+
+            <!-- Caixa Explicativa Ocultável -->
+            <div id="whyBoxTomorrow" class="cat-why-box hidden">
+              <p><strong>🧠 Fundamento TCC-I:</strong> Ao mastigar essa tarefa em um primeiro micro-passo executável e agendá-la para a manhã, desarmamos a ansiedade antecipatória e liberamos a memória de trabalho do córtex pré-frontal.</p>
+            </div>
+
             <ul id="listTomorrow" class="cat-list">
               <!-- Itens injetados via JS -->
             </ul>
@@ -189,13 +198,22 @@
 
           <!-- Categoria 2: Pode Esperar -->
           <div class="cat-card cat-wait">
-            <div class="cat-header">
+            <div class="cat-header" id="headerWait" role="button" tabindex="0" title="Toque para ver a explicação psicológica">
               <span class="cat-icon">📦</span>
-              <div>
-                <h3 class="cat-title">O que pode esperar (Guardado no Cofre)</h3>
-                <span class="cat-desc">Sem urgência real. Não consuma sua noite com isso.</span>
+              <div class="cat-header-info">
+                <div class="cat-title-row">
+                  <h3 class="cat-title">O que pode esperar (No Cofre)</h3>
+                  <button class="btn-info-tag" data-tag="wait" title="Por que está aqui?">ℹ️ Por que aqui?</button>
+                </div>
+                <span class="cat-desc">Sem urgência real. Guardado para não consumir sua noite.</span>
               </div>
             </div>
+
+            <!-- Caixa Explicativa Ocultável -->
+            <div id="whyBoxWait" class="cat-why-box hidden">
+              <p><strong>🔒 Efeito Zeigarnik:</strong> O cérebro mantém loops abertos para pendências sem destino certo. O Desligue-se guarda isso no seu cofre digital, sinalizando à mente que ela tem permissão para esquecer até amanhã.</p>
+            </div>
+
             <ul id="listWait" class="cat-list">
               <!-- Itens injetados via JS -->
             </ul>
@@ -203,13 +221,22 @@
 
           <!-- Categoria 3: Fora de Controle / Soltura -->
           <div class="cat-card cat-release">
-            <div class="cat-header">
+            <div class="cat-header" id="headerRelease" role="button" tabindex="0" title="Toque para ver a explicação psicológica">
               <span class="cat-icon">🍃</span>
-              <div>
-                <h3 class="cat-title">O que você não precisa resolver hoje</h3>
-                <span class="cat-desc">Incertezas fora do seu controle imediato. Permissão para soltar.</span>
+              <div class="cat-header-info">
+                <div class="cat-title-row">
+                  <h3 class="cat-title">O que você não precisa resolver hoje</h3>
+                  <button class="btn-info-tag" data-tag="release" title="Por que está aqui?">ℹ️ Por que aqui?</button>
+                </div>
+                <span class="cat-desc">Incertezas fora do seu controle deitada no escuro. Permissão para soltar.</span>
               </div>
             </div>
+
+            <!-- Caixa Explicativa Ocultável -->
+            <div id="whyBoxRelease" class="cat-why-box hidden">
+              <p><strong>🕊️ Aceitação Radical (ACT):</strong> Preocupar-se no escuro da cama não altera incertezas futuras e só eleva o cortisol. Reconhecemos a preocupação e convidamos o corpo a soltar o controle ativo.</p>
+            </div>
+
             <ul id="listRelease" class="cat-list">
               <!-- Itens injetados via JS -->
             </ul>
@@ -217,13 +244,22 @@
 
           <!-- Categoria 4: Ruminações / Validação -->
           <div id="catRuminationContainer" class="cat-card cat-rumination hidden">
-            <div class="cat-header">
+            <div class="cat-header" id="headerRumination" role="button" tabindex="0" title="Toque para ver a explicação psicológica">
               <span class="cat-icon">💜</span>
-              <div>
-                <h3 class="cat-title">Pensamento Repetitivo Acolhido</h3>
+              <div class="cat-header-info">
+                <div class="cat-title-row">
+                  <h3 class="cat-title">Pensamento Repetitivo Acolhido</h3>
+                  <button class="btn-info-tag" data-tag="rumination" title="Por que está aqui?">ℹ️ Por que aqui?</button>
+                </div>
                 <span class="cat-desc">Reconhecemos a sua autocobrança. Você já foi suficiente hoje.</span>
               </div>
             </div>
+
+            <!-- Caixa Explicativa Ocultável -->
+            <div id="whyBoxRumination" class="cat-why-box hidden">
+              <p><strong>💜 Desfusão Cognitiva:</strong> Rompe a espiral de ruminação ('e se...', autocobrança por diálogos passados) através da rotulação gentil e autocompaixão, sem julgamento.</p>
+            </div>
+
             <ul id="listRumination" class="cat-list">
               <!-- Itens injetados via JS -->
             </ul>
@@ -553,10 +589,54 @@
     </div>
   </div>
 
+  <!-- Modal Informativo de Legendas / TCC-I -->
+  <div id="modalTagDetail" class="modal-backdrop hidden">
+    <div class="modal-card tag-detail-modal-card">
+      <button id="btnCloseTagModal" class="modal-close-btn" title="Fechar">&times;</button>
+      <div class="modal-header">
+        <div class="badge-tag" id="tagDetailBadge">Explicação Clínica</div>
+        <h2 class="modal-title" id="tagDetailTitle">Por que está categorizado aqui?</h2>
+      </div>
+      <div class="tag-detail-content">
+        <div class="tag-why-item">
+          <h4>🎯 O que significa:</h4>
+          <p id="tagDetailMeaning">Descrição do tipo de pensamento.</p>
+        </div>
+        <div class="tag-why-item">
+          <h4>🧠 Como isso te ajuda a dormir (Neurociência):</h4>
+          <p id="tagDetailNeuro">Explicação fisiológica de TCC-I e alívio do cortisol.</p>
+        </div>
+      </div>
+      <div class="modal-footer-dismiss">
+        <button id="btnDismissTagModal" class="btn-primary btn-plan" style="max-width: 100%;">Entendi, pode fechar</button>
+      </div>
+    </div>
+  </div>
+
   <footer class="app-footer">
     <p>“Você não tem insônia. Às vezes você simplesmente levou o dia inteiro para a cama.”</p>
     <small>Desligue-se © 2026 • Fundamentado em TCC-I e Neurociência do Sono.</small>
   </footer>
+
+  <!-- Barra de Navegação Inferior Fixa para Celular (Mobile App Experience) -->
+  <nav class="mobile-bottom-nav">
+    <button id="btnMobNight" class="mob-nav-btn active" title="Ritual Noturno">
+      <span class="mob-nav-icon">🌙</span>
+      <span class="mob-nav-label">Noite</span>
+    </button>
+    <button id="btnMobMorning" class="mob-nav-btn" title="Check-in Matinal">
+      <span class="mob-nav-icon">☀️</span>
+      <span class="mob-nav-label">Manhã</span>
+    </button>
+    <button id="btnMobHistory" class="mob-nav-btn" title="Diário e Histórico">
+      <span class="mob-nav-icon">📖</span>
+      <span class="mob-nav-label">Diário</span>
+    </button>
+    <button id="btnMobPremium" class="mob-nav-btn premium-mob-btn" title="Planos Premium">
+      <span class="mob-nav-icon">✨</span>
+      <span class="mob-nav-label">Premium</span>
+    </button>
+  </nav>
 
   <script src="app.js"></script>
 </body>

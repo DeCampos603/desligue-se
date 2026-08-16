@@ -1,6 +1,7 @@
 /**
  * DESLIGUE-SE — Motor Cognitivo de Triagem Noturna & Ritual de Sono (TCC-I)
  * Integração com Supabase (Auth Google/Email, Banco de Dados PostgreSQL & RLS)
+ * Otimizado para Mobile-First & Explicações Clínicas Interativas de TCC-I
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   try {
     if (window.supabase && typeof window.supabase.createClient === 'function') {
       supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('✅ Supabase conectado com sucesso:', SUPABASE_URL);
+      console.log('✅ Supabase conectado:', SUPABASE_URL);
     }
   } catch (err) {
     console.warn('Supabase não inicializado localmente:', err);
@@ -34,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedRoutineMinutes: 3,
     routineInterval: null,
     routineSecondsRemaining: 180,
-    breathingPhase: 'inhale', // 'inhale', 'hold', 'exhale'
+    breathingPhase: 'inhale',
     soundActive: false,
     audioCtx: null,
     noiseNode: null,
@@ -60,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     goodNight: document.getElementById('stepGoodNight')
   };
 
+  // Navegação Desktop & Mobile
   const navBtns = {
     night: document.getElementById('btnTabNight'),
     morning: document.getElementById('btnTabMorning'),
@@ -67,6 +69,13 @@ document.addEventListener('DOMContentLoaded', () => {
     premium: document.getElementById('btnOpenPremium'),
     auth: document.getElementById('btnOpenAuth'),
     logo: document.getElementById('btnLogoHome')
+  };
+
+  const mobNavBtns = {
+    night: document.getElementById('btnMobNight'),
+    morning: document.getElementById('btnMobMorning'),
+    history: document.getElementById('btnMobHistory'),
+    premium: document.getElementById('btnMobPremium')
   };
 
   const userAvatarIcon = document.getElementById('userAvatarIcon');
@@ -78,13 +87,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnVoiceInput = document.getElementById('btnVoiceInput');
   const voiceBtnLabel = document.getElementById('voiceBtnLabel');
 
-  // Navegação entre passos (Botões de Retorno)
+  // Navegação entre passos (Retorno)
   const btnBackToDump = document.getElementById('btnBackToDump');
   const btnBackToResult = document.getElementById('btnBackToResult');
   const btnRestartNight = document.getElementById('btnRestartNight');
   const btnMorningToNight = document.getElementById('btnMorningToNight');
   const btnHistoryToNight = document.getElementById('btnHistoryToNight');
 
+  // Categorias & Listas
   const resultEntryTitle = document.getElementById('resultEntryTitle');
   const listTomorrow = document.getElementById('listTomorrow');
   const listWait = document.getElementById('listWait');
@@ -92,6 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const listRumination = document.getElementById('listRumination');
   const catRuminationContainer = document.getElementById('catRuminationContainer');
 
+  // Rotina de Relaxamento
   const durationBtns = document.querySelectorAll('.duration-btn');
   const routineTimeBadge = document.getElementById('routineTimeBadge');
   const btnStartRoutine = document.getElementById('btnStartRoutine');
@@ -108,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const somaticStepDesc = document.getElementById('somaticStepDesc');
   const routinePhaseTag = document.getElementById('routinePhaseTag');
 
+  // Check-in Matinal
   const btnNewMorningCheckin = document.getElementById('btnNewMorningCheckin');
   const moodBtns = document.querySelectorAll('.mood-btn');
   const morningTasksList = document.getElementById('morningTasksList');
@@ -121,6 +133,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const modalAuth = document.getElementById('modalAuth');
   const btnCloseAuthModal = document.getElementById('btnCloseAuthModal');
+
+  // Modal Explicativo de Tags TCC-I
+  const modalTagDetail = document.getElementById('modalTagDetail');
+  const btnCloseTagModal = document.getElementById('btnCloseTagModal');
+  const btnDismissTagModal = document.getElementById('btnDismissTagModal');
+  const tagDetailBadge = document.getElementById('tagDetailBadge');
+  const tagDetailTitle = document.getElementById('tagDetailTitle');
+  const tagDetailMeaning = document.getElementById('tagDetailMeaning');
+  const tagDetailNeuro = document.getElementById('tagDetailNeuro');
 
   // Auth Elements
   const authViewLoggedOut = document.getElementById('authViewLoggedOut');
@@ -136,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const loggedUserPlanBadge = document.getElementById('loggedUserPlanBadge');
   const btnSignOut = document.getElementById('btnSignOut');
 
-  // Stats
+  // Stats & Histórico
   const statTotalNights = document.getElementById('statTotalNights');
   const statAvgMood = document.getElementById('statAvgMood');
   const statTasksCleared = document.getElementById('statTasksCleared');
@@ -151,6 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initRoutineDuration();
   initMorningCheckin();
   initModals();
+  initCategoryWhyToggles();
   initSupabaseAuth();
   updateHistoryUI();
 
@@ -165,10 +187,8 @@ document.addEventListener('DOMContentLoaded', () => {
   btnToggleSound.addEventListener('click', toggleAudioSoundscape);
   btnNewMorningCheckin.addEventListener('click', () => switchView('morning'));
 
-  // Eventos de Retorno
-  if (btnBackToDump) {
-    btnBackToDump.addEventListener('click', () => showStep('dump'));
-  }
+  // Botões de Retorno
+  if (btnBackToDump) btnBackToDump.addEventListener('click', () => showStep('dump'));
   if (btnBackToResult) {
     btnBackToResult.addEventListener('click', () => {
       if (appState.routineInterval) clearInterval(appState.routineInterval);
@@ -185,11 +205,115 @@ document.addEventListener('DOMContentLoaded', () => {
       switchView('night');
     });
   }
-  if (btnMorningToNight) {
-    btnMorningToNight.addEventListener('click', () => switchView('night'));
+  if (btnMorningToNight) btnMorningToNight.addEventListener('click', () => switchView('night'));
+  if (btnHistoryToNight) btnHistoryToNight.addEventListener('click', () => switchView('night'));
+
+  // ==========================================
+  // NAVEGAÇÃO DESKTOP & MOBILE SINCRONIZADA
+  // ==========================================
+  function initNavigation() {
+    // Desktop
+    navBtns.night?.addEventListener('click', () => switchView('night'));
+    navBtns.morning?.addEventListener('click', () => switchView('morning'));
+    navBtns.history?.addEventListener('click', () => switchView('history'));
+    navBtns.logo?.addEventListener('click', () => switchView('night'));
+
+    // Mobile Bottom Nav
+    mobNavBtns.night?.addEventListener('click', () => switchView('night'));
+    mobNavBtns.morning?.addEventListener('click', () => switchView('morning'));
+    mobNavBtns.history?.addEventListener('click', () => switchView('history'));
+    mobNavBtns.premium?.addEventListener('click', () => modalPremium.classList.remove('hidden'));
   }
-  if (btnHistoryToNight) {
-    btnHistoryToNight.addEventListener('click', () => switchView('night'));
+
+  function switchView(viewName) {
+    Object.keys(views).forEach(k => {
+      views[k].classList.toggle('active', k === viewName);
+    });
+
+    // Atualiza Desktop
+    navBtns.night?.classList.toggle('active', viewName === 'night');
+    navBtns.morning?.classList.toggle('active', viewName === 'morning');
+    navBtns.history?.classList.toggle('active', viewName === 'history');
+
+    // Atualiza Mobile
+    mobNavBtns.night?.classList.toggle('active', viewName === 'night');
+    mobNavBtns.morning?.classList.toggle('active', viewName === 'morning');
+    mobNavBtns.history?.classList.toggle('active', viewName === 'history');
+
+    if (viewName === 'morning') {
+      renderMorningView();
+    } else if (viewName === 'history') {
+      updateHistoryUI();
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function showStep(stepName) {
+    Object.keys(steps).forEach(k => {
+      steps[k].classList.toggle('hidden', k !== stepName);
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ==========================================
+  // CAIXAS EXPLICATIVAS DE TCC-I & MODAL DE TAGS
+  // ==========================================
+  const TAG_INFO_DICTIONARY = {
+    tomorrow: {
+      title: 'Atenção Amanhã (Ação Imediata)',
+      badge: 'Prioridade Executável • TCC-I',
+      meaning: 'Tarefas de alta relevância com prazo iminente. A IA extraiu o primeiro micro-passo para você começar o dia sem hesitação ou sobrecarga.',
+      neuro: 'Reduz a ativação da memória de trabalho no córtex pré-frontal. Ao saber que a tarefa já está agendada no papel, o cérebro desliga a vigilância noturna.'
+    },
+    wait: {
+      title: 'No Cofre (Pode Esperar)',
+      badge: 'Fechamento de Ciclo • Efeito Zeigarnik',
+      meaning: 'Pendências, ideias e pesquisas que não têm prazo ou urgência real para hoje. Ficam guardadas com segurança no seu cofre digital.',
+      neuro: 'Mitiga o Efeito Zeigarnik (loops mentais abertos que causam insônia). Guardar no cofre sinaliza que você não vai esquecer, autorizando o descanso.'
+    },
+    release: {
+      title: 'Soltar (Fora de Controle)',
+      badge: 'Aceitação Radical • ACT',
+      meaning: 'Incertezas futuras, resultados pendentes ou comportamentos de terceiros que você não pode controlar ou alterar deitada no escuro.',
+      neuro: 'Desativação do Eixo HPA: lutar mentalmente contra o incontrolável dispara cortisol. A aceitação radical permite a transição para ondas teta e sono profundo.'
+    },
+    rumination: {
+      title: 'Acolhimento (Ruminação & Diálogos)',
+      badge: 'Desfusão Cognitiva • Autocompaixão',
+      meaning: 'Loops de autocobrança ("e se...", arrependimentos por conversas passadas). Reconhecemos seu esforço sem julgamento.',
+      neuro: 'A rotulação gentil (Labeling) interrompe a espiral de ruminação na Default Mode Network (DMN), restaurando a serenidade emocional.'
+    }
+  };
+
+  function initCategoryWhyToggles() {
+    const toggles = [
+      { triggerId: 'headerTomorrow', boxId: 'whyBoxTomorrow' },
+      { triggerId: 'headerWait', boxId: 'whyBoxWait' },
+      { triggerId: 'headerRelease', boxId: 'whyBoxRelease' },
+      { triggerId: 'headerRumination', boxId: 'whyBoxRumination' }
+    ];
+
+    toggles.forEach(({ triggerId, boxId }) => {
+      const trigger = document.getElementById(triggerId);
+      const box = document.getElementById(boxId);
+      if (trigger && box) {
+        trigger.addEventListener('click', (e) => {
+          // Não fecha se clicou num item da lista
+          if (e.target.closest('.cat-list') || e.target.closest('input')) return;
+          box.classList.toggle('hidden');
+        });
+      }
+    });
+  }
+
+  function openTagDetailModal(tagType) {
+    const info = TAG_INFO_DICTIONARY[tagType] || TAG_INFO_DICTIONARY.tomorrow;
+    tagDetailTitle.textContent = info.title;
+    tagDetailBadge.textContent = info.badge;
+    tagDetailMeaning.textContent = info.meaning;
+    tagDetailNeuro.textContent = info.neuro;
+    modalTagDetail.classList.remove('hidden');
   }
 
   // ==========================================
@@ -218,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Google Login
-    btnGoogleLogin.addEventListener('click', async () => {
+    btnGoogleLogin?.addEventListener('click', async () => {
       showAuthFeedback('Redirecionando para login seguro do Google...', 'success');
       try {
         const { error } = await supabase.auth.signInWithOAuth({
@@ -234,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Login com E-mail
-    formEmailAuth.addEventListener('submit', async (e) => {
+    formEmailAuth?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = authEmail.value.trim();
       const password = authPassword.value;
@@ -253,8 +377,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Cadastro de Conta
-    btnSubmitSignup.addEventListener('click', async () => {
+    // Cadastro
+    btnSubmitSignup?.addEventListener('click', async () => {
       const email = authEmail.value.trim();
       const password = authPassword.value;
 
@@ -283,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Logout
-    btnSignOut.addEventListener('click', async () => {
+    btnSignOut?.addEventListener('click', async () => {
       await supabase.auth.signOut();
       modalAuth.classList.add('hidden');
       showAuthFeedback('Você saiu da conta.', 'success');
@@ -294,14 +418,14 @@ document.addEventListener('DOMContentLoaded', () => {
     appState.currentUser = user;
     const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuária';
     
-    userAvatarIcon.textContent = '✨';
-    userAuthLabel.textContent = name.length > 12 ? name.substring(0, 10) + '...' : name;
+    if (userAvatarIcon) userAvatarIcon.textContent = '✨';
+    if (userAuthLabel) userAuthLabel.textContent = name.length > 10 ? name.substring(0, 8) + '...' : name;
 
-    authViewLoggedOut.classList.add('hidden');
-    authViewLoggedIn.classList.remove('hidden');
+    authViewLoggedOut?.classList.add('hidden');
+    authViewLoggedIn?.classList.remove('hidden');
 
-    loggedUserName.textContent = `Olá, ${name}!`;
-    loggedUserEmail.textContent = user.email;
+    if (loggedUserName) loggedUserName.textContent = `Olá, ${name}!`;
+    if (loggedUserEmail) loggedUserEmail.textContent = user.email;
 
     loadCloudUserProfile(user.id);
     syncCloudHistory(user.id);
@@ -310,26 +434,21 @@ document.addEventListener('DOMContentLoaded', () => {
   function handleUserLoggedOut() {
     appState.currentUser = null;
     appState.userProfile = null;
-    userAvatarIcon.textContent = '👤';
-    userAuthLabel.textContent = 'Entrar';
+    if (userAvatarIcon) userAvatarIcon.textContent = '👤';
+    if (userAuthLabel) userAuthLabel.textContent = 'Entrar';
 
-    authViewLoggedOut.classList.remove('hidden');
-    authViewLoggedIn.classList.add('hidden');
+    authViewLoggedOut?.classList.remove('hidden');
+    authViewLoggedIn?.classList.add('hidden');
   }
 
   async function loadCloudUserProfile(userId) {
     if (!supabase) return;
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
       if (data) {
         appState.userProfile = data;
         const plano = data.plano === 'premium_mensal' || data.plano === 'premium_anual' ? '⭐ Premium' : 'Gratuito';
-        loggedUserPlanBadge.textContent = plano;
+        if (loggedUserPlanBadge) loggedUserPlanBadge.textContent = plano;
       }
     } catch (e) {
       console.warn('Erro ao carregar perfil:', e);
@@ -339,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function syncCloudHistory(userId) {
     if (!supabase) return;
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('journal_entries')
         .select('*')
         .eq('user_id', userId)
@@ -366,41 +485,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showAuthFeedback(msg, type) {
+    if (!authFeedbackMsg) return;
     authFeedbackMsg.textContent = msg;
     authFeedbackMsg.className = `auth-feedback ${type}`;
     authFeedbackMsg.classList.remove('hidden');
-  }
-
-  // ==========================================
-  // NAVEGAÇÃO ENTRE ABAS
-  // ==========================================
-  function initNavigation() {
-    navBtns.night.addEventListener('click', () => switchView('night'));
-    navBtns.morning.addEventListener('click', () => switchView('morning'));
-    navBtns.history.addEventListener('click', () => switchView('history'));
-    navBtns.logo.addEventListener('click', () => switchView('night'));
-  }
-
-  function switchView(viewName) {
-    Object.keys(views).forEach(k => {
-      views[k].classList.toggle('active', k === viewName);
-    });
-
-    navBtns.night.classList.toggle('active', viewName === 'night');
-    navBtns.morning.classList.toggle('active', viewName === 'morning');
-    navBtns.history.classList.toggle('active', viewName === 'history');
-
-    if (viewName === 'morning') {
-      renderMorningView();
-    } else if (viewName === 'history') {
-      updateHistoryUI();
-    }
-  }
-
-  function showStep(stepName) {
-    Object.keys(steps).forEach(k => {
-      steps[k].classList.toggle('hidden', k !== stepName);
-    });
   }
 
   // ==========================================
@@ -427,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function initVoiceInput() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      btnVoiceInput.title = 'Ditado por voz não suportado neste navegador. Digite abaixo.';
+      if (btnVoiceInput) btnVoiceInput.title = 'Ditado por voz não suportado neste navegador.';
       return;
     }
 
@@ -438,8 +526,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     appState.recognition.onstart = () => {
       appState.isRecording = true;
-      btnVoiceInput.classList.add('recording');
-      voiceBtnLabel.textContent = 'Ouvindo... (toque para parar)';
+      btnVoiceInput?.classList.add('recording');
+      if (voiceBtnLabel) voiceBtnLabel.textContent = 'Ouvindo... (toque para parar)';
     };
 
     appState.recognition.onresult = (event) => {
@@ -458,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
     appState.recognition.onerror = () => stopRecording();
     appState.recognition.onend = () => stopRecording();
 
-    btnVoiceInput.addEventListener('click', () => {
+    btnVoiceInput?.addEventListener('click', () => {
       if (appState.isRecording) {
         appState.recognition.stop();
       } else {
@@ -469,8 +557,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function stopRecording() {
     appState.isRecording = false;
-    btnVoiceInput.classList.remove('recording');
-    voiceBtnLabel.textContent = 'Falar pensamentos';
+    btnVoiceInput?.classList.remove('recording');
+    if (voiceBtnLabel) voiceBtnLabel.textContent = 'Falar pensamentos';
   }
 
   // ==========================================
@@ -602,54 +690,87 @@ document.addEventListener('DOMContentLoaded', () => {
       resultEntryTitle.textContent = `“${data.title}”`;
     }
 
+    // 1. Amanhã
     listTomorrow.innerHTML = '';
     if (data.tomorrow.length > 0) {
       data.tomorrow.forEach(item => {
         const li = document.createElement('li');
         li.className = 'cat-item';
-        li.innerHTML = `<span class="cat-item-tag">Amanhã</span><span><strong>${escapeHTML(item.action)}</strong></span>`;
+        li.innerHTML = `
+          <button type="button" class="cat-item-tag interactive" data-tag-type="tomorrow" title="Toque para entender por que está aqui">
+            Amanhã ℹ️
+          </button>
+          <span><strong>${escapeHTML(item.action)}</strong></span>
+        `;
         listTomorrow.appendChild(li);
       });
     } else {
       listTomorrow.innerHTML = '<li class="cat-item"><span>Nenhuma urgência identificada para a manhã. Ótimo!</span></li>';
     }
 
+    // 2. No Cofre
     listWait.innerHTML = '';
     if (data.wait.length > 0) {
       data.wait.forEach(item => {
         const li = document.createElement('li');
         li.className = 'cat-item';
-        li.innerHTML = `<span class="cat-item-tag">No Cofre</span><span>${escapeHTML(item.raw)} — <em>(Não precisa da sua atenção esta noite)</em></span>`;
+        li.innerHTML = `
+          <button type="button" class="cat-item-tag interactive" data-tag-type="wait" title="Toque para entender por que está aqui">
+            No Cofre ℹ️
+          </button>
+          <span>${escapeHTML(item.raw)} — <em>(Não precisa da sua atenção esta noite)</em></span>
+        `;
         listWait.appendChild(li);
       });
     } else {
       listWait.innerHTML = '<li class="cat-item"><span>Sem pendências secundárias acumuladas.</span></li>';
     }
 
+    // 3. Soltar
     listRelease.innerHTML = '';
     if (data.release.length > 0) {
       data.release.forEach(item => {
         const li = document.createElement('li');
         li.className = 'cat-item';
-        li.innerHTML = `<span class="cat-item-tag">Soltar</span><span>${escapeHTML(item.raw)} <br><small style="color: var(--sage-calm);">${item.reframe}</small></span>`;
+        li.innerHTML = `
+          <button type="button" class="cat-item-tag interactive" data-tag-type="release" title="Toque para entender por que está aqui">
+            Soltar ℹ️
+          </button>
+          <span>${escapeHTML(item.raw)} <br><small style="color: var(--sage-calm);">${item.reframe}</small></span>
+        `;
         listRelease.appendChild(li);
       });
     } else {
       listRelease.innerHTML = '<li class="cat-item"><span>Sua mente está livre de grandes incertezas hoje.</span></li>';
     }
 
+    // 4. Ruminação
     if (data.rumination.length > 0) {
       catRuminationContainer.classList.remove('hidden');
       listRumination.innerHTML = '';
       data.rumination.forEach(item => {
         const li = document.createElement('li');
         li.className = 'cat-item';
-        li.innerHTML = `<span class="cat-item-tag" style="background: rgba(181, 131, 141, 0.2); color: var(--lilac-twilight);">Acolhimento</span><span>${escapeHTML(item.raw)} <br><small style="color: var(--lilac-twilight);">${item.reframe}</small></span>`;
+        li.innerHTML = `
+          <button type="button" class="cat-item-tag interactive" data-tag-type="rumination" style="background: rgba(181, 131, 141, 0.2); color: var(--lilac-twilight);" title="Toque para entender por que está aqui">
+            Acolhimento ℹ️
+          </button>
+          <span>${escapeHTML(item.raw)} <br><small style="color: var(--lilac-twilight);">${item.reframe}</small></span>
+        `;
         listRumination.appendChild(li);
       });
     } else {
       catRuminationContainer.classList.add('hidden');
     }
+
+    // Adiciona listener de clique nas tags interativas dos itens
+    document.querySelectorAll('.cat-item-tag.interactive').forEach(tagBtn => {
+      tagBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tagType = tagBtn.getAttribute('data-tag-type');
+        openTagDetailModal(tagType);
+      });
+    });
   }
 
   // ==========================================
@@ -936,7 +1057,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const raw = localStorage.getItem(STORAGE_KEY_ENTRIES);
       if (!raw) return [];
       const parsed = JSON.parse(raw);
-      // Remove registro de teste antigo se existir
       const cleaned = parsed.filter(item => !item.rawText?.includes('relatório trimestral'));
       return cleaned;
     } catch (e) {
@@ -1010,41 +1130,62 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <p class="history-card-text">"${escapeHTML(entry.rawText)}"</p>
         <div class="history-tags">
-          <span class="cat-item-tag" style="background: rgba(212, 163, 115, 0.2); color: var(--accent-amber);">${entry.tomorrow ? entry.tomorrow.length : 0} ações amanhã</span>
-          <span class="cat-item-tag" style="background: rgba(149, 167, 136, 0.2); color: var(--sage-calm);">${entry.wait ? entry.wait.length : 0} no cofre</span>
-          <span class="cat-item-tag" style="background: rgba(181, 131, 141, 0.2); color: var(--lilac-twilight);">${entry.release ? entry.release.length : 0} solturas</span>
+          <button type="button" class="cat-item-tag interactive" data-tag-type="tomorrow" style="background: rgba(212, 163, 115, 0.2); color: var(--accent-amber);">
+            ${entry.tomorrow ? entry.tomorrow.length : 0} ações amanhã ℹ️
+          </button>
+          <button type="button" class="cat-item-tag interactive" data-tag-type="wait" style="background: rgba(149, 167, 136, 0.2); color: var(--sage-calm);">
+            ${entry.wait ? entry.wait.length : 0} no cofre ℹ️
+          </button>
+          <button type="button" class="cat-item-tag interactive" data-tag-type="release" style="background: rgba(181, 131, 141, 0.2); color: var(--lilac-twilight);">
+            ${entry.release ? entry.release.length : 0} solturas ℹ️
+          </button>
         </div>
       `;
       historyListContainer.appendChild(card);
     });
+
+    // Re-bind listeners para tags no histórico
+    document.querySelectorAll('.history-tags .cat-item-tag.interactive').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tagType = btn.getAttribute('data-tag-type');
+        openTagDetailModal(tagType);
+      });
+    });
   }
 
   // ==========================================
-  // MODAIS (PREMIUM & AUTH & TECLA ESCAPE)
+  // MODAIS (PREMIUM, AUTH, TAGS & TECLA ESC)
   // ==========================================
   function initModals() {
-    // Abrir Premium
-    navBtns.premium.addEventListener('click', () => modalPremium.classList.remove('hidden'));
-    btnCloseModal.addEventListener('click', () => modalPremium.classList.add('hidden'));
-    if (btnDismissPremium) {
-      btnDismissPremium.addEventListener('click', () => modalPremium.classList.add('hidden'));
-    }
-    modalPremium.addEventListener('click', (e) => {
+    // Premium
+    navBtns.premium?.addEventListener('click', () => modalPremium.classList.remove('hidden'));
+    btnCloseModal?.addEventListener('click', () => modalPremium.classList.add('hidden'));
+    btnDismissPremium?.addEventListener('click', () => modalPremium.classList.add('hidden'));
+    modalPremium?.addEventListener('click', (e) => {
       if (e.target === modalPremium) modalPremium.classList.add('hidden');
     });
 
-    // Abrir Auth
-    navBtns.auth.addEventListener('click', () => modalAuth.classList.remove('hidden'));
-    btnCloseAuthModal.addEventListener('click', () => modalAuth.classList.add('hidden'));
-    modalAuth.addEventListener('click', (e) => {
+    // Auth
+    navBtns.auth?.addEventListener('click', () => modalAuth.classList.remove('hidden'));
+    btnCloseAuthModal?.addEventListener('click', () => modalAuth.classList.add('hidden'));
+    modalAuth?.addEventListener('click', (e) => {
       if (e.target === modalAuth) modalAuth.classList.add('hidden');
     });
 
-    // Fechar modais ao pressionar a tecla ESC
+    // Tag Info Modal
+    btnCloseTagModal?.addEventListener('click', () => modalTagDetail.classList.add('hidden'));
+    btnDismissTagModal?.addEventListener('click', () => modalTagDetail.classList.add('hidden'));
+    modalTagDetail?.addEventListener('click', (e) => {
+      if (e.target === modalTagDetail) modalTagDetail.classList.add('hidden');
+    });
+
+    // Tecla Escape para todos os modais
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' || e.key === 'Esc') {
-        modalPremium.classList.add('hidden');
-        modalAuth.classList.add('hidden');
+        modalPremium?.classList.add('hidden');
+        modalAuth?.classList.add('hidden');
+        modalTagDetail?.classList.add('hidden');
       }
     });
   }
