@@ -2170,38 +2170,65 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (paymentElementContainer) paymentElementContainer.innerHTML = '';
-    const paymentElement = stripeElementsInstance.create('payment');
-    paymentElement.mount('#payment-element');
 
-    // Conecta o submit do formulário
-    if (paymentForm) {
-      paymentForm.onsubmit = async (e) => {
-        e.preventDefault();
-
-        if (btnSubmitPayment) {
-          btnSubmitPayment.disabled = true;
-          if (btnSubmitPaymentText) btnSubmitPaymentText.textContent = '⏳ Processando Pagamento Seguro...';
+    // Se o Stripe suportar initEmbeddedCheckout, monta o checkout embutido oficial
+    if (typeof stripeObj.initEmbeddedCheckout === 'function') {
+      if (btnSubmitPayment) btnSubmitPayment.classList.add('hidden');
+      
+      const embeddedCheckout = await stripeObj.initEmbeddedCheckout({
+        clientSecret: data.clientSecret
+      });
+      embeddedCheckout.mount('#payment-element');
+    } else {
+      // Fallback para Payment Element tradicional
+      if (btnSubmitPayment) btnSubmitPayment.classList.remove('hidden');
+      stripeElementsInstance = stripeObj.elements({
+        clientSecret: data.clientSecret,
+        appearance: {
+          theme: 'night',
+          variables: {
+            colorPrimary: '#D4A373',
+            colorBackground: '#131922',
+            colorText: '#E6EDF3',
+            colorDanger: '#FF8080',
+            fontFamily: 'Plus Jakarta Sans, sans-serif',
+            borderRadius: '8px'
+          }
         }
+      });
 
-        const { error } = await stripeObj.confirmPayment({
-          elements: stripeElementsInstance,
-          confirmParams: {
-            return_url: `${window.location.origin}/?status=success&plan=${currentElementsPlan}`
-          }
-        });
+      const paymentElement = stripeElementsInstance.create('payment');
+      paymentElement.mount('#payment-element');
 
-        if (error) {
-          if (paymentMessage) {
-            paymentMessage.textContent = error.message;
-            paymentMessage.className = 'payment-feedback error';
-            paymentMessage.classList.remove('hidden');
-          }
+      if (paymentForm) {
+        paymentForm.onsubmit = async (e) => {
+          e.preventDefault();
+
           if (btnSubmitPayment) {
-            btnSubmitPayment.disabled = false;
-            if (btnSubmitPaymentText) btnSubmitPaymentText.textContent = '🔒 Confirmar Assinatura';
+            btnSubmitPayment.disabled = true;
+            if (btnSubmitPaymentText) btnSubmitPaymentText.textContent = '⏳ Processando Pagamento Seguro...';
           }
-        }
-      };
+
+          const { error } = await stripeObj.confirmPayment({
+            elements: stripeElementsInstance,
+            confirmParams: {
+              return_url: `${window.location.origin}/?status=success&plan=${currentElementsPlan}`
+            }
+          });
+
+          if (error) {
+            if (paymentMessage) {
+              paymentMessage.textContent = error.message;
+              paymentMessage.className = 'payment-feedback error';
+              paymentMessage.classList.remove('hidden');
+            }
+            if (btnSubmitPayment) {
+              btnSubmitPayment.disabled = false;
+              if (btnSubmitPaymentText) btnSubmitPaymentText.textContent = '🔒 Confirmar Assinatura';
+            }
+          }
+        };
+      }
     }
   }
 

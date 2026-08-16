@@ -1,7 +1,7 @@
 /**
- * DESLIGUE-SE — Vercel Serverless API: Stripe Payment Element (Embedded In-App)
- * Cria uma Assinatura com status 'default_incomplete' e retorna o clientSecret do PaymentIntent
- * para renderizar o formulário embutido com tema noturno dentro do próprio app.
+ * DESLIGUE-SE — Vercel Serverless API: Stripe Embedded Checkout (Oficial)
+ * Cria uma Checkout Session com ui_mode: 'embedded' para renderizar o formulário
+ * do Stripe diretamente dentro do modal da aplicação, com tema noturno e suporte a assinaturas.
  */
 
 module.exports = async function handler(req, res) {
@@ -19,113 +19,68 @@ module.exports = async function handler(req, res) {
 
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
   if (!stripeSecretKey) {
-    return res.status(500).json({ error: 'STRIPE_SECRET_KEY não configurada nas variáveis da Vercel.' });
+    return res.status(500).json({ error: 'STRIPE_SECRET_KEY não configurada na Vercel.' });
   }
 
   const { planType, userEmail, userId } = req.body || {};
 
-  // Valores em centavos BRL
-  // Mensal: R$ 19,90 (1990 centavos)
-  // Anual: R$ 144,00 (14400 centavos = 12x R$ 12,00)
   const isAnnual = planType === 'annual';
-  const unitAmount = isAnnual ? 14400 : 1990;
+  const unitAmount = isAnnual ? 14400 : 1990; // R$ 144,00 (12x R$ 12) ou R$ 19,90
   const interval = isAnnual ? 'year' : 'month';
   const planTitle = isAnnual ? 'Desligue-se Pro (Anual - 12x R$ 12)' : 'Desligue-se Pro (Mensal)';
 
+  const origin = req.headers.origin || 'https://desliguese.vercel.app';
+  const returnUrl = `${origin}/?status=success&session_id={CHECKOUT_SESSION_ID}&plan=${planType || 'monthly'}`;
+
+  const params = new URLSearchParams();
+  params.append('ui_mode', 'embedded');
+  params.append('mode', 'subscription');
+  params.append('return_url', returnUrl);
+  params.append('payment_method_types[0]', 'card');
+
+  if (userEmail) {
+    params.append('customer_email', userEmail);
+  }
+  if (userId) {
+    params.append('client_reference_id', userId);
+    params.append('metadata[userId]', userId);
+  }
+  params.append('metadata[planType]', planType || 'monthly');
+
+  // Line Items com dados do plano
+  params.append('line_items[0][price_data][currency]', 'brl');
+  params.append('line_items[0][price_data][unit_amount]', unitAmount.toString());
+  params.append('line_items[0][price_data][recurring][interval]', interval);
+  params.append('line_items[0][price_data][recurring][interval_count]', '1');
+  params.append('line_items[0][price_data][product_data][name]', planTitle);
+  params.append('line_items[0][price_data][product_data][description]', 'Acesso ilimitado à inteligência artificial do sono, histórico completo na nuvem, todas as paisagens sonoras e relatórios de bem-estar.');
+  params.append('line_items[0][quantity]', '1');
+
   try {
-    // 1. Cria ou recupera o Customer no Stripe
-    const customerParams = new URLSearchParams();
-    if (userEmail) customerParams.append('email', userEmail);
-    if (userId) customerParams.append('metadata[userId]', userId);
-    customerParams.append('description', `Usuária Desligue-se (${userEmail || 'Anônima'})`);
-
-    const customerRes = await fetch('https://api.stripe.com/v1/customers', {
+    const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${stripeSecretKey}`,
         'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: customerParams.toString()
+      body: params.toString()
     });
 
-    const customer = await customerRes.json();
-    if (!customerRes.ok) {
-      throw new Error(customer.error?.message || 'Falha ao criar cliente no Stripe.');
-    }
+    const session = await stripeRes.json();
 
-    // 2. Cria o Preço Dinâmico (Price) recorrente no Stripe
-    const priceParams = new URLSearchParams();
-    priceParams.append('currency', 'brl');
-    priceParams.append('unit_amount', unitAmount.toString());
-    priceParams.append('recurring[interval]', interval);
-    priceParams.append('product_data[name]', planTitle);
-
-    const priceRes = await fetch('https://api.stripe.com/v1/prices', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${stripeSecretKey}`,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: priceParams.toString()
-    });
-
-    const price = await priceRes.json();
-    if (!priceRes.ok) {
-      throw new Error(price.error?.message || 'Falha ao criar preço no Stripe.');
-    }
-
-    // 3. Cria a Assinatura (Subscription) com payment_behavior: default_incomplete
-    const subParams = new URLSearchParams();
-    subParams.append('customer', customer.id);
-    subParams.append('items[0][price]', price.id);
-    subParams.append('payment_behavior', 'default_incomplete');
-    subParams.append('payment_settings[save_default_payment_method]', 'on_subscription');
-    subParams.append('expand[0]', 'latest_invoice');
-    subParams.append('expand[1]', 'latest_invoice.payment_intent');
-    subParams.append('metadata[planType]', planType || 'monthly');
-    if (userId) subParams.append('metadata[userId]', userId);
-
-    const subRes = await fetch('https://api.stripe.com/v1/subscriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${stripeSecretKey}`,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: subParams.toString()
-    });
-
-    const subscription = await subRes.json();
-    if (!subRes.ok) {
-      throw new Error(subscription.error?.message || 'Falha ao criar assinatura no Stripe.');
-    }
-
-    let clientSecret = subscription.latest_invoice?.payment_intent?.client_secret;
-
-    // Se o payment_intent não veio expandido na subscription, busca a fatura diretamente
-    if (!clientSecret && subscription.latest_invoice) {
-      const invoiceId = typeof subscription.latest_invoice === 'string' ? subscription.latest_invoice : subscription.latest_invoice.id;
-      if (invoiceId) {
-        const invRes = await fetch(`https://api.stripe.com/v1/invoices/${invoiceId}?expand[0]=payment_intent`, {
-          headers: { 'Authorization': `Bearer ${stripeSecretKey}` }
-        });
-        const invData = await invRes.json();
-        clientSecret = invData.payment_intent?.client_secret;
-      }
-    }
-
-    if (!clientSecret) {
-      throw new Error('Não foi possível obter o client_secret do pagamento da fatura.');
+    if (!stripeRes.ok) {
+      console.error('Erro na criação de sessão embedded:', session);
+      return res.status(502).json({ error: session.error?.message || 'Falha ao criar sessão do Stripe.' });
     }
 
     return res.status(200).json({
-      subscriptionId: subscription.id,
-      clientSecret: clientSecret,
-      planTitle: planTitle,
-      amountFormatted: isAnnual ? 'R$ 144,00 / ano' : 'R$ 19,90 / mês'
+      clientSecret: session.client_secret,
+      sessionId: session.id,
+      planTitle: planTitle
     });
 
   } catch (err) {
-    console.error('Erro ao inicializar Elements:', err);
+    console.error('Erro no handler create-subscription:', err);
     return res.status(500).json({ error: err.message });
   }
 };
