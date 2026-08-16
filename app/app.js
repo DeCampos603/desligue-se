@@ -96,11 +96,14 @@ document.addEventListener('DOMContentLoaded', () => {
     night: document.getElementById('btnMobNight'),
     morning: document.getElementById('btnMobMorning'),
     history: document.getElementById('btnMobHistory'),
-    premium: document.getElementById('btnMobPremium')
+    premium: document.getElementById('btnMobPremium'),
+    auth: document.getElementById('btnMobAuth')
   };
 
   const userAvatarIcon = document.getElementById('userAvatarIcon');
   const userAuthLabel = document.getElementById('userAuthLabel');
+  const mobAvatarIcon = document.getElementById('mobAvatarIcon');
+  const mobAuthLabel = document.getElementById('mobAuthLabel');
 
   const journalTitleInput = document.getElementById('journalTitleInput');
   const journalInput = document.getElementById('journalInput');
@@ -312,6 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
     mobNavBtns.morning?.addEventListener('click', () => switchView('morning'));
     mobNavBtns.history?.addEventListener('click', () => switchView('history'));
     mobNavBtns.premium?.addEventListener('click', () => modalPremium.classList.remove('hidden'));
+    mobNavBtns.auth?.addEventListener('click', () => modalAuth.classList.remove('hidden'));
   }
 
   function switchView(viewName) {
@@ -689,6 +693,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (userAvatarIcon) userAvatarIcon.textContent = '✨';
     if (userAuthLabel) userAuthLabel.textContent = name.length > 10 ? name.substring(0, 8) + '...' : name;
+    if (mobAvatarIcon) mobAvatarIcon.textContent = '✨';
+    if (mobAuthLabel) mobAuthLabel.textContent = 'Conta';
 
     authViewLoggedOut?.classList.add('hidden');
     authViewLoggedIn?.classList.remove('hidden');
@@ -705,6 +711,8 @@ document.addEventListener('DOMContentLoaded', () => {
     appState.userProfile = null;
     if (userAvatarIcon) userAvatarIcon.textContent = '👤';
     if (userAuthLabel) userAuthLabel.textContent = 'Entrar';
+    if (mobAvatarIcon) mobAvatarIcon.textContent = '👤';
+    if (mobAuthLabel) mobAuthLabel.textContent = 'Entrar';
 
     authViewLoggedOut?.classList.remove('hidden');
     authViewLoggedIn?.classList.add('hidden');

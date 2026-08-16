@@ -80,7 +80,8 @@ module.exports = async function handler(req, res) {
     subParams.append('items[0][price]', price.id);
     subParams.append('payment_behavior', 'default_incomplete');
     subParams.append('payment_settings[save_default_payment_method]', 'on_subscription');
-    subParams.append('expand[0]', 'latest_invoice.payment_intent');
+    subParams.append('expand[0]', 'latest_invoice');
+    subParams.append('expand[1]', 'latest_invoice.payment_intent');
     subParams.append('metadata[planType]', planType || 'monthly');
     if (userId) subParams.append('metadata[userId]', userId);
 
@@ -98,10 +99,22 @@ module.exports = async function handler(req, res) {
       throw new Error(subscription.error?.message || 'Falha ao criar assinatura no Stripe.');
     }
 
-    const clientSecret = subscription.latest_invoice?.payment_intent?.client_secret;
+    let clientSecret = subscription.latest_invoice?.payment_intent?.client_secret;
+
+    // Se o payment_intent não veio expandido na subscription, busca a fatura diretamente
+    if (!clientSecret && subscription.latest_invoice) {
+      const invoiceId = typeof subscription.latest_invoice === 'string' ? subscription.latest_invoice : subscription.latest_invoice.id;
+      if (invoiceId) {
+        const invRes = await fetch(`https://api.stripe.com/v1/invoices/${invoiceId}?expand[0]=payment_intent`, {
+          headers: { 'Authorization': `Bearer ${stripeSecretKey}` }
+        });
+        const invData = await invRes.json();
+        clientSecret = invData.payment_intent?.client_secret;
+      }
+    }
 
     if (!clientSecret) {
-      throw new Error('Não foi possível obter o client_secret do pagamento.');
+      throw new Error('Não foi possível obter o client_secret do pagamento da fatura.');
     }
 
     return res.status(200).json({
