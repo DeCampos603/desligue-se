@@ -776,6 +776,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // PROCESSAMENTO COM IA REAL (GEMINI) + FALLBACK LOCAL
   // ==========================================
+
+  // Detector local de crise (safety net — funciona mesmo sem API)
+  const CRISIS_KEYWORDS = [
+    'me matar', 'matar', 'suicíd', 'suicid', 'quero morrer', 'vontade de morrer',
+    'não quero mais viver', 'acabar com tudo', 'sumir do mundo', 'seria melhor sem mim',
+    'não aguento mais viver', 'não vejo saída', 'não vejo saida', 'sem saída',
+    'overdose', 'me cortar', 'me machucar', 'automutilação', 'autolesão',
+    'pular da', 'pular de', 'enforcamento', 'veneno', 'desistir da vida',
+    'ninguém se importa', 'ninguem se importa', 'melhor morta', 'melhor morto',
+    'não tenho motivo pra viver', 'cansei de viver', 'quero desaparecer'
+  ];
+
+  function detectLocalCrisis(text) {
+    const lower = text.toLowerCase();
+    return CRISIS_KEYWORDS.some(kw => lower.includes(kw));
+  }
+
   async function handleProcessDump() {
     const text = journalInput.value.trim();
     if (!text) return;
@@ -793,9 +810,14 @@ document.addEventListener('DOMContentLoaded', () => {
     appState.currentDumpText = text;
     showStep('loading');
 
+    // Detecção de crise local (safety net — roda SEMPRE, antes da API)
+    const localCrisis = detectLocalCrisis(text);
+
     try {
       // Tenta classificação com IA real via Gemini API (serverless proxy)
       const triaged = await classifyWithGemini(text, title);
+      // Marca crise se a IA detectou OU se o detector local detectou
+      triaged.crisisDetected = triaged.crisisDetected || localCrisis;
       appState.currentTriagedData = triaged;
       renderTriagedResults(triaged);
       showStep('result');
@@ -803,6 +825,15 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('Gemini API indisponível, usando classificador local:', err.message);
       // Fallback: classificador local baseado em heurísticas
       const triaged = analyzeThoughtsWithTCCI(text, title);
+      triaged.crisisDetected = localCrisis;
+      // Se crise detectada localmente, injeta conselho de emergência
+      if (localCrisis) {
+        triaged.counselingAdvice = 'Eu ouço você e a sua dor é real. Você não está sozinha neste momento. ' +
+          'Por favor, ligue agora para o CVV (Centro de Valorização da Vida) no 188 — funciona 24 horas, é gratuito e sigiloso. ' +
+          'Você também pode acessar www.cvv.org.br para conversar por chat. ' +
+          'Se estiver em perigo imediato, ligue para o SAMU no 192. ' +
+          'A sua vida tem um valor imenso e existem pessoas que querem te ajudar a atravessar esse momento.';
+      }
       appState.currentTriagedData = triaged;
       renderTriagedResults(triaged);
       showStep('result');
@@ -841,6 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
         title: data.title || title || 'Diário Noturno',
         date: new Date().toISOString(),
         rawText: text,
+        crisisDetected: data.crisisDetected === true,
         counselingAdvice: data.counselingAdvice || '',
         sleepMood: data.sleepMood || null,
         gratitude: Array.isArray(data.gratitude) ? data.gratitude : [],
@@ -1226,6 +1258,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hasPositive = gratitude.length > 0;
     const hasNegative = rumination.length > 0 || release.length > 0;
     const counselingAdvice = generateCounselingAdvice(text, fullLower, hasPositive, hasNegative);
+    const crisisDetected = fullLower.includes('matar') || fullLower.includes('suicídio') || fullLower.includes('acabar com a vida') || fullLower.includes('não aguento mais');
 
     if (gratitude.length === 0 && tomorrow.length === 0 && wait.length === 0 && release.length === 0 && rumination.length === 0) {
       gratitude.push({
@@ -1239,6 +1272,7 @@ document.addEventListener('DOMContentLoaded', () => {
       date: new Date().toISOString(),
       rawText: text,
       counselingAdvice,
+      crisisDetected,
       gratitude,
       tomorrow,
       wait,
@@ -1251,6 +1285,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let clean = str.replace(/^(preciso|tenho que|não posso esquecer de|lembrar de|amanhã|levar|buscar)\s+/i, (match) => match.trim() + ' ');
     clean = clean.charAt(0).toUpperCase() + clean.slice(1);
     return clean;
+  }
+
+  function renderCrisisAlert(detected) {
+    const alertEl = document.getElementById('crisisAlert');
+    if (alertEl) {
+      if (detected) {
+        alertEl.classList.remove('hidden');
+      } else {
+        alertEl.classList.add('hidden');
+      }
+    }
   }
 
   function renderTriagedResults(data) {

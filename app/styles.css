@@ -2309,6 +2309,109 @@ button:active, .nav-pill:active, .mob-nav-btn:active, .btn-primary:active, .btn-
   transition: transform 0.08s ease;
 }
 
+/* ==========================================
+   ALERTA DE CRISE — Protocolo de Segurança
+   ========================================== */
+.crisis-alert {
+  background: linear-gradient(135deg, rgba(180, 80, 80, 0.15), rgba(160, 90, 120, 0.12));
+  border: 1.5px solid rgba(220, 140, 140, 0.35);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+  text-align: center;
+  animation: crisisPulse 3s ease-in-out infinite;
+}
+
+@keyframes crisisPulse {
+  0%, 100% { border-color: rgba(220, 140, 140, 0.35); }
+  50% { border-color: rgba(220, 140, 140, 0.6); }
+}
+
+.crisis-alert-icon {
+  font-size: 2.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.crisis-alert-title {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  color: #E8B4B8;
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+}
+
+.crisis-alert-text {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.crisis-contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.crisis-contact-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: transform 0.15s ease, background 0.15s ease;
+  min-height: 3.2rem;
+}
+
+.crisis-contact-btn:hover,
+.crisis-contact-btn:focus {
+  transform: scale(1.02);
+}
+
+.crisis-contact-btn:active {
+  transform: scale(0.98);
+}
+
+.crisis-cvv {
+  background: rgba(200, 120, 120, 0.2);
+  border: 1px solid rgba(200, 120, 120, 0.3);
+}
+
+.crisis-chat {
+  background: rgba(120, 160, 200, 0.15);
+  border: 1px solid rgba(120, 160, 200, 0.25);
+}
+
+.crisis-samu {
+  background: rgba(200, 160, 100, 0.15);
+  border: 1px solid rgba(200, 160, 100, 0.25);
+}
+
+.crisis-contact-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.crisis-contact-btn span:last-child {
+  text-align: left;
+}
+
+.crisis-contact-btn small {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.crisis-alert-closing {
+  color: #D4A3A5;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.95rem;
+  margin-top: 0.5rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-iteration-count: 1 !important;

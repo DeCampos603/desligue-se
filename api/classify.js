@@ -40,7 +40,16 @@ REGRAS CRÍTICAS DE CLASSIFICAÇÃO:
 
 REGRA DE OURO: Analise a INTENÇÃO e o SENTIMENTO por trás de cada frase. Não classifique pela presença de palavras-chave isoladas. A palavra "namorada" pode ser gratidão (amor), tomorrow (compromisso) ou rumination (término) — depende do CONTEXTO EMOCIONAL.
 
-Responda APENAS com JSON válido no formato abaixo (sem markdown, sem backticks):`;
+Responda APENAS com JSON válido no formato abaixo (sem markdown, sem backticks):
+
+PROTOCOLO DE CRISE — PRIORIDADE MÁXIMA:
+Se o texto contiver QUALQUER menção a suicídio, automutilação, vontade de morrer, "quero me matar", "não quero mais viver", "acabar com tudo", "sumir do mundo", "não aguento mais", "não vejo saída", "seria melhor sem mim", overdose, se machucar, ou qualquer indicação de risco à vida:
+1. Defina "crisisDetected": true no JSON
+2. Em "counselingAdvice", escreva uma mensagem de ACOLHIMENTO URGENTE: valide a dor da pessoa, diga que ela é importante, que a vida dela tem valor, e oriente IMEDIATAMENTE a ligar para o CVV (Centro de Valorização da Vida) no 188 (24h, gratuito), acessar www.cvv.org.br para chat online, ou ligar para o SAMU no 192 em caso de emergência médica.
+3. NUNCA minimize a dor. NUNCA diga "é só uma fase". NUNCA diga para "simplesmente dormir". SEMPRE valide o sofrimento e direcione para ajuda profissional.
+4. Classifique o conteúdo em "rumination" com reframe empático e acolhedor.
+
+IMPORTANTE: A IA deve dar respostas PROFUNDAMENTE PERSONALIZADAS com base no que a pessoa escreveu. Leia o texto inteiro, identifique os temas, sentimentos, pessoas mencionadas e contextos específicos. Use esses detalhes na carta de apoio e nas notas de cada categoria. Nunca dê respostas genéricas.`;
 
   const userPrompt = `Classifique o seguinte desabafo noturno. Retorne SOMENTE JSON puro, sem markdown:
 
@@ -50,12 +59,13 @@ Texto: "${text}"
 Formato de resposta (JSON puro):
 {
   "title": "Título empático e acolhedor para esta noite (máx 50 chars)",
-  "gratitude": [{"raw": "frase original", "note": "reflexão carinhosa sobre por que isso é especial (1-2 frases)"}],
+  "crisisDetected": false,
+  "gratitude": [{"raw": "frase original", "note": "reflexão carinhosa e PERSONALIZADA sobre por que isso é especial (1-2 frases, mencionando detalhes do que a pessoa escreveu)"}],
   "tomorrow": [{"raw": "frase original", "action": "micro-passo executável para amanhã", "done": false}],
-  "wait": [{"raw": "frase original", "note": "por que guardar isso com carinho no cofre (1-2 frases)"}],
-  "release": [{"raw": "frase original", "reframe": "reenquadramento gentil e acolhedor (1-2 frases)"}],
-  "rumination": [{"raw": "frase original", "reframe": "validação empática + consolo sincero (2-3 frases)"}],
-  "counselingAdvice": "Carta pessoal de apoio (4-6 frases) com abertura acolhedora, validação dos sentimentos, conselho prático de sono e bênção de boa noite. Se o dia teve coisas boas, celebre! Se teve desafios, acolha com ternura. Varie o tom conforme o conteúdo.",
+  "wait": [{"raw": "frase original", "note": "por que guardar isso com carinho no cofre (1-2 frases personalizado)"}],
+  "release": [{"raw": "frase original", "reframe": "reenquadramento gentil e personalizado (1-2 frases)"}],
+  "rumination": [{"raw": "frase original", "reframe": "validação empática profunda + consolo sincero e personalizado (2-3 frases)"}],
+  "counselingAdvice": "Carta pessoal de apoio ALTAMENTE PERSONALIZADA (4-8 frases): mencione detalhes específicos do que a pessoa escreveu, valide cada sentimento com profundidade, dê conselhos práticos de sono contextualizados e encerre com uma bênção de boa noite carinhosa. Se detectou crise, inclua o CVV 188 e www.cvv.org.br.",
   "sleepMood": null
 }`;
 
@@ -105,6 +115,7 @@ Formato de resposta (JSON puro):
     // Ensure all required fields exist with correct types
     const result = {
       title: parsed.title || title || 'Diário Noturno',
+      crisisDetected: parsed.crisisDetected === true,
       gratitude: Array.isArray(parsed.gratitude) ? parsed.gratitude : [],
       tomorrow: Array.isArray(parsed.tomorrow) ? parsed.tomorrow : [],
       wait: Array.isArray(parsed.wait) ? parsed.wait : [],
