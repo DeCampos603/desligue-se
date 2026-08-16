@@ -1,16 +1,11 @@
 {
   "name": "desligue-se",
   "version": "1.0.0",
-  "description": "Diário noturno inteligente para organizar a mente e dormir tranquila",
-  "main": "app/index.html",
+  "description": "Diario noturno inteligente para organizar a mente e dormir tranquila",
   "scripts": {
     "dev": "npx serve app",
-    "start": "npx serve app"
-  },
-  "dependencies": {
-    "@google/genai": "^0.1.1",
-    "@supabase/supabase-js": "^2.39.0",
-    "stripe": "^14.0.0"
+    "start": "npx serve app",
+    "build": "echo 'Static build ready'"
   },
   "keywords": [
     "tcc-i",
