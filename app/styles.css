@@ -195,6 +195,30 @@ body {
   background: linear-gradient(135deg, rgba(212, 163, 115, 0.25), rgba(181, 131, 141, 0.25));
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.auth-pill {
+  border-color: rgba(244, 235, 217, 0.18);
+  background: var(--bg-surface-2);
+  color: var(--text-main);
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: var(--radius-full);
+}
+
+.auth-pill:hover {
+  background: var(--bg-surface-3);
+  border-color: var(--accent-amber);
+}
+
 /* ==========================================================================
    MAIN CONTAINER & VIEWS
    ========================================================================== */
@@ -2124,4 +2148,74 @@ body {
   .premium-mob-btn {
     color: var(--accent-amber);
   }
+
+  .header-actions .auth-pill {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.78rem;
+    min-height: 34px;
+  }
+}
+
+/* ==========================================================================
+   COGNITIVE CLOSURE SEAL & SENSORY BIOFEEDBACK
+   ========================================================================== */
+.cognitive-closure-seal {
+  background: linear-gradient(135deg, rgba(212, 163, 115, 0.12), rgba(149, 167, 136, 0.1));
+  border: 1px solid rgba(212, 163, 115, 0.25);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+  text-align: left;
+  animation: fadeIn 0.4s ease;
+}
+
+.closure-seal-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.closure-seal-text strong {
+  font-size: 0.9rem;
+  color: var(--accent-amber);
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.closure-seal-text p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Animação Acústica Suave ao Gravar Voz */
+.voice-btn.recording {
+  background: rgba(181, 131, 141, 0.25) !important;
+  border-color: var(--lilac-twilight) !important;
+  color: #F7EFE1 !important;
+  animation: pulseAcousticWave 1.8s cubic-bezier(0.25, 0.8, 0.25, 1) infinite;
+}
+
+@keyframes pulseAcousticWave {
+  0% {
+    box-shadow: 0 0 0 0 rgba(181, 131, 141, 0.7);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(181, 131, 141, 0);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(181, 131, 141, 0);
+    transform: scale(1);
+  }
+}
+
+/* Resposta Tátil / Micro-interação Háptica */
+button:active, .nav-pill:active, .mob-nav-btn:active, .btn-primary:active, .btn-secondary:active {
+  transform: scale(0.97);
+  transition: transform 0.08s ease;
 }

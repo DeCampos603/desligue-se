@@ -1162,6 +1162,15 @@ document.addEventListener('DOMContentLoaded', () => {
       counselingText.textContent = data.counselingAdvice || 'Você concluiu o dia. Seus pensamentos estão guardados e seguros. Pode descansar em paz.';
     }
 
+    // Atualiza o Selo de Fechamento Cognitivo (Efeito Zeigarnik & TCC-I)
+    const closureSealTitle = document.getElementById('closureSealTitle');
+    const closureSealDesc = document.getElementById('closureSealDesc');
+    if (closureSealTitle && closureSealDesc) {
+      const totalCount = (data.tomorrow?.length || 0) + (data.wait?.length || 0) + (data.release?.length || 0) + (data.rumination?.length || 0);
+      closureSealTitle.textContent = `✨ ${totalCount} reflexões acolhidas e guardadas no diário.`;
+      closureSealDesc.textContent = 'Suas tarefas e sentimentos estão seguros no papel. O cérebro recebe agora a autorização biológica para desligar a vigília e iniciar o descanso.';
+    }
+
     // 1. Amanhã
     listTomorrow.innerHTML = '';
     if (data.tomorrow.length > 0) {
