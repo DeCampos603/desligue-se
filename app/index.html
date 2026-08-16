@@ -80,8 +80,30 @@
           </p>
         </div>
 
+        <!-- Explicação do Diário Pessoal -->
+        <div class="journal-explanation-card">
+          <span class="info-icon">📖</span>
+          <div class="info-text">
+            <strong>Seu Diário Pessoal & Descarrego Noturno</strong>
+            <p>Além de aliviar a mente para adormecer em paz, tudo o que você escreve fica salvo e guardado no seu diário. É o seu espaço íntimo e seguro para acompanhar suas reflexões e sentimentos dia após dia.</p>
+          </div>
+        </div>
+
         <!-- Área de Entrada do Diário -->
         <div class="dump-input-container">
+          
+          <!-- Campo de Título do Dia -->
+          <div class="title-input-wrapper">
+            <label for="journalTitleInput" class="title-input-label">Título da Noite / Reflexão (Opcional)</label>
+            <input 
+              type="text" 
+              id="journalTitleInput" 
+              class="journal-title-input" 
+              placeholder="Ex: Dia produtivo no trabalho, Conversa com a família, Noite de alívio..."
+              maxlength="80"
+            />
+          </div>
+
           <div class="input-actions-bar">
             <button type="button" id="btnVoiceInput" class="voice-btn" title="Gravar por voz">
               <svg id="micIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -131,8 +153,17 @@
 
       <!-- ETAPA 3: RESULTADO DA TRIAGEM COGNITIVA (TCC-I) -->
       <div id="stepResult" class="step-card hidden fade-in">
+        
+        <!-- Botão de Retorno para o Despejo -->
+        <div class="step-nav-bar">
+          <button id="btnBackToDump" class="btn-text-nav" title="Voltar e editar">
+            ← Voltar e editar meu desabafo
+          </button>
+        </div>
+
         <div class="result-header">
           <div class="badge-tag success">Mente Descarregada & Segura</div>
+          <h3 id="resultEntryTitle" class="result-entry-title"></h3>
           <h2 class="section-title">Sua cabeça está no papel. Pode respirar.</h2>
           <p class="section-subtitle">
             Nada do que você pensou vai se perder. Nós estruturamos suas pendências para que você possa descansar em paz.
@@ -231,6 +262,14 @@
 
       <!-- ETAPA 4: RITUAL GUIADO DE DESACELERAÇÃO E RESPIRAÇÃO -->
       <div id="stepRoutine" class="step-card hidden fade-in">
+        
+        <!-- Botão de Retorno para a Triagem -->
+        <div class="step-nav-bar">
+          <button id="btnBackToResult" class="btn-text-nav" title="Voltar">
+            ← Voltar para a organização
+          </button>
+        </div>
+
         <div class="routine-container">
           <div class="routine-top-bar">
             <span class="routine-phase-tag" id="routinePhaseTag">Respiração 4-7-8</span>
@@ -277,9 +316,15 @@
         <div class="goodnight-moon">🌙</div>
         <h2 class="goodnight-title">Boa noite. Durma em paz.</h2>
         <p class="goodnight-subtitle">Sua mente está guardada. Amanhã é um novo dia.</p>
-        <button id="btnNewMorningCheckin" class="btn-secondary mt-4">
-          ☀️ Simular Amanhecer (Check-in Matinal)
-        </button>
+        
+        <div class="goodnight-actions-row">
+          <button id="btnRestartNight" class="btn-secondary">
+            ✍️ Escrever Novo Registro
+          </button>
+          <button id="btnNewMorningCheckin" class="btn-primary">
+            ☀️ Check-in Matinal do Sono
+          </button>
+        </div>
       </div>
 
     </section>
@@ -289,6 +334,13 @@
     <!-- ======================================================== -->
     <section id="viewMorning" class="app-view">
       <div class="step-card fade-in">
+        
+        <div class="step-nav-bar">
+          <button id="btnMorningToNight" class="btn-text-nav">
+            ← Ir para o Diário Noturno
+          </button>
+        </div>
+
         <div class="card-hero">
           <div class="badge-tag morning-tag">Bom Dia</div>
           <h1 class="hero-title">Como você dormiu esta noite?</h1>
@@ -339,6 +391,13 @@
     <!-- ======================================================== -->
     <section id="viewHistory" class="app-view">
       <div class="step-card fade-in">
+        
+        <div class="step-nav-bar">
+          <button id="btnHistoryToNight" class="btn-text-nav">
+            ← Escrever no Diário de Hoje
+          </button>
+        </div>
+
         <div class="card-hero">
           <div class="badge-tag">Seu Histórico</div>
           <h1 class="hero-title">Padrões da sua Mente</h1>
@@ -375,7 +434,7 @@
   <!-- Modal de Assinatura Premium MicroSaaS -->
   <div id="modalPremium" class="modal-backdrop hidden">
     <div class="modal-card">
-      <button id="btnCloseModal" class="modal-close-btn">&times;</button>
+      <button id="btnCloseModal" class="modal-close-btn" title="Fechar">&times;</button>
       
       <div class="modal-header">
         <div class="badge-tag premium-badge">Desligue-se Premium</div>
@@ -421,13 +480,17 @@
       <div class="guarantee-box">
         <span>🛡️</span> Garantia incondicional de 7 dias. Se não dormir melhor, devolvemos 100% do seu valor.
       </div>
+
+      <div class="modal-footer-dismiss">
+        <button id="btnDismissPremium" class="btn-text-dismiss">Continuar no Plano Gratuito</button>
+      </div>
     </div>
   </div>
 
   <!-- Modal de Autenticação (Supabase Google & E-mail) -->
   <div id="modalAuth" class="modal-backdrop hidden">
     <div class="modal-card auth-modal-card">
-      <button id="btnCloseAuthModal" class="modal-close-btn">&times;</button>
+      <button id="btnCloseAuthModal" class="modal-close-btn" title="Fechar">&times;</button>
       
       <div id="authViewLoggedOut">
         <div class="modal-header">

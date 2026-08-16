@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('✅ Supabase conectado com sucesso:', SUPABASE_URL);
     }
   } catch (err) {
-    console.warn('Supabase não pôde ser inicializado localmente:', err);
+    console.warn('Supabase não inicializado localmente:', err);
   }
 
   // ==========================================
@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let appState = {
     currentUser: null,
     userProfile: null,
+    currentDumpTitle: '',
     currentDumpText: '',
     currentTriagedData: null,
     selectedRoutineMinutes: 3,
@@ -71,11 +72,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const userAvatarIcon = document.getElementById('userAvatarIcon');
   const userAuthLabel = document.getElementById('userAuthLabel');
 
+  const journalTitleInput = document.getElementById('journalTitleInput');
   const journalInput = document.getElementById('journalInput');
   const btnProcessDump = document.getElementById('btnProcessDump');
   const btnVoiceInput = document.getElementById('btnVoiceInput');
   const voiceBtnLabel = document.getElementById('voiceBtnLabel');
 
+  // Navegação entre passos (Botões de Retorno)
+  const btnBackToDump = document.getElementById('btnBackToDump');
+  const btnBackToResult = document.getElementById('btnBackToResult');
+  const btnRestartNight = document.getElementById('btnRestartNight');
+  const btnMorningToNight = document.getElementById('btnMorningToNight');
+  const btnHistoryToNight = document.getElementById('btnHistoryToNight');
+
+  const resultEntryTitle = document.getElementById('resultEntryTitle');
   const listTomorrow = document.getElementById('listTomorrow');
   const listWait = document.getElementById('listWait');
   const listRelease = document.getElementById('listRelease');
@@ -107,6 +117,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Modais
   const modalPremium = document.getElementById('modalPremium');
   const btnCloseModal = document.getElementById('btnCloseModal');
+  const btnDismissPremium = document.getElementById('btnDismissPremium');
+
   const modalAuth = document.getElementById('modalAuth');
   const btnCloseAuthModal = document.getElementById('btnCloseAuthModal');
 
@@ -153,6 +165,33 @@ document.addEventListener('DOMContentLoaded', () => {
   btnToggleSound.addEventListener('click', toggleAudioSoundscape);
   btnNewMorningCheckin.addEventListener('click', () => switchView('morning'));
 
+  // Eventos de Retorno
+  if (btnBackToDump) {
+    btnBackToDump.addEventListener('click', () => showStep('dump'));
+  }
+  if (btnBackToResult) {
+    btnBackToResult.addEventListener('click', () => {
+      if (appState.routineInterval) clearInterval(appState.routineInterval);
+      stopAudioSoundscape();
+      showStep('result');
+    });
+  }
+  if (btnRestartNight) {
+    btnRestartNight.addEventListener('click', () => {
+      journalTitleInput.value = '';
+      journalInput.value = '';
+      btnProcessDump.disabled = true;
+      showStep('dump');
+      switchView('night');
+    });
+  }
+  if (btnMorningToNight) {
+    btnMorningToNight.addEventListener('click', () => switchView('night'));
+  }
+  if (btnHistoryToNight) {
+    btnHistoryToNight.addEventListener('click', () => switchView('night'));
+  }
+
   // ==========================================
   // AUTENTICAÇÃO COM SUPABASE
   // ==========================================
@@ -160,7 +199,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!supabase) return;
 
     try {
-      // 1. Checa sessão ativa
       const { data: { session } } = await supabase.auth.getSession();
       if (session && session.user) {
         handleUserLoggedIn(session.user);
@@ -168,7 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
         handleUserLoggedOut();
       }
 
-      // 2. Ouve mudanças de estado de autenticação
       supabase.auth.onAuthStateChange(async (event, session) => {
         if (session && session.user) {
           handleUserLoggedIn(session.user);
@@ -180,14 +217,14 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('Erro ao checar sessão Supabase:', e);
     }
 
-    // Botão Google Login
+    // Google Login
     btnGoogleLogin.addEventListener('click', async () => {
       showAuthFeedback('Redirecionando para login seguro do Google...', 'success');
       try {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: window.location.href
+            redirectTo: window.location.origin + window.location.pathname
           }
         });
         if (error) showAuthFeedback(error.message, 'error');
@@ -196,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Login com E-mail e Senha
+    // Login com E-mail
     formEmailAuth.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = authEmail.value.trim();
@@ -216,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Criar Nova Conta
+    // Cadastro de Conta
     btnSubmitSignup.addEventListener('click', async () => {
       const email = authEmail.value.trim();
       const password = authPassword.value;
@@ -266,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loggedUserName.textContent = `Olá, ${name}!`;
     loggedUserEmail.textContent = user.email;
 
-    // Carrega perfil e histórico do banco na nuvem
     loadCloudUserProfile(user.id);
     syncCloudHistory(user.id);
   }
@@ -312,6 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data && data.length > 0) {
         appState.history = data.map(row => ({
           id: row.id,
+          title: row.triaged_data?.title || 'Diário Noturno',
           date: row.created_at,
           rawText: row.raw_text,
           sleepMood: row.sleep_mood,
@@ -324,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateHistoryUI();
       }
     } catch (e) {
-      console.warn('Erro ao sincronizar histórico da nuvem:', e);
+      console.warn('Erro ao sincronizar histórico:', e);
     }
   }
 
@@ -385,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // ENTRADA POR VOZ (WEB SPEECH API)
+  // ENTRADA POR VOZ
   // ==========================================
   function initVoiceInput() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -447,18 +484,41 @@ document.addEventListener('DOMContentLoaded', () => {
       appState.recognition.stop();
     }
 
+    let title = journalTitleInput.value.trim();
+    if (!title) {
+      title = generateAutoTitle(text);
+    }
+
+    appState.currentDumpTitle = title;
     appState.currentDumpText = text;
     showStep('loading');
 
     setTimeout(() => {
-      const triaged = analyzeThoughtsWithTCCI(text);
+      const triaged = analyzeThoughtsWithTCCI(text, title);
       appState.currentTriagedData = triaged;
       renderTriagedResults(triaged);
       showStep('result');
     }, 1300);
   }
 
-  function analyzeThoughtsWithTCCI(text) {
+  function generateAutoTitle(text) {
+    const lower = text.toLowerCase();
+    if (lower.includes('trabalho') || lower.includes('reunião') || lower.includes('chefe')) {
+      return 'Reflexão sobre Trabalho e Prioridades';
+    } else if (lower.includes('família') || lower.includes('mãe') || lower.includes('filho') || lower.includes('criança')) {
+      return 'Cuidado Familiar e Logística';
+    } else if (lower.includes('conversa') || lower.includes('discussão') || lower.includes('briga')) {
+      return 'Desapegando de Diálogos do Dia';
+    } else if (lower.includes('medo') || lower.includes('ansios') || lower.includes('futuro')) {
+      return 'Acolhendo Incertezas e Ansiedade';
+    } else {
+      const now = new Date();
+      const dias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+      return `Fechamento de ${dias[now.getDay()]}`;
+    }
+  }
+
+  function analyzeThoughtsWithTCCI(text, title) {
     const fragments = text
       .split(/(?:[.,;!\n\?]+|\be\s+também\b|\be\s+não\b|\be\s+preciso\b|\be\s+tenho\b)/gi)
       .map(s => s.trim())
@@ -521,6 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     return {
+      title: title || 'Diário Noturno',
       date: new Date().toISOString(),
       rawText: text,
       tomorrow,
@@ -537,6 +598,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderTriagedResults(data) {
+    if (resultEntryTitle) {
+      resultEntryTitle.textContent = `“${data.title}”`;
+    }
+
     listTomorrow.innerHTML = '';
     if (data.tomorrow.length > 0) {
       data.tomorrow.forEach(item => {
@@ -588,7 +653,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // ROTINA DE DESACELERAÇÃO & SOMATOSENSORIAL
+  // ROTINA DE DESACELERAÇÃO
   // ==========================================
   function initRoutineDuration() {
     durationBtns.forEach(btn => {
@@ -685,13 +750,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (appState.currentTriagedData) {
       saveNightEntry(appState.currentTriagedData);
       
-      // Salva no banco Supabase se estiver logada
       if (supabase && appState.currentUser) {
         try {
           await supabase.from('journal_entries').insert({
             user_id: appState.currentUser.id,
             raw_text: appState.currentTriagedData.rawText,
             triaged_data: {
+              title: appState.currentTriagedData.title,
               tomorrow: appState.currentTriagedData.tomorrow,
               wait: appState.currentTriagedData.wait,
               release: appState.currentTriagedData.release,
@@ -699,7 +764,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             routine_duration_minutes: appState.selectedRoutineMinutes
           });
-          console.log('✅ Diário sincronizado no Supabase com sucesso!');
+          console.log('✅ Diário sincronizado no Supabase!');
         } catch (e) {
           console.warn('Erro ao salvar no Supabase:', e);
         }
@@ -710,7 +775,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // WEB AUDIO API — CHUVA & FREQUÊNCIA DELTA
+  // WEB AUDIO API
   // ==========================================
   function toggleAudioSoundscape() {
     if (appState.soundActive) stopAudioSoundscape();
@@ -839,7 +904,6 @@ document.addEventListener('DOMContentLoaded', () => {
       saveLocalHistory(appState.history);
       showSleepInsight(mood);
 
-      // Atualiza no Supabase se houver ID
       if (supabase && appState.currentUser && appState.history[0].id) {
         try {
           await supabase
@@ -856,7 +920,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function showSleepInsight(mood) {
     morningFeedbackMessage.classList.remove('hidden');
     if (mood === 'great') {
-      insightText.innerHTML = '<strong>Descanso Excelente!</strong> Descarregar a mente permitiu que o córtex pré-frontal relaxasse e facilitou o sono de ondas lentas.';
+      insightText.innerHTML = '<strong>Descanso Excelente!</strong> Descarregar a mente permitiu que o córtex pré-frontal relaxasse e facilitou o sono profundo.';
     } else if (mood === 'medium') {
       insightText.innerHTML = '<strong>Descanso Regular:</strong> Você organizou o dia, mas o corpo reteve alguma tensão. Recomendamos testar a rotina de 5 minutos hoje à noite.';
     } else {
@@ -865,14 +929,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // PERSISTÊNCIA LOCAL
+  // PERSISTÊNCIA LOCAL (HISTÓRICO LIMPO)
   // ==========================================
   function loadHistoryFromLocalStorage() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY_ENTRIES);
-      return raw ? JSON.parse(raw) : getMockInitialHistory();
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      // Remove registro de teste antigo se existir
+      const cleaned = parsed.filter(item => !item.rawText?.includes('relatório trimestral'));
+      return cleaned;
     } catch (e) {
-      return getMockInitialHistory();
+      return [];
     }
   }
 
@@ -885,25 +953,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function saveNightEntry(entry) {
     appState.history.unshift(entry);
-    if (appState.history.length > 30) appState.history.pop();
+    if (appState.history.length > 50) appState.history.pop();
     saveLocalHistory(appState.history);
-  }
-
-  function getMockInitialHistory() {
-    return [
-      {
-        date: new Date(Date.now() - 86400000).toISOString(),
-        rawText: 'Preciso enviar o relatório trimestral, pagar a taxa da escola e fiquei chateada com o feedback da reunião.',
-        sleepMood: 'great',
-        tomorrow: [
-          { action: 'Enviar relatório trimestral às 09h', done: true },
-          { action: 'Pagar taxa da escola', done: true }
-        ],
-        wait: [{ raw: 'Pesquisar curso novo de atualização', note: 'No cofre' }],
-        release: [{ raw: 'Feedback da reunião', reframe: 'O dia já terminou. Amanhã é uma nova oportunidade.' }],
-        rumination: []
-      }
-    ];
   }
 
   function updateHistoryUI() {
@@ -934,7 +985,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     historyListContainer.innerHTML = '';
     if (list.length === 0) {
-      historyListContainer.innerHTML = '<div class="empty-state">Nenhuma noite registrada ainda.</div>';
+      historyListContainer.innerHTML = `
+        <div class="empty-state">
+          <p>Nenhuma noite registrada ainda.</p>
+          <small>Faça seu primeiro desabafo noturno para começar o seu diário!</small>
+        </div>
+      `;
       return;
     }
 
@@ -945,11 +1001,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const d = new Date(entry.date);
       const formattedDate = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
       const moodEmoji = entry.sleepMood === 'great' ? '😴' : entry.sleepMood === 'medium' ? '😐' : entry.sleepMood === 'terrible' ? '😫' : '🌙';
+      const title = entry.title || 'Diário Noturno';
 
       card.innerHTML = `
         <div class="history-card-header">
-          <span>${formattedDate}</span>
-          <span class="history-card-mood" title="Humor do sono">${moodEmoji}</span>
+          <span class="history-card-title">📖 ${escapeHTML(title)}</span>
+          <span class="history-card-mood" title="Humor do sono">${moodEmoji} <small style="font-size:0.75rem; color:var(--text-muted);">${formattedDate}</small></span>
         </div>
         <p class="history-card-text">"${escapeHTML(entry.rawText)}"</p>
         <div class="history-tags">
@@ -963,19 +1020,32 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // MODAIS (PREMIUM & AUTH)
+  // MODAIS (PREMIUM & AUTH & TECLA ESCAPE)
   // ==========================================
   function initModals() {
+    // Abrir Premium
     navBtns.premium.addEventListener('click', () => modalPremium.classList.remove('hidden'));
     btnCloseModal.addEventListener('click', () => modalPremium.classList.add('hidden'));
+    if (btnDismissPremium) {
+      btnDismissPremium.addEventListener('click', () => modalPremium.classList.add('hidden'));
+    }
     modalPremium.addEventListener('click', (e) => {
       if (e.target === modalPremium) modalPremium.classList.add('hidden');
     });
 
+    // Abrir Auth
     navBtns.auth.addEventListener('click', () => modalAuth.classList.remove('hidden'));
     btnCloseAuthModal.addEventListener('click', () => modalAuth.classList.add('hidden'));
     modalAuth.addEventListener('click', (e) => {
       if (e.target === modalAuth) modalAuth.classList.add('hidden');
+    });
+
+    // Fechar modais ao pressionar a tecla ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        modalPremium.classList.add('hidden');
+        modalAuth.classList.add('hidden');
+      }
     });
   }
 
