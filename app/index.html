@@ -5,6 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Desligue-se: Seu diário noturno inteligente que organiza a mente, fecha as pendências do dia e te ajuda a dormir tranquila.">
   <meta name="theme-color" content="#0D1117">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://desliguese.vercel.app/">
+  <meta property="og:title" content="Desligue-se — Organize sua Mente e Durma Tranquila">
+  <meta property="og:description" content="Seu diário noturno inteligente que organiza a mente, fecha as pendências do dia e te ajuda a dormir tranquila.">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Desligue-se — Organize sua Mente e Durma Tranquila">
+  <meta name="twitter:description" content="Diário noturno inteligente baseado em TCC-I e neurociência do sono.">
+  <link rel="canonical" href="https://desliguese.vercel.app/">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Desligue-se",
+    "url": "https://desliguese.vercel.app/",
+    "description": "Seu diário noturno inteligente que organiza a mente, fecha as pendências do dia e te ajuda a dormir tranquila."
+  }
+  </script>
+  <meta name="robots" content="index, follow">
   <title>Desligue-se — Organize sua Mente e Durma Tranquila</title>
 
   <!-- Google Fonts: Editorial Serif + Clean Sans -->
@@ -17,7 +36,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%230B0E14'/><path d='M65 52A20 20 0 1 1 48 30a16 16 0 0 0 17 22z' fill='%23D4A373'/></svg>">
   
   <!-- Supabase JS Client CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="theme-night">
@@ -30,7 +49,7 @@
     <div class="header-container">
       <div class="brand-group" id="btnLogoHome">
         <div class="brand-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
             <circle cx="12" cy="12" r="1" fill="currentColor"></circle>
           </svg>
@@ -110,7 +129,7 @@
 
           <div class="input-actions-bar">
             <button type="button" id="btnVoiceInput" class="voice-btn" title="Gravar por voz">
-              <svg id="micIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg aria-hidden="true" id="micIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
                 <line x1="12" y1="19" x2="12" y2="22"></line>
@@ -120,6 +139,7 @@
             <span class="input-hint">Pressione para falar ou digite abaixo</span>
           </div>
 
+          <label for="journalInput" class="sr-only">Desabafo e pensamentos da noite</label>
           <textarea 
             id="journalInput" 
             class="journal-textarea" 
@@ -566,9 +586,9 @@
   </main>
 
   <!-- Modal de Assinatura Premium MicroSaaS -->
-  <div id="modalPremium" class="modal-backdrop hidden">
+  <div id="modalPremium" class="modal-backdrop hidden" role="dialog" aria-modal="true">
     <div class="modal-card">
-      <button id="btnCloseModal" class="modal-close-btn" title="Fechar">&times;</button>
+      <button id="btnCloseModal" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
       
       <div class="modal-header">
         <div class="badge-tag premium-badge">Desligue-se Premium</div>
@@ -597,8 +617,8 @@
             <li>✓ Histórico e padrões cognitivos completos</li>
           </ul>
 
-          <button class="btn-primary btn-plan" onclick="alert('Redirecionando para checkout seguro...')">
-            Começar Plano Mensal
+          <button class="btn-primary btn-plan" disabled>
+            Em breve
           </button>
         </div>
 
@@ -620,8 +640,8 @@
             <li>✓ <strong>Acesso prioritário a novas meditações</strong></li>
           </ul>
 
-          <button class="btn-primary btn-plan" onclick="alert('Redirecionando para checkout seguro...')">
-            Garantir Desconto Anual
+          <button class="btn-primary btn-plan" disabled>
+            Em breve
           </button>
         </div>
       </div>
@@ -633,9 +653,9 @@
   </div>
 
   <!-- Modal de Login / Autenticação com Supabase -->
-  <div id="modalAuth" class="modal-backdrop hidden">
+  <div id="modalAuth" class="modal-backdrop hidden" role="dialog" aria-modal="true">
     <div class="modal-card auth-modal-card">
-      <button id="btnCloseAuthModal" class="modal-close-btn" title="Fechar">&times;</button>
+      <button id="btnCloseAuthModal" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
       
       <!-- Estado Deslogado -->
       <div id="authViewLoggedOut">
@@ -701,9 +721,9 @@
   </div>
 
   <!-- Modal de Detalhes da Noite & Conteúdo Guardado no Diário -->
-  <div id="modalHistoryDetail" class="modal-backdrop hidden">
+  <div id="modalHistoryDetail" class="modal-backdrop hidden" role="dialog" aria-modal="true">
     <div class="modal-card history-detail-modal-card">
-      <button id="btnCloseHistoryDetailModal" class="modal-close-btn" title="Fechar">&times;</button>
+      <button id="btnCloseHistoryDetailModal" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
       
       <div class="modal-header" style="text-align: left; padding-right: 2.5rem; margin-bottom: 1rem;">
         <div class="badge-tag" id="historyDetailBadge">📖 Diário Noturno</div>
@@ -749,9 +769,9 @@
   </div>
 
   <!-- Modal Informativo de Legendas Clínicas (TCC-I) -->
-  <div id="modalTagDetail" class="modal-backdrop hidden">
+  <div id="modalTagDetail" class="modal-backdrop hidden" role="dialog" aria-modal="true">
     <div class="modal-card tag-detail-modal-card">
-      <button id="btnCloseTagModal" class="modal-close-btn" title="Fechar">&times;</button>
+      <button id="btnCloseTagModal" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
       <div class="modal-header">
         <div class="badge-tag" id="tagDetailBadge">Explicação Clínica</div>
         <h2 class="modal-title" id="tagDetailTitle">Por que está categorizado aqui?</h2>

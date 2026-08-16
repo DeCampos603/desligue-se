@@ -4,10 +4,12 @@
    ========================================================================== */
 
 :root {
+  color-scheme: dark;
   /* Paleta Noturna Anti-Estresse (No Blue Light) */
   --bg-midnight: #0B0E14;
   --bg-surface-1: #131822;
   --bg-surface-2: #1B2230;
+  --bg-surface-3: #222B3D;
   --bg-surface-glass: rgba(19, 24, 34, 0.85);
 
   --accent-amber: #D4A373;
@@ -22,7 +24,7 @@
 
   --text-main: #F4EBD9;      /* Linho suave para conforto ocular */
   --text-muted: #8E9AAF;     /* Ardósia suave para leitura secundária */
-  --text-dim: #5C677D;
+  --text-dim: #7A889B;
 
   --border-subtle: rgba(244, 235, 217, 0.08);
   --border-focus: rgba(212, 163, 115, 0.4);
@@ -52,6 +54,7 @@ body {
   background-color: var(--bg-midnight);
   color: var(--text-main);
   min-height: 100vh;
+  min-height: 100dvh;
   line-height: 1.6;
   display: flex;
   flex-direction: column;
@@ -336,14 +339,23 @@ body {
 .voice-btn.recording {
   background: rgba(181, 131, 141, 0.25);
   border-color: var(--lilac-twilight);
-  color: #FFB3BA;
-  animation: pulseRecording 1.5s infinite;
+  color: #F7EFE1;
+  animation: pulseAcousticWave 1.8s cubic-bezier(0.25, 0.8, 0.25, 1) infinite;
 }
 
-@keyframes pulseRecording {
-  0% { box-shadow: 0 0 0 0 rgba(181, 131, 141, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(181, 131, 141, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(181, 131, 141, 0); }
+@keyframes pulseAcousticWave {
+  0% {
+    box-shadow: 0 0 0 0 rgba(181, 131, 141, 0.7);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(181, 131, 141, 0);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(181, 131, 141, 0);
+    transform: scale(1);
+  }
 }
 
 .input-hint {
@@ -1453,22 +1465,6 @@ body {
 }
 
 /* ==========================================================================
-   PRICING MODAL
-   ========================================================================== */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.25rem;
-}
-
-/* ==========================================================================
    JOURNAL EXPLANATION & TITLE INPUT
    ========================================================================== */
 .journal-explanation-card {
@@ -1840,11 +1836,6 @@ body {
 /* ==========================================================================
    AUTH STYLES & GOOGLE OAUTH
    ========================================================================== */
-.auth-pill {
-  border-color: rgba(244, 235, 217, 0.15);
-  background: var(--bg-surface-2);
-}
-
 .auth-modal-card {
   max-width: 440px;
 }
@@ -2151,7 +2142,6 @@ body {
   }
 
   .duration-selector {
-    grid-template-columns: repeat(3, 1fr);
     gap: 0.4rem;
   }
   .duration-btn {
@@ -2165,7 +2155,6 @@ body {
   }
 
   .sleep-mood-selector {
-    grid-template-columns: repeat(3, 1fr);
     gap: 0.4rem;
   }
   .mood-btn {
@@ -2183,7 +2172,6 @@ body {
   }
 
   .stats-row {
-    grid-template-columns: repeat(3, 1fr);
     gap: 0.5rem;
   }
   .stat-card {
@@ -2315,31 +2303,15 @@ body {
   margin: 0;
 }
 
-/* Animação Acústica Suave ao Gravar Voz */
-.voice-btn.recording {
-  background: rgba(181, 131, 141, 0.25) !important;
-  border-color: var(--lilac-twilight) !important;
-  color: #F7EFE1 !important;
-  animation: pulseAcousticWave 1.8s cubic-bezier(0.25, 0.8, 0.25, 1) infinite;
-}
-
-@keyframes pulseAcousticWave {
-  0% {
-    box-shadow: 0 0 0 0 rgba(181, 131, 141, 0.7);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(181, 131, 141, 0);
-    transform: scale(1.02);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(181, 131, 141, 0);
-    transform: scale(1);
-  }
-}
-
 /* Resposta Tátil / Micro-interação Háptica */
 button:active, .nav-pill:active, .mob-nav-btn:active, .btn-primary:active, .btn-secondary:active {
   transform: scale(0.97);
   transition: transform 0.08s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-iteration-count: 1 !important;
+    animation-duration: 0.01ms !important;
+  }
 }

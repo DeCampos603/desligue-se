@@ -37,6 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
     routineInterval: null,
     routineSecondsRemaining: 180,
     breathingPhase: 'inhale',
+    breathingTimeouts: [],  // Rastreia setTimeout IDs para cancelamento limpo
+    countdownIntervals: [], // Rastreia setInterval IDs dos countdowns de respiração
     soundActive: false,
     audioCtx: null,
     noiseNode: null,
@@ -232,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnBackToResult) {
     btnBackToResult.addEventListener('click', () => {
       if (appState.routineInterval) clearInterval(appState.routineInterval);
+      cancelBreathingCycle();
       stopAudioSoundscape();
       showStep('result');
     });
@@ -771,9 +774,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // SINTETIZADOR DINÂMICO DE CARTAS AFETIVAS (COM POLARIDADE E GRATIDÃO)
+  // PROCESSAMENTO COM IA REAL (GEMINI) + FALLBACK LOCAL
   // ==========================================
-  function handleProcessDump() {
+  async function handleProcessDump() {
     const text = journalInput.value.trim();
     if (!text) return;
 
@@ -790,12 +793,66 @@ document.addEventListener('DOMContentLoaded', () => {
     appState.currentDumpText = text;
     showStep('loading');
 
-    setTimeout(() => {
+    try {
+      // Tenta classificação com IA real via Gemini API (serverless proxy)
+      const triaged = await classifyWithGemini(text, title);
+      appState.currentTriagedData = triaged;
+      renderTriagedResults(triaged);
+      showStep('result');
+    } catch (err) {
+      console.warn('Gemini API indisponível, usando classificador local:', err.message);
+      // Fallback: classificador local baseado em heurísticas
       const triaged = analyzeThoughtsWithTCCI(text, title);
       appState.currentTriagedData = triaged;
       renderTriagedResults(triaged);
       showStep('result');
-    }, 1300);
+    }
+  }
+
+  /**
+   * Classifica pensamentos via Gemini API (serverless proxy seguro)
+   * Retorna o objeto triaged com as 5 categorias TCC-I + carta de apoio
+   * Lança erro se a API não responder (para acionar fallback local)
+   */
+  async function classifyWithGemini(text, title) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000); // 12s timeout
+
+    try {
+      const response = await fetch('/api/classify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, title }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        if (errData.fallback) throw new Error('API requested fallback');
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Validar e normalizar a resposta da IA
+      return {
+        title: data.title || title || 'Diário Noturno',
+        date: new Date().toISOString(),
+        rawText: text,
+        counselingAdvice: data.counselingAdvice || '',
+        sleepMood: data.sleepMood || null,
+        gratitude: Array.isArray(data.gratitude) ? data.gratitude : [],
+        tomorrow: Array.isArray(data.tomorrow) ? data.tomorrow.map(t => ({ ...t, done: false })) : [],
+        wait: Array.isArray(data.wait) ? data.wait : [],
+        release: Array.isArray(data.release) ? data.release : [],
+        rumination: Array.isArray(data.rumination) ? data.rumination : []
+      };
+    } catch (err) {
+      clearTimeout(timeout);
+      throw err; // Propaga para acionar o fallback local
+    }
   }
 
   function generateAutoTitle(text) {
@@ -1339,6 +1396,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function startRelaxationRoutine() {
     showStep('routine');
+    cancelBreathingCycle(); // Cancela ciclos anteriores antes de iniciar
     appState.routineSecondsRemaining = appState.selectedRoutineMinutes * 60;
     updateTimerDisplay();
     runBreathingCycle();
@@ -1361,21 +1419,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1000);
   }
 
+  // Cancela todos os timeouts e intervalos de respiração pendentes
+  function cancelBreathingCycle() {
+    appState.breathingTimeouts.forEach(id => clearTimeout(id));
+    appState.breathingTimeouts = [];
+    appState.countdownIntervals.forEach(id => clearInterval(id));
+    appState.countdownIntervals = [];
+  }
+
   function runBreathingCycle() {
     if (steps.routine.classList.contains('hidden')) return;
 
     setBreathingState('inhale', 'Inspire...', 4);
-    setTimeout(() => {
+    const t1 = setTimeout(() => {
       if (steps.routine.classList.contains('hidden')) return;
       setBreathingState('hold', 'Segure...', 7);
-      setTimeout(() => {
+      const t2 = setTimeout(() => {
         if (steps.routine.classList.contains('hidden')) return;
         setBreathingState('exhale', 'Solte devagar...', 8);
-        setTimeout(() => {
+        const t3 = setTimeout(() => {
           if (!steps.routine.classList.contains('hidden')) runBreathingCycle();
         }, 8000);
+        appState.breathingTimeouts.push(t3);
       }, 7000);
+      appState.breathingTimeouts.push(t2);
     }, 4000);
+    appState.breathingTimeouts.push(t1);
   }
 
   function setBreathingState(phase, label, seconds) {
@@ -1389,6 +1458,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (countdown > 0) breathSeconds.textContent = countdown;
       else clearInterval(countInterval);
     }, 1000);
+    appState.countdownIntervals.push(countInterval);
   }
 
   function updateSomaticGuidance(elapsed, total) {
@@ -1416,6 +1486,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function finishNightToGoodnight() {
     if (appState.routineInterval) clearInterval(appState.routineInterval);
+    cancelBreathingCycle();
     stopAudioSoundscape();
 
     if (appState.currentTriagedData) {
@@ -1608,9 +1679,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY_ENTRIES);
       if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      const cleaned = parsed.filter(item => !item.rawText?.includes('relatório trimestral'));
-      return cleaned;
+      return JSON.parse(raw);
     } catch (e) {
       return [];
     }
