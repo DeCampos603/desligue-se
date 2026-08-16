@@ -112,19 +112,19 @@ Formato obrigatório (JSON puro):
   "sleepMood": null
 }`;
 
-  // Modelos suportados em ordem de preferência
-  const candidateModels = [
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash'
+  // URLs de modelos suportados em ordem de preferência
+  const candidateUrls = [
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`
   ];
 
   let lastErrorDetail = null;
 
-  for (const model of candidateModels) {
+  for (const geminiUrl of candidateUrls) {
     try {
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      
       const geminiResponse = await fetch(geminiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -141,10 +141,12 @@ Formato obrigatório (JSON puro):
         })
       });
 
+      const modelName = geminiUrl.split('/models/')[1]?.split(':')[0] || 'gemini';
+
       if (!geminiResponse.ok) {
         const errorBody = await geminiResponse.text();
-        console.warn(`Gemini API error on model ${model}: status ${geminiResponse.status}`, errorBody);
-        lastErrorDetail = { model, status: geminiResponse.status, error: errorBody };
+        console.warn(`Gemini API error on model ${modelName}: status ${geminiResponse.status}`, errorBody);
+        lastErrorDetail = { model: modelName, status: geminiResponse.status, error: errorBody };
         continue; // Tenta o próximo modelo
       }
 
@@ -152,7 +154,7 @@ Formato obrigatório (JSON puro):
       const responseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
       
       if (!responseText) {
-        lastErrorDetail = { model, error: 'Empty candidate text' };
+        lastErrorDetail = { model: modelName, error: 'Empty candidate text' };
         continue;
       }
 
@@ -163,7 +165,7 @@ Formato obrigatório (JSON puro):
         parsed = JSON.parse(cleanedText);
       } catch (parseErr) {
         console.error('Falha no JSON parse do Gemini:', responseText);
-        lastErrorDetail = { model, error: 'JSON parse error', responseText };
+        lastErrorDetail = { model: modelName, error: 'JSON parse error', responseText };
         continue;
       }
 
@@ -182,8 +184,9 @@ Formato obrigatório (JSON puro):
       return res.status(200).json(result);
 
     } catch (err) {
-      console.warn(`Exceção ao chamar modelo ${model}:`, err.message);
-      lastErrorDetail = { model, exception: err.message };
+      const modelName = geminiUrl.split('/models/')[1]?.split(':')[0] || 'gemini';
+      console.warn(`Exceção ao chamar modelo ${modelName}:`, err.message);
+      lastErrorDetail = { model: modelName, exception: err.message };
     }
   }
 
