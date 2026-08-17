@@ -12,17 +12,11 @@
  */
 
 const { applyCors, getAuthenticatedUser } = require('./_lib/http');
+const { gerarTexto } = require('./_lib/gemini');
 
 // Orçamento total da função. O cliente espera 28s (ver app.js), então
 // precisamos responder antes disso — nem que seja com o pedido de fallback.
 const TOTAL_BUDGET_MS = 22000;
-const PER_MODEL_TIMEOUT_MS = 11000;
-
-// Modelos em ordem de preferência: rápido primeiro, alternativa depois.
-const MODEL_CANDIDATES = (process.env.GEMINI_MODELS || 'gemini-2.5-flash,gemini-2.0-flash')
-  .split(',')
-  .map(m => m.trim())
-  .filter(Boolean);
 
 // Limitador em memória. ATENÇÃO: em serverless cada instância tem o seu próprio
 // mapa, então isto só contém abuso casual. O limite real por usuária é aplicado
@@ -95,44 +89,6 @@ Formato obrigatório (JSON puro):
 }`;
 }
 
-async function callGeminiModel(model, apiKey, prompt, timeoutMs) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-      {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          // Cabeçalho em vez de ?key= : a chave não vaza em logs de acesso.
-          'x-goog-api-key': apiKey
-        },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            topP: 0.9,
-            maxOutputTokens: 2048,
-            responseMimeType: 'application/json'
-          }
-        })
-      }
-    );
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`status ${response.status}: ${errorBody.slice(0, 300)}`);
-    }
-
-    return await response.json();
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 module.exports = async function handler(req, res) {
   if (applyCors(req, res)) return;
 
@@ -171,59 +127,46 @@ module.exports = async function handler(req, res) {
   const sanitizedTitle = (typeof title === 'string' ? title.slice(0, 150) : '').trim();
   const prompt = `${SYSTEM_PROMPT}\n\n${buildUserPrompt(sanitizedTitle, sanitizedText)}`;
 
-  let lastError = null;
+  try {
+    const { texto, modelo } = await gerarTexto({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.9,
+        maxOutputTokens: 2048,
+        responseMimeType: 'application/json'
+      },
+      orcamentoMs: TOTAL_BUDGET_MS - (Date.now() - startedAt)
+    });
 
-  for (const model of MODEL_CANDIDATES) {
-    const elapsed = Date.now() - startedAt;
-    const remaining = TOTAL_BUDGET_MS - elapsed;
-    if (remaining < 3000) break; // Sem tempo hábil para outra tentativa
-
+    let parsed;
     try {
-      const geminiData = await callGeminiModel(
-        model,
-        apiKey,
-        prompt,
-        Math.min(PER_MODEL_TIMEOUT_MS, remaining)
-      );
-
-      const responseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!responseText) {
-        lastError = `${model}: resposta vazia`;
-        continue;
-      }
-
-      let parsed;
-      try {
-        const cleaned = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-        parsed = JSON.parse(cleaned);
-      } catch (parseErr) {
-        lastError = `${model}: JSON inválido`;
-        continue;
-      }
-
-      const sleepMood = ['terrible', 'medium', 'great'].includes(parsed.sleepMood) ? parsed.sleepMood : null;
-
-      return res.status(200).json({
-        title: parsed.title || sanitizedTitle || 'Diário Noturno',
-        crisisDetected: parsed.crisisDetected === true,
-        gratitude: Array.isArray(parsed.gratitude) ? parsed.gratitude : [],
-        tomorrow: Array.isArray(parsed.tomorrow) ? parsed.tomorrow : [],
-        wait: Array.isArray(parsed.wait) ? parsed.wait : [],
-        release: Array.isArray(parsed.release) ? parsed.release : [],
-        rumination: Array.isArray(parsed.rumination) ? parsed.rumination : [],
-        counselingAdvice: parsed.counselingAdvice || '',
-        sleepMood,
-        model
-      });
-    } catch (err) {
-      lastError = `${model}: ${err.name === 'AbortError' ? 'tempo esgotado' : err.message}`;
-      console.warn('Falha ao chamar o Gemini —', lastError);
+      const limpo = texto.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      parsed = JSON.parse(limpo);
+    } catch (parseErr) {
+      console.error('JSON inválido vindo do Gemini.');
+      return res.status(502).json({ error: 'Serviço de IA indisponível no momento.', fallback: true });
     }
-  }
 
-  console.error('Nenhum modelo Gemini respondeu a tempo:', lastError);
-  return res.status(502).json({
-    error: 'Serviço de IA indisponível no momento.',
-    fallback: true
-  });
+    const sleepMood = ['terrible', 'medium', 'great'].includes(parsed.sleepMood) ? parsed.sleepMood : null;
+
+    return res.status(200).json({
+      title: parsed.title || sanitizedTitle || 'Diário Noturno',
+      crisisDetected: parsed.crisisDetected === true,
+      gratitude: Array.isArray(parsed.gratitude) ? parsed.gratitude : [],
+      tomorrow: Array.isArray(parsed.tomorrow) ? parsed.tomorrow : [],
+      wait: Array.isArray(parsed.wait) ? parsed.wait : [],
+      release: Array.isArray(parsed.release) ? parsed.release : [],
+      rumination: Array.isArray(parsed.rumination) ? parsed.rumination : [],
+      counselingAdvice: parsed.counselingAdvice || '',
+      sleepMood,
+      model: modelo
+    });
+  } catch (err) {
+    console.error('Nenhum modelo Gemini respondeu a tempo:', err.message);
+    return res.status(502).json({
+      error: 'Serviço de IA indisponível no momento.',
+      fallback: true
+    });
+  }
 };

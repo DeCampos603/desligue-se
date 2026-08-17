@@ -162,6 +162,45 @@ async function requireUser(req, res) {
   return null;
 }
 
+
+/**
+ * Exige que a usuária tenha plano Pro ATIVO, conferindo no banco.
+ *
+ * O bloqueio existe também na interface, mas interface é sugestão: quem abrir
+ * o console consegue chamar o endpoint direto. Recurso pago se protege no
+ * servidor, lendo a mesma coluna que só o webhook do Stripe escreve.
+ */
+async function requireProUser(req, res) {
+  const user = await requireUser(req, res);
+  if (!user) return null;
+
+  let perfil = null;
+  try {
+    const linhas = await supabaseAdmin(
+      `profiles?id=eq.${encodeURIComponent(user.id)}&select=plano,subscription_status`
+    );
+    perfil = Array.isArray(linhas) ? linhas[0] : null;
+  } catch (err) {
+    console.error('Falha ao conferir o plano:', err.message);
+    res.status(503).json({ error: 'Não foi possível confirmar o seu plano agora. Tente em instantes.' });
+    return null;
+  }
+
+  const planoPago = perfil && (perfil.plano === 'premium_mensal' || perfil.plano === 'premium_anual');
+  const statusOk = !perfil?.subscription_status ||
+    ['active', 'trialing', 'canceling', 'past_due'].includes(perfil.subscription_status);
+
+  if (!planoPago || !statusOk) {
+    res.status(402).json({
+      error: 'A conversa com a IA do Sono faz parte do plano Pro. No plano gratuito você continua recebendo a carta de acolhimento a cada registro.',
+      code: 'PLANO_PRO_NECESSARIO'
+    });
+    return null;
+  }
+
+  return user;
+}
+
 /**
  * Consulta/escreve no Postgres com a service role (ignora RLS).
  * Use APENAS no servidor — jamais exponha esta chave no navegador.
@@ -235,6 +274,7 @@ module.exports = {
   getAuthContext,
   getAuthenticatedUser,
   requireUser,
+  requireProUser,
   supabaseAdmin,
   stripeRequest
 };

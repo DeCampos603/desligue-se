@@ -65,7 +65,8 @@ document.addEventListener('DOMContentLoaded', () => {
     history: document.getElementById('viewHistory'),
     stories: document.getElementById('viewStories'),
     sounds: document.getElementById('viewSounds'),
-    rhythm: document.getElementById('viewRhythm')
+    rhythm: document.getElementById('viewRhythm'),
+    chat: document.getElementById('viewChat')
   };
 
   const steps = {
@@ -351,38 +352,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   closeAllModals();
 
-  const modulesToInit = [
-    { name: 'Navigation', fn: initNavigation },
-    { name: 'VoiceInput', fn: initVoiceInput },
-    { name: 'PromptChips', fn: initPromptChips },
-    { name: 'RoutineDuration', fn: initRoutineDuration },
-    { name: 'MorningCheckin', fn: initMorningCheckin },
-    { name: 'Modals', fn: initModals },
-    { name: 'CategoryWhyToggles', fn: initCategoryWhyToggles },
-    { name: 'SupabaseAuth', fn: initSupabaseAuth },
-    { name: 'CopyAdvice', fn: initCopyAdviceButton },
-    { name: 'HistoryDetailTabs', fn: initHistoryDetailTabs },
-    { name: 'PWA', fn: initPWA },
-    { name: 'StripeReturnStatus', fn: initStripeReturnStatus },
-    { name: 'NovoSite', fn: initNovoSite },
-    { name: 'StaticHostCheck', fn: warnIfStaticOnlyHost },
-    { name: 'HistoryUI', fn: updateHistoryUI },
-    { name: 'DailyLimitUI', fn: checkDailyLimitUI }
-  ];
-
-  modulesToInit.forEach(m => {
-    try {
-      // Módulos assíncronos rejeitam a promise em vez de lançar: capturamos os dois casos
-      // para que a falha de um módulo nunca derrube a inicialização dos demais.
-      const result = m.fn();
-      if (result && typeof result.catch === 'function') {
-        result.catch(err => console.warn(`[Desligue-se Init] Erro assíncrono em ${m.name}:`, err));
-      }
-    } catch (err) {
-      console.warn(`[Desligue-se Init] Erro em ${m.name}:`, err);
-    }
-  });
-
   btnUpgradeDailyLimit?.addEventListener('click', () => {
     openModal(modalPremium);
   });
@@ -458,6 +427,8 @@ document.addEventListener('DOMContentLoaded', () => {
       renderizarRitmo();
     } else if (viewName === 'stories') {
       fecharHistoria();
+    } else if (viewName === 'chat') {
+      prepararChat();
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1137,6 +1108,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnSyncPlan) {
       btnSyncPlan.classList.toggle('hidden', !logado || isPro);
     }
+
+    // A conversa e recurso pago: se a view estiver aberta, revalida na hora
+    if (views.chat && views.chat.classList.contains('active')) prepararChat();
   }
 
   async function syncCloudHistory(userId) {
@@ -3804,10 +3778,120 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('storiesGrid')?.classList.remove('hidden');
   }
 
-  /** Narração pela voz do próprio navegador — sem custo e sem arquivo de áudio. */
+  // ---------- Narrador ----------
+  //
+  // A versão anterior mandava a história inteira numa única fala. Isso trazia
+  // três problemas: o Chrome corta falas longas depois de ~15s; a pausa entre
+  // parágrafos não existia (a voz emendava tudo); e não dava para saber onde a
+  // leitura estava. Agora cada parágrafo é uma fala própria, encadeada.
+  const narrador = {
+    fila: [],
+    indice: 0,
+    tocando: false,
+    pausado: false,
+    vigia: null,
+    velocidade: 0.8
+  };
+
+  const NARRACAO_VELOCIDADE_KEY = 'desliguese_velocidade_narracao';
+  const PAUSA_ENTRE_PARAGRAFOS_MS = 900;
+
+  /**
+   * Escolhe a melhor voz em português disponível.
+   * A lista chega vazia na primeira chamada em vários navegadores — por isso o
+   * evento voiceschanged também é observado, em initNarrador.
+   */
+  function escolherVozPtBr() {
+    const vozes = speechSynthesis.getVoices().filter(v => /^pt/i.test(v.lang || ''));
+    if (vozes.length === 0) return null;
+
+    // Vozes reconhecidamente mais naturais, em ordem de preferência
+    const preferidas = ['luciana', 'francisca', 'maria', 'google português do brasil', 'google portugues do brasil'];
+    for (const nome of preferidas) {
+      const achou = vozes.find(v => (v.name || '').toLowerCase().includes(nome));
+      if (achou) return achou;
+    }
+
+    // Prefere pt-BR sobre pt-PT, e voz local sobre remota (menos travadas)
+    const brasileiras = vozes.filter(v => /pt[-_]?br/i.test(v.lang));
+    const candidatas = brasileiras.length ? brasileiras : vozes;
+    return candidatas.find(v => v.localService) || candidatas[0];
+  }
+
+  function definirStatusNarracao(texto) {
+    const el = document.getElementById('narrationStatus');
+    if (!el) return;
+    el.textContent = texto || '';
+    el.classList.toggle('hidden', !texto);
+  }
+
+  function destacarParagrafo(indice) {
+    const paragrafos = document.querySelectorAll('#storyBody p');
+    paragrafos.forEach((p, i) => p.classList.toggle('lendo-agora', i === indice));
+
+    const alvo = paragrafos[indice];
+    if (alvo) {
+      const caixa = alvo.getBoundingClientRect();
+      const foraDaTela = caixa.top < 90 || caixa.bottom > window.innerHeight - 90;
+      if (foraDaTela) alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function limparDestaques() {
+    document.querySelectorAll('#storyBody p.lendo-agora')
+      .forEach(p => p.classList.remove('lendo-agora'));
+  }
+
+  function falarProximoParagrafo() {
+    if (!narrador.tocando) return;
+
+    if (narrador.indice >= narrador.fila.length) {
+      encerrarNarracao(true);
+      return;
+    }
+
+    const texto = narrador.fila[narrador.indice];
+    destacarParagrafo(narrador.indice);
+    definirStatusNarracao(`Lendo ${narrador.indice + 1} de ${narrador.fila.length}`);
+
+    const fala = new SpeechSynthesisUtterance(texto);
+    fala.lang = 'pt-BR';
+    fala.rate = narrador.velocidade;
+    fala.pitch = 0.95;
+    fala.volume = 1;
+
+    const voz = escolherVozPtBr();
+    if (voz) fala.voice = voz;
+
+    fala.onend = () => {
+      if (!narrador.tocando) return;
+      narrador.indice++;
+      // Silêncio entre parágrafos: é o respiro que a leitura corrida não tinha
+      setTimeout(falarProximoParagrafo, PAUSA_ENTRE_PARAGRAFOS_MS);
+    };
+
+    fala.onerror = (e) => {
+      if (e.error === 'interrupted' || e.error === 'canceled') return;
+      console.warn('Falha na narração:', e.error);
+      encerrarNarracao(false);
+      showToast('A narração foi interrompida pelo navegador.', 'info');
+    };
+
+    speechSynthesis.speak(fala);
+  }
+
   function narrarHistoria() {
     if (!('speechSynthesis' in window)) {
       showToast('Este navegador não oferece leitura em voz alta.', 'info');
+      return;
+    }
+
+    // Retomar de onde parou
+    if (narrador.pausado) {
+      narrador.pausado = false;
+      speechSynthesis.resume();
+      alternarBotoesNarracao(true);
+      definirStatusNarracao(`Lendo ${narrador.indice + 1} de ${narrador.fila.length}`);
       return;
     }
 
@@ -3817,31 +3901,103 @@ document.addEventListener('DOMContentLoaded', () => {
 
     pararNarracao();
 
-    const fala = new SpeechSynthesisUtterance(historia.paragrafos.join('\n\n'));
-    fala.lang = 'pt-BR';
-    fala.rate = 0.82;  // devagar de propósito
-    fala.pitch = 0.95;
+    narrador.fila = historia.paragrafos.slice();
+    narrador.indice = 0;
+    narrador.tocando = true;
+    narrador.pausado = false;
 
-    const vozPt = speechSynthesis.getVoices().find(v => v.lang?.startsWith('pt'));
-    if (vozPt) fala.voice = vozPt;
-
-    fala.onend = () => alternarBotoesNarracao(false);
-    fala.onerror = () => alternarBotoesNarracao(false);
-
-    speechSynthesis.speak(fala);
     alternarBotoesNarracao(true);
+
+    // Contorna o bug conhecido do Chrome, que suspende a fila sozinho
+    narrador.vigia = setInterval(() => {
+      if (narrador.tocando && !narrador.pausado && !speechSynthesis.speaking) {
+        speechSynthesis.resume();
+      }
+    }, 8000);
+
+    falarProximoParagrafo();
+  }
+
+  function pausarNarracao() {
+    if (!narrador.tocando || narrador.pausado) return;
+    narrador.pausado = true;
+    try { speechSynthesis.pause(); } catch (e) {}
+    alternarBotoesNarracao(true);
+    definirStatusNarracao(`Pausado no parágrafo ${narrador.indice + 1}. Toque em "Continuar" para retomar.`);
+  }
+
+  function encerrarNarracao(chegouAoFim) {
+    narrador.tocando = false;
+    narrador.pausado = false;
+    if (narrador.vigia) { clearInterval(narrador.vigia); narrador.vigia = null; }
+    limparDestaques();
+    alternarBotoesNarracao(false);
+    definirStatusNarracao(chegouAoFim ? 'Leitura concluída. Boa noite. 🌙' : '');
+    if (chegouAoFim) setTimeout(() => definirStatusNarracao(''), 8000);
   }
 
   function pararNarracao() {
     if ('speechSynthesis' in window) {
       try { speechSynthesis.cancel(); } catch (e) {}
     }
-    alternarBotoesNarracao(false);
+    narrador.indice = 0;
+    encerrarNarracao(false);
   }
 
   function alternarBotoesNarracao(narrando) {
-    document.getElementById('btnNarrateStory')?.classList.toggle('hidden', narrando);
-    document.getElementById('btnStopNarration')?.classList.toggle('hidden', !narrando);
+    const btnNarrar = document.getElementById('btnNarrateStory');
+    const btnPausar = document.getElementById('btnPauseNarration');
+    const btnParar = document.getElementById('btnStopNarration');
+
+    if (btnNarrar) {
+      // Quando pausado, o botão principal vira "Continuar"
+      btnNarrar.classList.toggle('hidden', narrando && !narrador.pausado);
+      btnNarrar.textContent = narrador.pausado ? '▶ Continuar' : '🔊 Narrar história';
+    }
+    btnPausar?.classList.toggle('hidden', !narrando || narrador.pausado);
+    btnParar?.classList.toggle('hidden', !narrando);
+  }
+
+  function initNarrador() {
+    // A lista de vozes costuma chegar depois do carregamento da página
+    if ('speechSynthesis' in window) {
+      speechSynthesis.addEventListener?.('voiceschanged', () => {
+        const voz = escolherVozPtBr();
+        if (voz) console.log('Voz da narração:', voz.name, `(${voz.lang})`);
+      });
+    }
+
+    const controle = document.getElementById('narrationRate');
+    const rotulo = document.getElementById('narrationRateLabel');
+
+    try {
+      const salva = parseFloat(localStorage.getItem(NARRACAO_VELOCIDADE_KEY));
+      if (salva >= 0.6 && salva <= 1.1) narrador.velocidade = salva;
+    } catch (e) {}
+
+    if (controle) {
+      controle.value = String(Math.round(narrador.velocidade * 100));
+      if (rotulo) rotulo.textContent = narrador.velocidade.toFixed(2).replace('.', ',') + '×';
+
+      controle.addEventListener('input', () => {
+        narrador.velocidade = Number(controle.value) / 100;
+        if (rotulo) rotulo.textContent = narrador.velocidade.toFixed(2).replace('.', ',') + '×';
+        try { localStorage.setItem(NARRACAO_VELOCIDADE_KEY, String(narrador.velocidade)); } catch (e) {}
+
+        // Velocidade só vale para a próxima fala: reinicia o parágrafo atual
+        if (narrador.tocando && !narrador.pausado) {
+          speechSynthesis.cancel();
+          falarProximoParagrafo();
+        }
+      });
+    }
+
+    document.getElementById('btnPauseNarration')?.addEventListener('click', pausarNarracao);
+
+    // Sair da aba ou fechar a história não pode deixar voz tocando sozinha
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && narrador.tocando && !narrador.pausado) pausarNarracao();
+    });
   }
 
   // ---------- Meu Ritmo ----------
@@ -4111,6 +4267,193 @@ document.addEventListener('DOMContentLoaded', () => {
     renderizarRitmo();
   }
 
+  // ==========================================================================
+  // IA DO SONO — CONVERSA (EXCLUSIVA DO PLANO PRO)
+  // ==========================================================================
+  const chatState = { mensagens: [], enviando: false, saudou: false };
+  const CHAT_STORAGE = 'desliguese_conversa';
+
+  function elementosDoChat() {
+    return {
+      bloqueio: document.getElementById('chatLocked'),
+      area: document.getElementById('chatArea'),
+      lista: document.getElementById('chatMessages'),
+      digitando: document.getElementById('chatTyping'),
+      form: document.getElementById('chatForm'),
+      input: document.getElementById('chatInput'),
+      enviar: document.getElementById('btnChatSend'),
+      sugestoes: document.getElementById('chatSuggestions')
+    };
+  }
+
+  /** Alterna entre a tela de bloqueio e a conversa, conforme o plano. */
+  function prepararChat() {
+    const { bloqueio, area, input } = elementosDoChat();
+    const liberado = isUserPro();
+
+    bloqueio?.classList.toggle('hidden', liberado);
+    area?.classList.toggle('hidden', !liberado);
+
+    if (!liberado) return;
+
+    if (chatState.mensagens.length === 0) carregarConversaSalva();
+    if (chatState.mensagens.length === 0 && !chatState.saudou) {
+      chatState.saudou = true;
+      adicionarMensagem('model', saudacaoDaNoite());
+    }
+    setTimeout(() => input?.focus(), 200);
+  }
+
+  function saudacaoDaNoite() {
+    const hora = new Date().getHours();
+    const nome = (appState.currentUser?.user_metadata?.full_name || '').split(' ')[0];
+    const tratamento = nome ? `, ${nome}` : '';
+
+    if (hora >= 0 && hora < 5) {
+      return `Oi${tratamento}. Madrugada acordada é uma das horas mais solitárias que existem. Estou aqui. O que está te mantendo desperta?`;
+    }
+    if (hora >= 20) {
+      return `Boa noite${tratamento}. Como está a sua cabeça agora, no fim do dia?`;
+    }
+    return `Oi${tratamento}. Me conta o que está passando pela sua cabeça.`;
+  }
+
+  function adicionarMensagem(papel, texto, opcoes = {}) {
+    const { lista } = elementosDoChat();
+    if (!lista) return;
+
+    const balao = document.createElement('div');
+    balao.className = `chat-msg chat-msg-${papel === 'user' ? 'usuaria' : 'ia'}`;
+    balao.textContent = texto;
+    lista.appendChild(balao);
+    lista.scrollTop = lista.scrollHeight;
+
+    if (opcoes.salvar !== false) {
+      chatState.mensagens.push({ role: papel, text: texto });
+      salvarConversa();
+    }
+  }
+
+  function salvarConversa() {
+    if (!appState.currentUser) return;
+    try {
+      localStorage.setItem(
+        `${CHAT_STORAGE}_${appState.currentUser.id}`,
+        JSON.stringify(chatState.mensagens.slice(-40))
+      );
+    } catch (e) {}
+  }
+
+  function carregarConversaSalva() {
+    if (!appState.currentUser) return;
+    try {
+      const bruto = localStorage.getItem(`${CHAT_STORAGE}_${appState.currentUser.id}`);
+      if (!bruto) return;
+      const salvas = JSON.parse(bruto);
+      if (!Array.isArray(salvas) || salvas.length === 0) return;
+
+      chatState.mensagens = salvas;
+      const { lista } = elementosDoChat();
+      if (lista) lista.innerHTML = '';
+      salvas.forEach(m => adicionarMensagem(m.role, m.text, { salvar: false }));
+    } catch (e) {}
+  }
+
+  async function enviarMensagemDoChat(texto) {
+    const limpo = (texto || '').trim();
+    if (!limpo || chatState.enviando) return;
+
+    const { input, digitando, enviar, sugestoes } = elementosDoChat();
+    chatState.enviando = true;
+    if (enviar) enviar.disabled = true;
+    if (input) { input.value = ''; input.style.height = 'auto'; }
+    sugestoes?.classList.add('hidden');
+
+    adicionarMensagem('user', limpo);
+    digitando?.classList.remove('hidden');
+
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Entre na sua conta para conversar.');
+
+      const dados = await safeFetchJson('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ messages: chatState.mensagens.slice(-24) })
+      });
+
+      digitando?.classList.add('hidden');
+      adicionarMensagem('model', dados.reply || 'Estou aqui com você.');
+      if (dados.crisisDetected) mostrarCriseNoChat();
+    } catch (err) {
+      digitando?.classList.add('hidden');
+
+      // 402 = a assinatura caiu ou expirou no meio da conversa
+      if (err.status === 402) {
+        prepararChat();
+        showToast(err.message, 'info', 10000);
+      } else {
+        adicionarMensagem(
+          'model',
+          'Não consegui responder agora — parece que a conexão falhou. Tente de novo em instantes: eu continuo aqui.',
+          { salvar: false }
+        );
+      }
+    } finally {
+      chatState.enviando = false;
+      if (enviar) enviar.disabled = false;
+      input?.focus();
+    }
+  }
+
+  /** Contatos de emergência fixados dentro da própria conversa. */
+  function mostrarCriseNoChat() {
+    const { lista } = elementosDoChat();
+    if (!lista || lista.querySelector('.chat-crise')) return;
+
+    const bloco = document.createElement('div');
+    bloco.className = 'chat-crise';
+    bloco.setAttribute('role', 'alert');
+    bloco.innerHTML = `
+      <strong>Você não está sozinha. Fale com alguém agora:</strong>
+      <a href="tel:188">📞 CVV — 188 (24h, gratuito e sigiloso)</a>
+      <a href="https://www.cvv.org.br/chat" target="_blank" rel="noopener">💬 Chat do CVV</a>
+      <a href="tel:192">🚑 SAMU — 192</a>
+    `;
+    lista.appendChild(bloco);
+    lista.scrollTop = lista.scrollHeight;
+  }
+
+  function initChat() {
+    const { form, input, sugestoes } = elementosDoChat();
+
+    form?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      enviarMensagemDoChat(input?.value);
+    });
+
+    // Enter envia; Shift+Enter quebra linha
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        enviarMensagemDoChat(input.value);
+      }
+    });
+
+    // O campo cresce junto com o texto, até um teto
+    input?.addEventListener('input', () => {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+    });
+
+    sugestoes?.querySelectorAll('.chip-btn').forEach(chip => {
+      chip.addEventListener('click', () => enviarMensagemDoChat(chip.getAttribute('data-msg')));
+    });
+
+    document.getElementById('btnChatUpgrade')?.addEventListener('click', () => openModal(modalPremium));
+    document.getElementById('btnChatToJournal')?.addEventListener('click', () => switchView('night'));
+  }
+
   function escapeHTML(str) {
     if (!str) return '';
     return str
@@ -4121,7 +4464,51 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/'/g, '&#039;');
   }
 
-  // Última etapa da inicialização: agora os catálogos já existem.
+  // ==========================================================================
+  // INICIALIZAÇÃO — ACONTECE NO FIM DO ARQUIVO, DE PROPÓSITO
+  //
+  // Rodar os módulos aqui garante que todo `const` do arquivo (catálogos de
+  // sons e histórias, estado do chat, estado do narrador) já esteja
+  // inicializado. Quando esse laço ficava no meio do arquivo, qualquer módulo
+  // que tocasse numa dessas constantes caía na zona morta temporal e lançava
+  // "Cannot access X before initialization" — o mesmo defeito que derrubou o
+  // app inteiro na auditoria, e que reapareceu duas vezes depois disso.
+  // Funções são içadas; constantes não. Por isso a ordem importa.
+  // ==========================================================================
+  const modulesToInit = [
+    { name: 'Navigation', fn: initNavigation },
+    { name: 'VoiceInput', fn: initVoiceInput },
+    { name: 'PromptChips', fn: initPromptChips },
+    { name: 'RoutineDuration', fn: initRoutineDuration },
+    { name: 'MorningCheckin', fn: initMorningCheckin },
+    { name: 'Modals', fn: initModals },
+    { name: 'CategoryWhyToggles', fn: initCategoryWhyToggles },
+    { name: 'SupabaseAuth', fn: initSupabaseAuth },
+    { name: 'CopyAdvice', fn: initCopyAdviceButton },
+    { name: 'HistoryDetailTabs', fn: initHistoryDetailTabs },
+    { name: 'PWA', fn: initPWA },
+    { name: 'StripeReturnStatus', fn: initStripeReturnStatus },
+    { name: 'NovoSite', fn: initNovoSite },
+    { name: 'Chat', fn: initChat },
+    { name: 'Narrador', fn: initNarrador },
+    { name: 'StaticHostCheck', fn: warnIfStaticOnlyHost },
+    { name: 'HistoryUI', fn: updateHistoryUI },
+    { name: 'DailyLimitUI', fn: checkDailyLimitUI }
+  ];
+
+  modulesToInit.forEach(m => {
+    try {
+      // Módulos assíncronos rejeitam a promise em vez de lançar: capturamos os dois casos
+      // para que a falha de um módulo nunca derrube a inicialização dos demais.
+      const result = m.fn();
+      if (result && typeof result.catch === 'function') {
+        result.catch(err => console.warn(`[Desligue-se Init] Erro assíncrono em ${m.name}:`, err));
+      }
+    } catch (err) {
+      console.warn(`[Desligue-se Init] Erro em ${m.name}:`, err);
+    }
+  });
+
   try {
     renderizarConteudoNovoSite();
   } catch (err) {

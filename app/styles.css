@@ -3754,3 +3754,181 @@ body.esta-logada .info-note-visitor {
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================================
+   IA DO SONO — CONVERSA (PLANO PRO)
+   ============================================================ */
+.chat-card { display: flex; flex-direction: column; }
+
+.chat-locked {
+  text-align: center;
+  padding: 2rem 1.5rem;
+  background: var(--superficie-1);
+  border: 1px dashed var(--acento);
+  border-radius: 16px;
+}
+.chat-locked-icon { font-size: 2.2rem; display: block; margin-bottom: 0.75rem; }
+.chat-locked h2 { font-family: var(--font-sans); font-size: 1.2rem; color: var(--text-main); margin: 0 0 0.75rem; }
+.chat-locked p { font-size: 0.9rem; line-height: 1.65; color: var(--text-muted); max-width: 34rem; margin: 0 auto 1.5rem; }
+.chat-locked-actions { display: flex; gap: 0.7rem; justify-content: center; flex-wrap: wrap; }
+
+.chat-area { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-height: 44vh;
+  max-height: 56vh;
+  overflow-y: auto;
+  padding: 1rem;
+  background: var(--superficie-1);
+  border: 1px solid var(--borda-sutil);
+  border-radius: 14px;
+  scroll-behavior: smooth;
+}
+
+.chat-msg {
+  max-width: 78%;
+  padding: 0.75rem 0.95rem;
+  border-radius: 16px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  animation: chatEntra 0.25s ease-out;
+}
+
+.chat-msg-ia {
+  align-self: flex-start;
+  background: var(--superficie-2);
+  border: 1px solid var(--borda-sutil);
+  border-bottom-left-radius: 5px;
+  color: var(--text-main);
+}
+
+.chat-msg-usuaria {
+  align-self: flex-end;
+  background: var(--acento);
+  border-bottom-right-radius: 5px;
+  color: #fff;
+}
+
+@keyframes chatEntra {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-crise {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  background: rgba(255, 128, 128, 0.12);
+  border: 1px solid rgba(255, 128, 128, 0.45);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  font-size: 0.86rem;
+}
+.chat-crise strong { color: #FFC9C9; }
+.chat-crise a { color: var(--text-main); text-decoration: none; }
+.chat-crise a:hover { text-decoration: underline; }
+
+.chat-typing { display: flex; gap: 0.3rem; padding: 0 0.4rem; }
+.chat-typing span {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  animation: pulsaDigitando 1.2s infinite ease-in-out;
+}
+.chat-typing span:nth-child(2) { animation-delay: 0.18s; }
+.chat-typing span:nth-child(3) { animation-delay: 0.36s; }
+
+@keyframes pulsaDigitando {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
+.chat-suggestions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+.chat-composer { display: flex; gap: 0.6rem; align-items: flex-end; }
+
+.chat-input {
+  flex: 1;
+  resize: none;
+  background: var(--superficie-1);
+  border: 1px solid var(--borda-media);
+  border-radius: 12px;
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  padding: 0.75rem 0.9rem;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.chat-input:focus { outline: none; border-color: var(--acento); }
+
+.btn-chat-send {
+  width: 46px;
+  min-width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  padding: 0;
+  font-size: 1rem;
+  display: grid;
+  place-items: center;
+}
+
+.chat-disclaimer { font-size: 0.72rem; color: var(--text-dim); text-align: center; margin: 0; }
+
+@media (max-width: 600px) {
+  .chat-msg { max-width: 88%; }
+  .chat-messages { min-height: 50vh; max-height: 60vh; }
+}
+
+/* ============================================================
+   NARRADOR DE HISTÓRIAS
+   ============================================================ */
+.narration-speed {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.narration-speed input[type="range"] { width: 96px; accent-color: var(--acento); }
+#narrationRateLabel { min-width: 3.2rem; font-variant-numeric: tabular-nums; }
+
+.narration-status {
+  font-size: 0.8rem;
+  color: var(--acento-hover);
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 2px solid var(--acento);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin: 0 0 1rem;
+}
+
+/* Parágrafo que está sendo lido em voz alta */
+.story-body p {
+  transition: color 0.4s ease, opacity 0.4s ease;
+}
+.story-body p.lendo-agora {
+  color: var(--text-main);
+  background: rgba(59, 130, 246, 0.08);
+  border-left: 2px solid var(--acento);
+  border-radius: 0 8px 8px 0;
+  padding: 0.35rem 0.75rem;
+  margin-left: -0.75rem;
+}
+
+/* Enquanto narra, o resto do texto recua um pouco para a leitura guiar o olho */
+.story-body:has(p.lendo-agora) p:not(.lendo-agora) {
+  opacity: 0.55;
+}
+
+@media (max-width: 600px) {
+  .narration-speed { margin-left: 0; width: 100%; justify-content: space-between; }
+}

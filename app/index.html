@@ -42,7 +42,7 @@
   
   <!-- Stripe.js CDN -->
   <script defer src="https://js.stripe.com/v3/"></script>
-  <link rel="stylesheet" href="styles.css?v=2.1.1">
+  <link rel="stylesheet" href="styles.css?v=2.3.0">
 </head>
 <body class="theme-night">
   <!-- Glow decorativo suave de fundo -->
@@ -71,6 +71,7 @@
         <button id="btnTabStories" class="nav-link" data-view="stories">Histórias</button>
         <button id="btnTabSounds" class="nav-link" data-view="sounds">Sons</button>
         <button id="btnTabRhythm" class="nav-link" data-view="rhythm">Meu Ritmo</button>
+        <button id="btnTabChat" class="nav-link" data-view="chat">IA do Sono</button>
         <button id="btnTabMorning" class="nav-link" data-view="morning">Check-in</button>
         <button id="btnTabHistory" class="nav-link" data-view="history">Histórico</button>
         <button id="btnOpenPremium" class="nav-link" title="Planos Premium">Planos</button>
@@ -175,7 +176,7 @@
           <span class="pillar-arrow" aria-hidden="true">→</span>
         </article>
 
-        <article class="pillar-card" data-goto="night" tabindex="0" role="button">
+        <article class="pillar-card" data-goto="chat" tabindex="0" role="button">
           <div class="pillar-art art-ai" aria-hidden="true">🧠</div>
           <h3>IA do Sono</h3>
           <p>Nossa IA conversa com você, te acolhe e te ajuda a criar pensamentos mais leves antes de dormir.</p>
@@ -897,8 +898,17 @@
 
           <div class="story-controls">
             <button type="button" id="btnNarrateStory" class="btn-secondary">🔊 Narrar história</button>
-            <button type="button" id="btnStopNarration" class="btn-secondary hidden">⏹ Parar narração</button>
+            <button type="button" id="btnPauseNarration" class="btn-secondary hidden">⏸ Pausar</button>
+            <button type="button" id="btnStopNarration" class="btn-secondary hidden">⏹ Parar</button>
+
+            <div class="narration-speed">
+              <label for="narrationRate">Velocidade</label>
+              <input type="range" id="narrationRate" min="60" max="110" step="5" value="80">
+              <span id="narrationRateLabel">0,80×</span>
+            </div>
           </div>
+
+          <p id="narrationStatus" class="narration-status hidden" role="status" aria-live="polite"></p>
 
           <div id="storyBody" class="story-body"></div>
 
@@ -1006,6 +1016,63 @@
           <span class="balance-insight-icon">💡</span>
           <p id="rhythmInsight">
             Registre suas noites no check-in matinal para o Desligue-se aprender o seu ritmo.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 7: IA DO SONO (CONVERSA — EXCLUSIVA PRO)           -->
+    <!-- ======================================================== -->
+    <section id="viewChat" class="app-view">
+      <div class="step-card fade-in chat-card">
+        <div class="card-hero">
+          <div class="badge-tag">Conversa · Plano Pro</div>
+          <h1 class="hero-title">IA do Sono</h1>
+          <p class="hero-subtitle">
+            Uma conversa de verdade, no seu ritmo, para a mente ir baixando a guarda antes de dormir.
+          </p>
+        </div>
+
+        <!-- Bloqueio para quem ainda não é Pro -->
+        <div id="chatLocked" class="chat-locked hidden">
+          <span class="chat-locked-icon" aria-hidden="true">🔒</span>
+          <h2>A conversa faz parte do plano Pro</h2>
+          <p>
+            No plano gratuito você continua recebendo, a cada registro no diário,
+            a <strong>carta de acolhimento escrita pela IA</strong> — ela não muda e não vai embora.
+            O que o Pro acrescenta é poder <strong>responder e continuar o assunto</strong>,
+            quantas vezes quiser, com a IA lembrando do que já foi dito.
+          </p>
+          <div class="chat-locked-actions">
+            <button type="button" id="btnChatUpgrade" class="btn-primary btn-cta">Ver planos</button>
+            <button type="button" id="btnChatToJournal" class="btn-ghost-outline">Escrever no diário</button>
+          </div>
+        </div>
+
+        <!-- Conversa -->
+        <div id="chatArea" class="chat-area hidden">
+          <div id="chatMessages" class="chat-messages" role="log" aria-live="polite" aria-label="Conversa com a IA do Sono"></div>
+
+          <div id="chatTyping" class="chat-typing hidden" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+
+          <div class="chat-suggestions" id="chatSuggestions">
+            <button type="button" class="chip-btn" data-msg="Minha cabeça não desliga, fico repassando o dia inteiro.">Minha cabeça não desliga</button>
+            <button type="button" class="chip-btn" data-msg="Estou ansiosa com uma coisa que acontece amanhã.">Ansiosa com amanhã</button>
+            <button type="button" class="chip-btn" data-msg="Acordei de madrugada e não consigo voltar a dormir.">Acordei de madrugada</button>
+          </div>
+
+          <form id="chatForm" class="chat-composer">
+            <label for="chatInput" class="sr-only">Escreva para a IA do Sono</label>
+            <textarea id="chatInput" class="chat-input" rows="1" maxlength="2000"
+              placeholder="Conte o que está passando pela sua cabeça..."></textarea>
+            <button type="submit" id="btnChatSend" class="btn-primary btn-chat-send" aria-label="Enviar">➤</button>
+          </form>
+          <p class="chat-disclaimer">
+            A IA do Sono é apoio de autocuidado e não substitui atendimento profissional.
+            Em caso de crise, CVV 188 (24h, gratuito).
           </p>
         </div>
       </div>
@@ -1499,8 +1566,8 @@
     </button>
   </nav>
 
-  <script src="config.js?v=2.1.1"></script>
-  <script src="app.js?v=2.1.1"></script>
+  <script src="config.js?v=2.3.0"></script>
+  <script src="app.js?v=2.3.0"></script>
   <!-- Vercel Web Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
   <!-- Vercel Speed Insights -->
