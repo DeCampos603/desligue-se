@@ -42,7 +42,7 @@
   
   <!-- Stripe.js CDN -->
   <script defer src="https://js.stripe.com/v3/"></script>
-  <link rel="stylesheet" href="styles.css?v=2.0.3">
+  <link rel="stylesheet" href="styles.css?v=2.0.4">
 </head>
 <body class="theme-night">
   <!-- Glow decorativo suave de fundo -->
@@ -116,7 +116,8 @@
           <span class="info-icon">📖</span>
           <div class="info-text">
             <strong>Seu Diário Pessoal & Descarrego Noturno</strong>
-            <p>Além de aliviar a mente para adormecer em paz, tudo o que você escreve fica salvo e guardado no seu diário. É o seu espaço íntimo e seguro para acompanhar suas reflexões e sentimentos dia após dia.</p>
+            <p>Além de aliviar a mente para adormecer em paz, o que você escreve pode ficar guardado no seu diário para acompanhar suas reflexões dia após dia.</p>
+            <p class="info-note-visitor"><strong>Sem login, nada é gravado:</strong> no modo visitante o texto some ao fechar a página. Crie uma conta gratuita se quiser manter o seu histórico.</p>
           </div>
         </div>
 
@@ -774,7 +775,7 @@
           <div class="badge-tag">Sua Conta Segura</div>
           <h2 class="modal-title">Acesse o seu Diário</h2>
           <p class="modal-subtitle">
-            Salve suas noites em nuvem criptografada e sincronize seu histórico em qualquer dispositivo.
+            Salve suas noites na sua conta e sincronize o histórico em qualquer dispositivo. Só você enxerga o seu diário.
           </p>
         </div>
 
@@ -810,13 +811,19 @@
                 Li e concordo com os <a href="#" id="linkOpenTermsAuth" class="terms-link">Termos de Uso, Isenção Médica & Privacidade (LGPD)</a>. Compreendo que este aplicativo é uma ferramenta de suporte de autocuidado e não substitui acompanhamento médico ou psicológico.
               </span>
             </label>
+            <label class="terms-checkbox-label">
+              <input type="checkbox" id="checkSensitiveDataConsent">
+              <span>
+                <strong>Consentimento específico (LGPD, art. 11):</strong> autorizo que o conteúdo dos meus desabafos — que pode revelar dados sobre a minha saúde mental — seja processado pelo Desligue-se e enviado ao serviço de inteligência artificial <strong>Google Gemini</strong>, inclusive fora do Brasil, com a finalidade exclusiva de organizar os meus relatos. Posso revogar este consentimento e excluir meus dados a qualquer momento.
+              </span>
+            </label>
           </div>
 
           <div class="auth-actions-row">
             <button type="submit" id="btnSubmitLogin" class="btn-primary" style="max-width: 100%;">Entrar na Minha Conta</button>
             <button type="button" id="btnSubmitSignup" class="btn-secondary" style="width: 100%;">Criar Conta Nova</button>
           </div>
-          <div id="authFeedbackMsg" class="auth-feedback hidden"></div>
+          <div id="authFeedbackMsg" class="auth-feedback hidden" role="status" aria-live="polite"></div>
         </form>
       </div>
 
@@ -831,9 +838,20 @@
           <strong id="loggedUserPlanBadge" class="plan-badge-highlight">Gratuito</strong>
         </div>
 
+        <button id="btnManageSubscription" class="btn-secondary mt-4 hidden" style="width: 100%;">
+          💳 Gerenciar ou cancelar minha assinatura
+        </button>
+
         <button id="btnSignOut" class="btn-secondary mt-4" style="width: 100%;">
           Sair da Conta (Logout)
         </button>
+
+        <div class="account-danger-zone">
+          <button id="btnDeleteAccount" class="btn-danger-text hidden" type="button">
+            🗑️ Excluir minha conta e meus dados
+          </button>
+          <small>Exclusão definitiva e imediata do seu diário e da sua conta (LGPD, art. 18, VI).</small>
+        </div>
       </div>
 
     </div>
@@ -959,19 +977,66 @@
         <div class="terms-clause">
           <h4>4. Privacidade, Tratamento de Dados & LGPD (Lei nº 13.709/2018)</h4>
           <p>
-            Seus desabafos e reflexões são confidenciais. Ao utilizar a plataforma ou criar uma conta, você consente expressamente que:
+            O conteúdo dos seus desabafos pode revelar informações sobre a sua saúde mental e, por isso, é tratado como <strong>dado pessoal sensível</strong> (art. 5º, II da LGPD). A base legal para esse tratamento é o <strong>seu consentimento específico e destacado</strong> (art. 11, I), coletado no momento do cadastro e revogável a qualquer tempo.
+          </p>
+
+          <p class="terms-highlight">
+            ⚠️ <strong>QUEM TEM ACESSO AOS SEUS DADOS.</strong> Para funcionar, o Desligue-se compartilha o texto do seu relato com os operadores abaixo. Nenhum outro terceiro recebe o conteúdo do seu diário, e ele nunca é vendido, alugado ou usado para publicidade:
           </p>
           <ul>
-            <li>Seus dados são processados única e exclusivamente para viabilizar a organização dos seus relatos, persistência criptografada e sincronização do seu diário pessoal;</li>
-            <li>Nenhum dado pessoal ou conteúdo de desabafo é comercializado, alugado ou compartilhado com terceiros para fins publicitários;</li>
-            <li>Você pode a qualquer momento excluir seu histórico local ou solicitar a exclusão total da sua conta e dados.</li>
+            <li><strong>Google (API Gemini)</strong> — recebe o texto do seu desabafo para realizar a triagem e escrever a mensagem de acolhimento. <strong>Isso implica transferência internacional de dados</strong> (art. 33 da LGPD), realizada com base no seu consentimento específico;</li>
+            <li><strong>Supabase</strong> — hospeda o banco de dados onde o seu diário fica armazenado, caso você crie uma conta;</li>
+            <li><strong>Vercel</strong> — hospeda a aplicação e processa as requisições;</li>
+            <li><strong>Stripe</strong> — processa exclusivamente os pagamentos. O Stripe não recebe o conteúdo do seu diário, e nós não temos acesso ao número do seu cartão.</li>
+          </ul>
+
+          <p>
+            <strong>Sobre segurança:</strong> a comunicação com o aplicativo é protegida por criptografia em trânsito (HTTPS/TLS) e o banco de dados é criptografado em repouso pelo provedor. Cada usuária só consegue acessar as próprias linhas do banco (Row Level Security). <strong>Não utilizamos criptografia de ponta a ponta</strong>: isso significa que, tecnicamente, o conteúdo pode ser lido pelo servidor e pelos operadores listados acima. Não afirmamos o contrário em nenhum lugar deste aplicativo.
+          </p>
+
+          <p>
+            <strong>Modo visitante:</strong> se você usar o aplicativo sem criar conta, o seu relato é enviado para a triagem por IA, mas <strong>não é gravado</strong> em nenhum banco de dados nosso — ele desaparece quando você fecha a página.
+          </p>
+
+          <p><strong>Seus direitos (art. 18 da LGPD).</strong> A qualquer momento você pode:</p>
+          <ul>
+            <li>confirmar a existência de tratamento e acessar os seus dados — todo o histórico fica visível na aba "Diário";</li>
+            <li>corrigir, anonimizar, bloquear ou eliminar dados desnecessários ou excessivos;</li>
+            <li><strong>excluir definitivamente a sua conta e todos os seus registros</strong>, pelo botão "Excluir minha conta e meus dados" dentro de "Minha Conta". A exclusão é imediata e irreversível;</li>
+            <li>revogar o consentimento, o que implica a interrupção do serviço;</li>
+            <li>solicitar a portabilidade e obter informação sobre o compartilhamento.</li>
+          </ul>
+
+          <p>
+            <strong>Encarregado pelo Tratamento de Dados (DPO)</strong> e canal de exercício de direitos:
+            <a href="mailto:privacidade@desliguese.com.br" class="terms-link">privacidade@desliguese.com.br</a>.
+            Respondemos em até 15 dias.
+          </p>
+
+          <p>
+            <strong>Retenção:</strong> seus registros são mantidos enquanto a sua conta existir. Excluída a conta, os dados são apagados dos nossos bancos de imediato; cópias de segurança são sobrescritas no ciclo normal de backup do provedor, em até 30 dias.
+          </p>
+
+          <p>
+            <strong>Menores de idade:</strong> o Desligue-se não se destina a menores de 18 anos e não coleta dados de crianças e adolescentes conscientemente.
+          </p>
+        </div>
+
+        <div class="terms-clause">
+          <h4>5. Assinatura, Cobrança, Cancelamento e Arrependimento</h4>
+          <ul>
+            <li><strong>Planos:</strong> Mensal por R$ 19,90/mês e Anual por R$ 144,00/ano (equivalente a R$ 12,00/mês), cobrados de forma recorrente pelo Stripe até que você cancele.</li>
+            <li><strong>Cancelamento:</strong> pode ser feito a qualquer momento, sem multa e sem contato com atendimento, pelo botão "Gerenciar ou cancelar minha assinatura" em "Minha Conta". O acesso Pro permanece ativo até o fim do período já pago.</li>
+            <li><strong>Direito de arrependimento (art. 49 do CDC):</strong> em até 7 dias corridos da contratação você pode desistir e receber a devolução integral do valor pago, bastando solicitar o cancelamento pelo mesmo botão ou por e-mail.</li>
+            <li><strong>Plano gratuito:</strong> inclui 1 registro por dia, a triagem dos pensamentos e a rotina de respiração de 3 minutos, sem prazo de expiração.</li>
+            <li>Alterações de preço são comunicadas com no mínimo 30 dias de antecedência e só valem para os ciclos seguintes.</li>
           </ul>
         </div>
 
         <div class="terms-clause">
-          <h4>5. Limitação de Responsabilidade Civil</h4>
+          <h4>6. Limitação de Responsabilidade Civil</h4>
           <p>
-            Na extensão máxima permitida pela legislação aplicável, os desenvolvedores, mantenedores e colaboradores do Desligue-se isentam-se de quaisquer responsabilidades por danos diretos, indiretos, incidentais ou consequenciais decorrentes do uso, incapacidade de uso ou interpretações individuais dos conteúdos da plataforma.
+            Na extensão máxima permitida pela legislação aplicável, os desenvolvedores, mantenedores e colaboradores do Desligue-se isentam-se de quaisquer responsabilidades por danos diretos, indiretos, incidentais ou consequenciais decorrentes do uso, incapacidade de uso ou interpretações individuais dos conteúdos da plataforma. Esta limitação não afasta as garantias legais previstas no Código de Defesa do Consumidor.
           </p>
         </div>
       </div>
@@ -1014,7 +1079,8 @@
     </button>
   </nav>
 
-  <script src="app.js?v=2.0.3"></script>
+  <script src="config.js?v=2.0.4"></script>
+  <script src="app.js?v=2.0.4"></script>
   <!-- Vercel Web Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
   <!-- Vercel Speed Insights -->

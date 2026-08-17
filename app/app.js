@@ -9,12 +9,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // CONFIGURAÇÃO DO SUPABASE (DATABASE & AUTH)
   // ==========================================
-  const SUPABASE_URL = 'https://vycflbcaphehlcjkqcjw.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Y2ZsYmNhcGhlaGxjamtxY2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4Mjk4NDMsImV4cCI6MjEwMjQwNTg0M30.E1Trkta-chncOdWc9FU5v4tYPHZAvoq_dYCRrPsjvvo';
+  // As chaves públicas ficam centralizadas em config.js — um único arquivo para
+  // trocar ao migrar do modo de teste para produção.
+  const CONFIG = window.DESLIGUESE_CONFIG || {};
+  const SUPABASE_URL = CONFIG.supabaseUrl;
+  const SUPABASE_ANON_KEY = CONFIG.supabaseAnonKey;
 
   let supabase = null;
   try {
-    if (window.supabase && typeof window.supabase.createClient === 'function') {
+    if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase && typeof window.supabase.createClient === 'function') {
       supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       console.log('✅ Supabase conectado:', SUPABASE_URL);
     }
@@ -25,24 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // ESTADO DA APLICAÇÃO & PERSISTÊNCIA
   // ==========================================
-  const STORAGE_KEY_ENTRIES = 'desliguese_entries_v1';
-  const STORAGE_KEY_TRIAL_COUNT = 'desliguese_trial_count_v1';
-
-  function getTrialCount() {
-    try {
-      return parseInt(localStorage.getItem(STORAGE_KEY_TRIAL_COUNT) || '0', 10);
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  function incrementTrialCount() {
-    try {
-      const current = getTrialCount();
-      localStorage.setItem(STORAGE_KEY_TRIAL_COUNT, (current + 1).toString());
-    } catch (e) {}
-  }
-
   let appState = {
     currentUser: null,
     userProfile: null,
@@ -61,7 +46,11 @@ document.addEventListener('DOMContentLoaded', () => {
     isRecording: false,
     userWantsRecording: false,
     voiceBaseText: '',
-    history: loadHistoryFromLocalStorage(),
+    // IMPORTANTE: não chamar loadHistoryFromLocalStorage() aqui — a função lê
+    // appState.currentUser e criaria uma referência circular (TDZ) que aborta
+    // toda a inicialização do app. O histórico real é carregado no login.
+    history: [],
+    dailyEntriesToday: null, // contagem autoritativa vinda do servidor (null = desconhecida)
     activeDetailEntry: null,
     activeDetailTab: 'all'
   };
@@ -184,6 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const linkOpenTermsAuth = document.getElementById('linkOpenTermsAuth');
   const linkOpenTermsFooter = document.getElementById('linkOpenTermsFooter');
   const checkTermsConsent = document.getElementById('checkTermsConsent');
+  const checkSensitiveDataConsent = document.getElementById('checkSensitiveDataConsent');
 
   // Modal de Bloqueio de Trial & Planos
   const modalTrialBlock = document.getElementById('modalTrialBlock');
@@ -245,7 +235,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const formEmailAuth = document.getElementById('formEmailAuth');
   const authEmail = document.getElementById('authEmail');
   const authPassword = document.getElementById('authPassword');
+  const btnSubmitLogin = document.getElementById('btnSubmitLogin');
   const btnSubmitSignup = document.getElementById('btnSubmitSignup');
+  const btnManageSubscription = document.getElementById('btnManageSubscription');
+  const btnDeleteAccount = document.getElementById('btnDeleteAccount');
   const authFeedbackMsg = document.getElementById('authFeedbackMsg');
   const loggedUserName = document.getElementById('loggedUserName');
   const loggedUserEmail = document.getElementById('loggedUserEmail');
@@ -259,22 +252,93 @@ document.addEventListener('DOMContentLoaded', () => {
   const historyListContainer = document.getElementById('historyListContainer');
 
   // ==========================================
-  // GERENCIADOR CENTRAL DE MODAIS
+  // GERENCIADOR CENTRAL DE MODAIS (com acessibilidade)
   // ==========================================
+  const ALL_MODALS = [modalPremium, modalAuth, modalTagDetail, modalHistoryDetail, modalTerms, modalTrialBlock, modalStripeElements];
+  let lastFocusedElement = null;
+
+  const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
+
   function openModal(modal) {
     if (!modal) return;
+    lastFocusedElement = document.activeElement;
     modal.classList.remove('hidden');
     modal.removeAttribute('hidden');
+    // Move o foco para dentro do modal (leitores de tela e teclado)
+    const firstFocusable = modal.querySelector(FOCUSABLE_SELECTOR);
+    if (firstFocusable) {
+      setTimeout(() => { try { firstFocusable.focus(); } catch (e) {} }, 30);
+    }
   }
 
   function closeModal(modal) {
     if (!modal) return;
+    const wasOpen = !modal.classList.contains('hidden');
     modal.classList.add('hidden');
     modal.setAttribute('hidden', '');
+    // Devolve o foco a quem abriu o modal
+    if (wasOpen && lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+      try { lastFocusedElement.focus(); } catch (e) {}
+      lastFocusedElement = null;
+    }
   }
 
   function closeAllModals() {
-    [modalPremium, modalAuth, modalTagDetail, modalHistoryDetail, modalTerms, modalTrialBlock, modalStripeElements].forEach(closeModal);
+    ALL_MODALS.forEach(closeModal);
+  }
+
+  // Mantém o foco preso dentro do modal aberto enquanto ele estiver visível
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const openedModal = ALL_MODALS.find(m => m && !m.classList.contains('hidden'));
+    if (!openedModal) return;
+
+    const focusables = Array.from(openedModal.querySelectorAll(FOCUSABLE_SELECTOR))
+      .filter(el => el.offsetParent !== null);
+    if (focusables.length === 0) return;
+
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
+
+  // ==========================================
+  // AVISOS NA INTERFACE (substitui alert() nativo)
+  // ==========================================
+  function showToast(message, type = 'info', durationMs = 6000) {
+    let host = document.getElementById('toastHost');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'toastHost';
+      host.className = 'toast-host';
+      host.setAttribute('role', 'status');
+      host.setAttribute('aria-live', 'polite');
+      document.body.appendChild(host);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'toast-close';
+    closeBtn.setAttribute('aria-label', 'Fechar aviso');
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', () => toast.remove());
+    toast.appendChild(closeBtn);
+
+    host.appendChild(toast);
+    if (durationMs > 0) {
+      setTimeout(() => toast.remove(), durationMs);
+    }
   }
 
   // ==========================================
@@ -301,7 +365,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   modulesToInit.forEach(m => {
     try {
-      m.fn();
+      // Módulos assíncronos rejeitam a promise em vez de lançar: capturamos os dois casos
+      // para que a falha de um módulo nunca derrube a inicialização dos demais.
+      const result = m.fn();
+      if (result && typeof result.catch === 'function') {
+        result.catch(err => console.warn(`[Desligue-se Init] Erro assíncrono em ${m.name}:`, err));
+      }
     } catch (err) {
       console.warn(`[Desligue-se Init] Erro em ${m.name}:`, err);
     }
@@ -446,9 +515,25 @@ document.addEventListener('DOMContentLoaded', () => {
       const trigger = document.getElementById(triggerId);
       const box = document.getElementById(boxId);
       if (trigger && box) {
+        const toggleBox = () => {
+          const isHidden = box.classList.toggle('hidden');
+          trigger.setAttribute('aria-expanded', String(!isHidden));
+        };
+
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.setAttribute('aria-controls', boxId);
+
         trigger.addEventListener('click', (e) => {
           if (e.target.closest('.cat-list') || e.target.closest('input') || e.target.closest('button')) return;
-          box.classList.toggle('hidden');
+          toggleBox();
+        });
+
+        // Acessibilidade: o elemento tem role="button", então Enter e Espaço precisam ativá-lo
+        trigger.addEventListener('keydown', (e) => {
+          if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+          if (e.target.closest('.cat-list') || e.target.closest('input') || e.target.closest('button')) return;
+          e.preventDefault();
+          toggleBox();
         });
       }
     });
@@ -716,6 +801,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      // Consentimento específico para dado sensível (LGPD, art. 11, I).
+      // Precisa ser separado e destacado — não pode vir embutido nos Termos.
+      if (checkSensitiveDataConsent && !checkSensitiveDataConsent.checked) {
+        showAuthFeedback('Para criar a conta, precisamos da sua autorização específica para processar o conteúdo dos seus desabafos, inclusive pela IA do Google Gemini.', 'error');
+        checkSensitiveDataConsent.focus();
+        return;
+      }
+
       if (!email || password.length < 6) {
         showAuthFeedback('Informe um e-mail válido e senha de no mínimo 6 caracteres.', 'error');
         return;
@@ -727,10 +820,13 @@ document.addEventListener('DOMContentLoaded', () => {
           email,
           password,
           options: {
-            data: { 
+            data: {
               full_name: email.split('@')[0],
               terms_accepted_at: new Date().toISOString(),
-              terms_version: '2026-v1'
+              terms_version: '2026-v2',
+              // Registro da prova de consentimento específico para dado sensível
+              sensitive_data_consent: true,
+              sensitive_data_consent_at: new Date().toISOString()
             }
           }
         });
@@ -748,8 +844,85 @@ document.addEventListener('DOMContentLoaded', () => {
     btnSignOut?.addEventListener('click', async () => {
       await supabase.auth.signOut();
       closeModal(modalAuth);
-      showAuthFeedback('Você saiu da conta.', 'success');
+      showToast('Você saiu da conta.', 'info');
     });
+
+    // Gerenciar / cancelar assinatura (Portal do Cliente Stripe)
+    btnManageSubscription?.addEventListener('click', async () => {
+      btnManageSubscription.disabled = true;
+      const originalLabel = btnManageSubscription.textContent;
+      btnManageSubscription.textContent = 'Abrindo portal seguro...';
+      try {
+        const token = await getAccessToken();
+        if (!token) throw new Error('Faça login novamente para gerenciar sua assinatura.');
+
+        const res = await fetch('/api/portal', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ returnUrl: window.location.origin })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.url) {
+          throw new Error(data.error || 'Não foi possível abrir o portal de assinatura.');
+        }
+        window.location.href = data.url;
+      } catch (err) {
+        showToast(err.message, 'error', 9000);
+        btnManageSubscription.disabled = false;
+        btnManageSubscription.textContent = originalLabel;
+      }
+    });
+
+    // Exclusão definitiva da conta e de todos os dados (LGPD, art. 18, VI)
+    btnDeleteAccount?.addEventListener('click', async () => {
+      const confirmed = window.confirm(
+        'ATENÇÃO: esta ação é definitiva.\n\n' +
+        'Todo o seu diário, seus registros e a sua conta serão apagados permanentemente ' +
+        'dos nossos servidores e não poderão ser recuperados.\n\n' +
+        'Deseja realmente excluir a sua conta e todos os seus dados?'
+      );
+      if (!confirmed) return;
+
+      btnDeleteAccount.disabled = true;
+      btnDeleteAccount.textContent = 'Excluindo seus dados...';
+      try {
+        const { error } = await supabase.rpc('delete_my_account');
+        if (error) throw new Error(error.message);
+
+        // Limpa qualquer resquício local antes de encerrar a sessão
+        try {
+          if (appState.currentUser) localStorage.removeItem(`desliguese_entries_${appState.currentUser.id}`);
+          localStorage.removeItem('desliguese_last_dump_date');
+          localStorage.removeItem('desliguese_user_plan');
+        } catch (e) {}
+
+        await supabase.auth.signOut();
+        closeModal(modalAuth);
+        showToast('Sua conta e todos os seus dados foram excluídos definitivamente. Cuide-se. 💜', 'success', 12000);
+      } catch (err) {
+        showToast('Não foi possível excluir a conta: ' + err.message, 'error', 10000);
+      } finally {
+        btnDeleteAccount.disabled = false;
+        btnDeleteAccount.textContent = '🗑️ Excluir minha conta e meus dados';
+      }
+    });
+  }
+
+  /**
+   * Recupera o access token (JWT) da sessão atual do Supabase.
+   * É ele que autentica a usuária nos endpoints serverless (/api/*).
+   */
+  async function getAccessToken() {
+    if (!supabase) return null;
+    try {
+      const { data } = await supabase.auth.getSession();
+      return data?.session?.access_token || null;
+    } catch (e) {
+      return null;
+    }
   }
 
   function handleUserLoggedIn(user) {
@@ -769,15 +942,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Carrega histórico associado ao usuário logado
     appState.history = loadHistoryFromLocalStorage();
+    updateHistoryUI();
     loadCloudUserProfile(user.id);
     syncCloudHistory(user.id);
-    checkDailyLimitUI();
+    refreshDailyUsageFromServer();
   }
 
   function handleUserLoggedOut() {
     appState.currentUser = null;
     appState.userProfile = null;
     appState.history = [];
+    appState.dailyEntriesToday = null;
+    // O plano é sempre derivado do servidor: sem sessão não existe Pro.
+    try { localStorage.removeItem('desliguese_user_plan'); } catch (e) {}
+    if (btnManageSubscription) btnManageSubscription.classList.add('hidden');
+    if (btnDeleteAccount) btnDeleteAccount.classList.add('hidden');
     if (userAvatarIcon) userAvatarIcon.textContent = '👤';
     if (userAuthLabel) userAuthLabel.textContent = 'Entrar';
     if (mobAvatarIcon) mobAvatarIcon.textContent = '👤';
@@ -793,46 +972,92 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadCloudUserProfile(userId) {
     if (!supabase) return;
     try {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
       if (data) {
         appState.userProfile = data;
-        const plano = data.plano === 'premium_mensal' || data.plano === 'premium_anual' ? '⭐ Premium' : 'Gratuito';
-        if (loggedUserPlanBadge) loggedUserPlanBadge.textContent = plano;
+        renderPlanBadge();
+        checkDailyLimitUI();
       }
     } catch (e) {
       console.warn('Erro ao carregar perfil:', e);
     }
   }
 
+  function renderPlanBadge() {
+    const isPro = isUserPro();
+    if (loggedUserPlanBadge) {
+      const status = appState.userProfile?.subscription_status;
+      let label = 'Gratuito';
+      if (isPro) {
+        label = appState.userProfile?.plano === 'premium_anual' ? '⭐ Premium Anual' : '⭐ Premium Mensal';
+        if (status === 'canceling') label += ' (cancelamento agendado)';
+      }
+      loggedUserPlanBadge.textContent = label;
+    }
+    // O portal de assinatura só faz sentido para quem já tem um cadastro no Stripe
+    if (btnManageSubscription) {
+      btnManageSubscription.classList.toggle('hidden', !appState.userProfile?.stripe_customer_id);
+    }
+    if (btnDeleteAccount) {
+      btnDeleteAccount.classList.toggle('hidden', !appState.currentUser);
+    }
+  }
+
   async function syncCloudHistory(userId) {
     if (!supabase) return;
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('journal_entries')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      if (data && data.length > 0) {
-        appState.history = data.map(row => ({
-          id: row.id,
-          title: row.triaged_data?.title || 'Diário Noturno',
-          date: row.created_at,
-          rawText: row.raw_text,
-          counselingAdvice: row.triaged_data?.counselingAdvice || '',
-          sleepMood: row.sleep_mood,
-          gratitude: row.triaged_data?.gratitude || [],
-          tomorrow: row.triaged_data?.tomorrow || [],
-          wait: row.triaged_data?.wait || [],
-          release: row.triaged_data?.release || [],
-          rumination: row.triaged_data?.rumination || []
-        }));
-        saveLocalHistory(appState.history);
-        updateHistoryUI();
-      }
+      if (!Array.isArray(data)) return;
+
+      const cloudEntries = data.map(row => ({
+        id: row.id,
+        title: row.triaged_data?.title || 'Diário Noturno',
+        date: row.created_at,
+        rawText: row.raw_text,
+        counselingAdvice: row.triaged_data?.counselingAdvice || '',
+        sleepMood: row.sleep_mood,
+        gratitude: row.triaged_data?.gratitude || [],
+        tomorrow: row.triaged_data?.tomorrow || [],
+        wait: row.triaged_data?.wait || [],
+        release: row.triaged_data?.release || [],
+        rumination: row.triaged_data?.rumination || []
+      }));
+
+      // Mescla nuvem + local em vez de sobrescrever: registros feitos offline
+      // (ou antes de a sincronização terminar) não podem se perder.
+      const merged = mergeHistories(cloudEntries, appState.history);
+      appState.history = merged;
+      saveLocalHistory(merged);
+      updateHistoryUI();
     } catch (e) {
       console.warn('Erro ao sincronizar histórico:', e);
     }
+  }
+
+  /**
+   * Une duas listas de registros sem duplicar. A identidade é o `id` do banco
+   * quando existe; caso contrário, data + texto original.
+   */
+  function mergeHistories(primary, secondary) {
+    const keyOf = (entry) => entry.id || `${entry.date}::${(entry.rawText || '').slice(0, 120)}`;
+    const seen = new Set();
+    const merged = [];
+
+    [...(primary || []), ...(secondary || [])].forEach(entry => {
+      if (!entry) return;
+      const key = keyOf(entry);
+      if (seen.has(key)) return;
+      seen.add(key);
+      merged.push(entry);
+    });
+
+    merged.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+    return merged.slice(0, 200);
   }
 
   function showAuthFeedback(msg, type) {
@@ -863,60 +1088,103 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // VERIFICAÇÃO DE PLANOS & LIMITES (PRO vs GRATUITO)
   // ==========================================
+  const FREE_ENTRIES_PER_DAY = 1;
+
+  /**
+   * O plano Pro vem EXCLUSIVAMENTE do perfil no banco, que por sua vez só é
+   * escrito pelo webhook do Stripe (service role). Nada no navegador concede
+   * acesso pago — localStorage e sessão do cliente não são fontes de verdade.
+   */
   function isUserPro() {
-    try {
-      // 1. Verificação no localStorage (ativação instantânea)
-      const localPlan = localStorage.getItem('desliguese_user_plan');
-      if (localPlan === 'pro' || localPlan === 'premium_mensal' || localPlan === 'premium_anual') {
-        return true;
-      }
-      // 2. Verificação no perfil do Supabase
-      if (appState.userProfile && (appState.userProfile.plano === 'premium_mensal' || appState.userProfile.plano === 'premium_anual')) {
-        return true;
-      }
-    } catch (e) {}
-    return false;
+    const profile = appState.userProfile;
+    if (!profile) return false;
+
+    const planoPago = profile.plano === 'premium_mensal' || profile.plano === 'premium_anual';
+    if (!planoPago) return false;
+
+    // Assinatura ativa, em teste gratuito ou já cancelada mas ainda dentro do período pago
+    const statusValido = ['active', 'trialing', 'canceling', 'past_due'];
+    return !profile.subscription_status || statusValido.includes(profile.subscription_status);
   }
 
-  function getTodayDateString() {
-    const d = new Date();
+  /** Data de hoje no fuso da usuária, em YYYY-MM-DD. */
+  function getTodayDateString(dateInput) {
+    const d = dateInput ? new Date(dateInput) : new Date();
+    if (isNaN(d.getTime())) return '';
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
 
+  /**
+   * Conta no servidor quantos registros a usuária já fez hoje.
+   * Essa é a contagem autoritativa do limite gratuito para quem está logada.
+   */
+  async function refreshDailyUsageFromServer() {
+    if (!supabase || !appState.currentUser) {
+      appState.dailyEntriesToday = null;
+      checkDailyLimitUI();
+      return;
+    }
+
+    try {
+      // Início do dia local convertido para o instante absoluto correspondente
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const { count, error } = await supabase
+        .from('journal_entries')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', appState.currentUser.id)
+        .gte('created_at', startOfDay.toISOString());
+
+      if (!error && typeof count === 'number') {
+        appState.dailyEntriesToday = count;
+      }
+    } catch (e) {
+      console.warn('Erro ao consultar uso diário:', e);
+    } finally {
+      checkDailyLimitUI();
+    }
+  }
+
   function hasReachedDailyFreeLimit() {
     if (isUserPro()) return false; // Assinantes Pro possuem registros ilimitados
 
-    const todayStr = getTodayDateString();
-
-    // 1. Checa a data do último registro gravado no storage
-    const lastDate = localStorage.getItem('desliguese_last_dump_date');
-    if (lastDate === todayStr) {
-      return true;
+    // 1. Usuária logada: contagem vinda do servidor é a que vale
+    if (appState.currentUser && typeof appState.dailyEntriesToday === 'number') {
+      return appState.dailyEntriesToday >= FREE_ENTRIES_PER_DAY;
     }
 
-    // 2. Checa no histórico de entradas salvas
-    if (appState.history && Array.isArray(appState.history) && appState.history.length > 0) {
+    const todayStr = getTodayDateString();
+
+    // 2. Fallback local (visitante ou servidor indisponível)
+    try {
+      if (localStorage.getItem('desliguese_last_dump_date') === todayStr) return true;
+    } catch (e) {}
+
+    // 3. Confere o histórico em memória usando SEMPRE o fuso local nos dois lados
+    //    (comparar data local com data UTC bloqueava a usuária um dia antes).
+    if (Array.isArray(appState.history) && appState.history.length > 0) {
       const todayEntries = appState.history.filter(item => {
         const itemTimestamp = item.timestamp || item.date;
         if (!itemTimestamp) return false;
-        try {
-          const itemDate = new Date(itemTimestamp).toISOString().split('T')[0];
-          return itemDate === todayStr;
-        } catch (e) {
-          return false;
-        }
+        return getTodayDateString(itemTimestamp) === todayStr;
       });
-      if (todayEntries.length >= 1) return true;
+      if (todayEntries.length >= FREE_ENTRIES_PER_DAY) return true;
     }
 
     return false;
   }
 
   function markDailyDumpCompleted() {
-    localStorage.setItem('desliguese_last_dump_date', getTodayDateString());
+    try {
+      localStorage.setItem('desliguese_last_dump_date', getTodayDateString());
+    } catch (e) {}
+    if (typeof appState.dailyEntriesToday === 'number') {
+      appState.dailyEntriesToday += 1;
+    }
     checkDailyLimitUI();
   }
 
@@ -1020,7 +1288,7 @@ document.addEventListener('DOMContentLoaded', () => {
     recognition.onerror = (event) => {
       console.warn('SpeechRecognition error:', event.error);
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        alert('⚠️ Permissão de microfone negada. Por favor, libere o acesso ao microfone nas configurações do seu navegador.');
+        showToast('Permissão de microfone negada. Libere o acesso ao microfone nas configurações do navegador para ditar seus pensamentos.', 'error', 9000);
         stopRecording();
       }
     };
@@ -1078,19 +1346,40 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
 
   // Detector local de crise (safety net — funciona mesmo sem API)
-  const CRISIS_KEYWORDS = [
-    'me matar', 'matar', 'suicíd', 'suicid', 'quero morrer', 'vontade de morrer',
-    'não quero mais viver', 'acabar com tudo', 'sumir do mundo', 'seria melhor sem mim',
-    'não aguento mais viver', 'não vejo saída', 'não vejo saida', 'sem saída',
-    'overdose', 'me cortar', 'me machucar', 'automutilação', 'autolesão',
-    'pular da', 'pular de', 'enforcamento', 'veneno', 'desistir da vida',
-    'ninguém se importa', 'ninguem se importa', 'melhor morta', 'melhor morto',
-    'não tenho motivo pra viver', 'cansei de viver', 'quero desaparecer'
+  // Expressões que indicam risco real. Evitamos termos soltos como "matar",
+  // que produziam falso positivo em "matar a saudade", "matar aula" ou
+  // "matar o tempo" — e disparavam um alerta de suicídio sem motivo.
+  const CRISIS_PATTERNS = [
+    /\bme\s+matar\b/,
+    /\bmatar\s+(a\s+mim|eu)\b/,
+    /\btirar\s+(a\s+)?minha\s+vida\b/,
+    /\bsuicid/,
+    /\bsuicíd/,
+    /\bquero\s+morrer\b/,
+    /\bvontade\s+de\s+morrer\b/,
+    /\bn[ãa]o\s+quero\s+mais\s+viver\b/,
+    /\bn[ãa]o\s+aguento\s+mais\s+viver\b/,
+    /\bcansei\s+de\s+viver\b/,
+    /\bdesistir\s+da\s+vida\b/,
+    /\bacabar\s+com\s+(tudo|a\s+minha\s+vida)\b/,
+    /\bsumir\s+do\s+mundo\b/,
+    /\bquero\s+desaparecer\b/,
+    /\b(seria|ia\s+ser)\s+melhor\s+sem\s+mim\b/,
+    /\bmelhor\s+mort[ao]\b/,
+    /\bn[ãa]o\s+(tenho|vejo)\s+(motivo|sentido)\s+(pra|para)\s+viver\b/,
+    /\bn[ãa]o\s+vejo\s+sa[íi]da\b/,
+    /\boverdose\b/,
+    /\bme\s+(cortar|cortando|machucar|machucando|ferir)\b/,
+    /\bautomutila/,
+    /\bautoles[ãa]o\b/,
+    /\bme\s+enforcar\b/,
+    /\bpular\s+d[aoe]\s+(pr[ée]dio|janela|ponte|viaduto)\b/,
+    /\btomar\s+veneno\b/
   ];
 
   function detectLocalCrisis(text) {
-    const lower = text.toLowerCase();
-    return CRISIS_KEYWORDS.some(kw => lower.includes(kw));
+    const lower = (text || '').toLowerCase();
+    return CRISIS_PATTERNS.some(re => re.test(lower));
   }
 
   async function handleProcessDump() {
@@ -1166,12 +1455,19 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   async function classifyWithGemini(text, title) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000); // 12s timeout
+    // O servidor tem orçamento de ~22s (ver api/classify.js). O cliente espera
+    // um pouco mais para não abortar uma resposta que já está a caminho —
+    // abortar cedo demais fazia a IA nunca ser usada, caindo sempre no local.
+    const timeout = setTimeout(() => controller.abort(), 28000);
 
     try {
+      const token = await getAccessToken();
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch('/api/classify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ text, title }),
         signal: controller.signal
       });
@@ -1193,7 +1489,9 @@ document.addEventListener('DOMContentLoaded', () => {
         rawText: text,
         crisisDetected: data.crisisDetected === true,
         counselingAdvice: data.counselingAdvice || '',
-        sleepMood: data.sleepMood || null,
+        // O banco só aceita terrible|medium|great (ou nulo). A IA às vezes
+        // devolve texto livre, então normalizamos aqui e descartamos o resto.
+        sleepMood: ['terrible', 'medium', 'great'].includes(data.sleepMood) ? data.sleepMood : null,
         gratitude: Array.isArray(data.gratitude) ? data.gratitude : [],
         tomorrow: Array.isArray(data.tomorrow) ? data.tomorrow.map(t => ({ ...t, done: false })) : [],
         wait: Array.isArray(data.wait) ? data.wait : [],
@@ -1622,10 +1920,17 @@ document.addEventListener('DOMContentLoaded', () => {
       resultEntryTitle.textContent = `“${data.title}”`;
     }
 
+    // Alerta de crise: precisa ser avaliado ANTES da carta, porque em situação
+    // de risco a carta jamais pode ser truncada nem exibir oferta de upgrade.
+    renderCrisisAlert(data.crisisDetected === true);
+
     // Renderiza a Carta de Consolo e Conselhos
     if (counselingText) {
       const fullAdvice = data.counselingAdvice || 'Você concluiu o dia. Seus pensamentos estão guardados e seguros. Pode descansar em paz.';
-      if (isUserPro()) {
+      // REGRA DE SEGURANÇA: em crise, a mensagem de acolhimento (que contém os
+      // contatos do CVV e do SAMU) é exibida na íntegra para todo mundo.
+      // Nunca cobrar por uma mensagem de socorro.
+      if (isUserPro() || data.crisisDetected === true) {
         counselingText.innerHTML = escapeHTML(fullAdvice);
       } else {
         // No Plano Free: Exibe o primeiro trecho e um teaser borrado com chamada de upgrade Pro
@@ -1892,11 +2197,13 @@ document.addEventListener('DOMContentLoaded', () => {
     stopAudioSoundscape();
 
     if (appState.currentTriagedData) {
-      saveNightEntry(appState.currentTriagedData);
-      
+      const savedEntry = saveNightEntry(appState.currentTriagedData);
+
       if (supabase && appState.currentUser) {
         try {
-          await supabase.from('journal_entries').insert({
+          // .select().single() devolve a linha criada: precisamos do id para
+          // conseguir gravar a nota do sono no check-in matinal seguinte.
+          const { data, error } = await supabase.from('journal_entries').insert({
             user_id: appState.currentUser.id,
             raw_text: appState.currentTriagedData.rawText,
             triaged_data: {
@@ -1909,10 +2216,19 @@ document.addEventListener('DOMContentLoaded', () => {
               rumination: appState.currentTriagedData.rumination
             },
             routine_duration_minutes: appState.selectedRoutineMinutes
-          });
-          console.log('✅ Diário sincronizado no Supabase!');
+          }).select('id, created_at').single();
+
+          if (error) throw error;
+
+          if (data?.id && savedEntry) {
+            savedEntry.id = data.id;
+            if (data.created_at) savedEntry.date = data.created_at;
+            saveLocalHistory(appState.history);
+          }
+          refreshDailyUsageFromServer();
         } catch (e) {
           console.warn('Erro ao salvar no Supabase:', e);
+          showToast('Seu registro foi salvo neste dispositivo, mas não conseguimos sincronizar com a nuvem agora.', 'info', 8000);
         }
       }
     }
@@ -2099,11 +2415,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function saveNightEntry(entry) {
-    if (appState.currentUser) {
-      appState.history.unshift(entry);
-      if (appState.history.length > 50) appState.history.pop();
-      saveLocalHistory(appState.history);
-    }
+    if (!appState.currentUser) return null;
+    appState.history.unshift(entry);
+    if (appState.history.length > 50) appState.history.pop();
+    saveLocalHistory(appState.history);
+    return entry;
   }
 
   function updateHistoryUI() {
@@ -2120,7 +2436,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (balanceBarBad) balanceBarBad.style.width = '50%';
 
       if (balanceInsightText) {
-        balanceInsightText.innerHTML = '<strong>Seu diário seguro:</strong> Faça login para que suas reflexões fiquem salvas na nuvem com criptografia de ponta a ponta.';
+        balanceInsightText.innerHTML = '<strong>Seu diário seguro:</strong> Faça login para que suas reflexões fiquem salvas na sua conta, protegidas por conexão criptografada e visíveis apenas para você.';
       }
 
       historyListContainer.innerHTML = `
@@ -2311,25 +2627,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // GERENCIADOR CENTRAL DE MODAIS
-  // ==========================================
-  function openModal(modal) {
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    modal.removeAttribute('hidden');
-  }
-
-  function closeModal(modal) {
-    if (!modal) return;
-    modal.classList.add('hidden');
-    modal.setAttribute('hidden', '');
-  }
-
-  function closeAllModals() {
-    [modalPremium, modalAuth, modalTagDetail, modalHistoryDetail, modalTerms, modalTrialBlock, modalStripeElements].forEach(closeModal);
-  }
-
-  // ==========================================
   // MODAIS (PREMIUM, AUTH, TAGS, DETALHES DO DIÁRIO & TECLA ESC)
   // ==========================================
   function initModals() {
@@ -2420,16 +2717,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target === modalStripeElements) closeModal(modalStripeElements);
     });
 
-    // Tecla Escape para todos os modais
+    // Tecla Escape fecha o modal aberto (usando closeModal para também
+    // restaurar o atributo hidden e devolver o foco a quem abriu)
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' || e.key === 'Esc') {
-        modalPremium?.classList.add('hidden');
-        modalAuth?.classList.add('hidden');
-        modalTagDetail?.classList.add('hidden');
-        modalHistoryDetail?.classList.add('hidden');
-        modalTerms?.classList.add('hidden');
-        modalTrialBlock?.classList.add('hidden');
-        modalStripeElements?.classList.add('hidden');
+        closeAllModals();
       }
     });
   }
@@ -2437,12 +2729,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // INTEGRAÇÃO STRIPE PAYMENT ELEMENTS (EMBEDDED IN-APP CHECKOUT)
   // ==========================================
-  const STRIPE_PUBLISHABLE_KEY = 'pk_test_51U57k8IZTTcAGD4KX607B2pXl4qoX0OIabqI8WwhVHR6i4YamOfUrDj8Mehp5hMShhtEczt41rj0QbBRxK5qymcs00RzYTY7bM';
+  const STRIPE_PUBLISHABLE_KEY = CONFIG.stripePublishableKey;
   let stripeObj = null;
   let stripeElementsInstance = null;
   let currentElementsPlan = 'monthly';
 
   async function handleInitiateCheckout(planType, buttonElement) {
+    // A assinatura precisa estar vinculada a uma conta: é o webhook do Stripe
+    // que grava o plano no perfil da usuária. Sem login não há onde gravar,
+    // e a pessoa perderia o acesso pago ao trocar de dispositivo.
+    const token = await getAccessToken();
+    if (!token) {
+      closeModal(modalPremium);
+      openModal(modalAuth);
+      showAuthFeedback('Crie sua conta ou entre para assinar — assim sua assinatura fica vinculada a você e funciona em qualquer aparelho.', 'error');
+      return;
+    }
+
     const originalText = buttonElement ? buttonElement.textContent : '';
     if (buttonElement) {
       buttonElement.disabled = true;
@@ -2450,19 +2753,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      // 1. Tenta abrir o formulário embutido via Stripe Elements
-      await openStripeElementsCheckout(planType);
+      // 1. Tenta abrir o formulário embutido via Stripe Embedded Checkout
+      await openStripeElementsCheckout(planType, token);
     } catch (elementsErr) {
       console.warn('Fallback para Checkout Session tradicional:', elementsErr);
-      // Fallback para o Stripe Checkout tradicional
+      // Fallback para o Stripe Checkout hospedado
       try {
-        const userEmail = appState.currentUser?.email || '';
-        const userId = appState.currentUser?.id || '';
-
         const response = await fetch('/api/checkout', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ planType, userEmail, userId })
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ planType })
         });
 
         const data = await response.json();
@@ -2472,7 +2775,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.location.href = data.url;
       } catch (fallbackErr) {
-        alert('⚠️ Ocorreu um problema ao conectar com a operadora de pagamentos:\n' + fallbackErr.message);
+        closeModal(modalStripeElements);
+        showToast('Não conseguimos conectar com a operadora de pagamentos: ' + fallbackErr.message, 'error', 10000);
       }
     } finally {
       if (buttonElement) {
@@ -2482,10 +2786,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function openStripeElementsCheckout(planType) {
+  async function openStripeElementsCheckout(planType, token) {
     currentElementsPlan = planType;
-    const userEmail = appState.currentUser?.email || '';
-    const userId = appState.currentUser?.id || '';
 
     // Fecha o modal de pricing e abre o modal do formulário embutido
     closeModal(modalPremium);
@@ -2506,8 +2808,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cria a assinatura no backend e obtém o clientSecret
     const res = await fetch('/api/create-subscription', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planType, userEmail, userId })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ planType })
     });
 
     const data = await res.json();
@@ -2518,6 +2823,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inicializa o Stripe.js
     if (!window.Stripe) {
       throw new Error('Script da Stripe.js não carregado.');
+    }
+    if (!STRIPE_PUBLISHABLE_KEY) {
+      throw new Error('Chave publicável do Stripe não configurada em config.js.');
     }
 
     stripeObj = window.Stripe(STRIPE_PUBLISHABLE_KEY);
@@ -2606,32 +2914,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const status = urlParams.get('status');
     const sessionId = urlParams.get('session_id');
-    const plan = urlParams.get('plan') || 'monthly';
 
     if (status === 'success' && sessionId) {
       try {
-        const verifyRes = await fetch(`/api/verify-session?session_id=${sessionId}`);
+        const token = await getAccessToken();
+        const verifyRes = await fetch(`/api/verify-session?session_id=${encodeURIComponent(sessionId)}`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
         const verifyData = await verifyRes.json();
 
         if (verifyData.paid) {
-          // Ativa o plano Pro localmente
-          localStorage.setItem('desliguese_user_plan', 'pro');
-          
-          if (loggedUserPlanBadge) {
-            loggedUserPlanBadge.textContent = '⭐ Premium Pro';
-          }
-
-          // Se estiver logado, atualiza o Supabase
-          if (supabase && appState.currentUser) {
-            await supabase.from('profiles').upsert({
-              id: appState.currentUser.id,
-              plano: plan === 'annual' ? 'premium_anual' : 'premium_mensal',
-              updated_at: new Date().toISOString()
-            });
-          }
-
-          // Mensagem comemorativa de boas-vindas ao Pro
-          alert('🎉 PARABÉNS E BEM-VINDA AO DESLIGUE-SE PRO!\n\nSeu pagamento foi confirmado com sucesso. Você agora tem acesso ilimitado à inteligência artificial do sono, histórico completo na nuvem, todas as paisagens sonoras e relatórios de bem-estar.');
+          showToast('🎉 Pagamento confirmado! Estamos liberando o seu acesso Pro...', 'success', 8000);
+          // O plano é gravado no perfil pelo webhook do Stripe (servidor).
+          // Aqui apenas aguardamos essa confirmação chegar ao banco.
+          await waitForProActivation();
+        } else {
+          showToast('Ainda não recebemos a confirmação do seu pagamento. Assim que a operadora confirmar, seu acesso Pro é liberado automaticamente.', 'info', 10000);
         }
       } catch (err) {
         console.warn('Erro ao verificar sessão do Stripe:', err);
@@ -2640,9 +2938,33 @@ document.addEventListener('DOMContentLoaded', () => {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     } else if (status === 'cancelled') {
-      alert('ℹ️ O processo de pagamento foi cancelado. Nenhuma cobrança foi efetuada.');
+      showToast('O processo de pagamento foi cancelado. Nenhuma cobrança foi efetuada.', 'info');
       window.history.replaceState({}, document.title, window.location.pathname);
     }
+  }
+
+  /**
+   * Após o pagamento, o webhook do Stripe grava o plano no perfil.
+   * Isso costuma levar 1-3 segundos, então recarregamos o perfil algumas vezes
+   * antes de desistir — sem nunca conceder o Pro pelo lado do cliente.
+   */
+  async function waitForProActivation(attempts = 8, delayMs = 1500) {
+    if (!supabase || !appState.currentUser) return false;
+
+    for (let i = 0; i < attempts; i++) {
+      await loadCloudUserProfile(appState.currentUser.id);
+      if (isUserPro()) {
+        renderPlanBadge();
+        checkDailyLimitUI();
+        updateHistoryUI();
+        showToast('Bem-vinda ao Desligue-se Pro! Seu acesso ilimitado já está ativo. 💜', 'success', 9000);
+        return true;
+      }
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+
+    showToast('Seu pagamento foi recebido, mas a liberação ainda está sendo processada. Atualize a página em alguns instantes.', 'info', 12000);
+    return false;
   }
 
   // ==========================================
@@ -2698,9 +3020,9 @@ document.addEventListener('DOMContentLoaded', () => {
             btnInstallApp.classList.add('hidden');
           }
         } else if (isIOS) {
-          alert('📲 Para instalar no iPhone/iPad:\n\n1. Toque no botão de Compartilhar (ícone com quadrado e seta para cima no Safari).\n2. Role a lista e toque em "Adicionar à Tela de Início".\n3. Pronto! O Desligue-se funcionará como um aplicativo nativo.');
+          showToast('📲 Para instalar no iPhone/iPad:\n1. Toque no botão Compartilhar do Safari.\n2. Escolha "Adicionar à Tela de Início".\n3. Pronto — o Desligue-se abre como um aplicativo.', 'info', 14000);
         } else {
-          alert('📲 Para instalar o Desligue-se:\n\nAbra as opções do seu navegador (três pontos ⋮) e selecione "Instalar aplicativo" ou "Adicionar à tela inicial".');
+          showToast('📲 Para instalar: abra as opções do navegador (⋮) e selecione "Instalar aplicativo" ou "Adicionar à tela inicial".', 'info', 12000);
         }
       });
     }

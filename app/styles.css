@@ -2814,9 +2814,122 @@ button:active, .nav-pill:active, .mob-nav-btn:active, .btn-primary:active, .btn-
   font-size: 0.75rem;
 }
 
+/* ============================================================
+   AVISOS NÃO BLOQUEANTES (substituem o alert() nativo)
+   ============================================================ */
+.toast-host {
+  position: fixed;
+  left: 50%;
+  bottom: 5.5rem;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: min(92vw, 460px);
+  pointer-events: none;
+}
+
+.toast {
+  position: relative;
+  pointer-events: auto;
+  background: #131922;
+  color: var(--text-main);
+  border: 1px solid rgba(212, 163, 115, 0.32);
+  border-left: 3px solid var(--accent-amber);
+  border-radius: 10px;
+  padding: 0.9rem 2.4rem 0.9rem 1rem;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  white-space: pre-line;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  animation: toastIn 0.28s ease-out;
+}
+
+.toast-success { border-left-color: var(--sage-calm); }
+.toast-error { border-left-color: #FF8080; }
+
+.toast-close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.2rem 0.35rem;
+}
+
+.toast-close:hover { color: var(--text-main); }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   AVISO DE NÃO PERSISTÊNCIA NO MODO VISITANTE
+   ============================================================ */
+.info-note-visitor {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed rgba(212, 163, 115, 0.28);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ============================================================
+   EXCLUSÃO DE CONTA (LGPD)
+   ============================================================ */
+.account-danger-zone {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 128, 128, 0.18);
+  text-align: center;
+}
+
+.account-danger-zone small {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.btn-danger-text {
+  background: none;
+  border: 1px solid rgba(255, 128, 128, 0.35);
+  color: #FF9C9C;
+  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-danger-text:hover {
+  background: rgba(255, 128, 128, 0.1);
+  border-color: rgba(255, 128, 128, 0.6);
+}
+
+/* ============================================================
+   FOCO VISÍVEL PARA NAVEGAÇÃO POR TECLADO
+   ============================================================ */
+:focus-visible {
+  outline: 2px solid var(--accent-amber);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-iteration-count: 1 !important;
     animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -1,53 +1,55 @@
 /**
- * DESLIGUE-SE — Vercel Serverless API: Verificação de Sessão do Stripe
- * Valida se o pagamento foi concluído com sucesso e retorna o status do plano
+ * DESLIGUE-SE — Confirmação do retorno do checkout
+ *
+ * Correções da auditoria:
+ *  - exige autenticação e confere se a sessão pertence a quem está perguntando
+ *    (antes qualquer pessoa consultava qualquer session_id);
+ *  - não repassa mais o erro cru do Stripe, que vazava o id da conta
+ *    (acct_...) e a URL de log do dashboard para chamadores anônimos;
+ *  - este endpoint é apenas informativo para a interface. Quem concede o plano
+ *    é o webhook, no servidor.
  */
 
-module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+const { applyCors, requireUser, stripeRequest } = require('./_lib/http');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+module.exports = async function handler(req, res) {
+  if (applyCors(req, res, 'GET, OPTIONS')) return;
+
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Método não permitido.' });
   }
 
-  const { session_id } = req.query || {};
-  if (!session_id) {
+  const user = await requireUser(req, res);
+  if (!user) return;
+
+  const { session_id: sessionId } = req.query || {};
+  if (!sessionId || typeof sessionId !== 'string') {
     return res.status(400).json({ error: 'session_id é obrigatório.' });
   }
 
-  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-  if (!stripeSecretKey) {
-    return res.status(500).json({ error: 'STRIPE_SECRET_KEY não configurada.' });
-  }
-
   try {
-    const stripeResponse = await fetch(`https://api.stripe.com/v1/checkout/sessions/${session_id}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${stripeSecretKey}`
-      }
-    });
+    const session = await stripeRequest('GET', `checkout/sessions/${encodeURIComponent(sessionId)}`);
 
-    const sessionData = await stripeResponse.json();
+    // A sessão precisa ser desta usuária. Sem esta checagem, qualquer pessoa
+    // poderia consultar o status de pagamento de outra pessoa.
+    const belongsToUser =
+      session.client_reference_id === user.id ||
+      session.metadata?.userId === user.id;
 
-    if (!stripeResponse.ok) {
-      return res.status(502).json({ error: 'Erro ao consultar sessão no Stripe.', detail: sessionData });
+    if (!belongsToUser) {
+      console.warn(`Usuária ${user.id} tentou consultar a sessão ${sessionId}, que não é dela.`);
+      return res.status(403).json({ error: 'Esta sessão de pagamento não pertence à sua conta.' });
     }
 
-    const isPaid = sessionData.payment_status === 'paid' || sessionData.status === 'complete';
-    const planType = sessionData.metadata?.planType || 'monthly';
+    const paid = session.payment_status === 'paid' || session.status === 'complete';
 
     return res.status(200).json({
-      paid: isPaid,
-      status: sessionData.status,
-      customerEmail: sessionData.customer_email || sessionData.customer_details?.email,
-      planType: planType
+      paid,
+      status: session.status,
+      planType: session.metadata?.planType || 'monthly'
     });
-
   } catch (err) {
-    console.error('Erro ao verificar sessão:', err);
-    return res.status(500).json({ error: 'Erro interno ao verificar pagamento.' });
+    console.error('Erro ao verificar sessão:', err.message);
+    return res.status(502).json({ error: 'Não foi possível confirmar o pagamento agora.' });
   }
 };
