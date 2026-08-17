@@ -912,6 +912,78 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
+   * Chama um endpoint /api/* e devolve o JSON.
+   *
+   * Se a resposta não for JSON (página de erro HTML de um proxy, 404 de um
+   * host que não serve as funções, portal de autenticação corporativo etc.),
+   * lança um erro DESCRITIVO em vez de deixar vazar o "Unexpected token '<'",
+   * que não diz nada a quem está usando nem a quem vai depurar.
+   */
+  async function apiFetch(path, options = {}) {
+    const url = new URL(path, window.location.origin).href;
+    let response;
+
+    try {
+      response = await fetch(url, options);
+    } catch (networkErr) {
+      throw new ApiError(`Sem conexão com ${url} (${networkErr.message}).`, { url });
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    const bodyText = await response.text();
+
+    if (!contentType.includes('application/json')) {
+      // Diagnóstico completo no console para quem for investigar
+      console.error(
+        `[Desligue-se] Resposta não-JSON de ${url}\n` +
+        `status: ${response.status} ${response.statusText}\n` +
+        `content-type: ${contentType || '(vazio)'}\n` +
+        `redirecionado para: ${response.url}\n` +
+        `corpo:\n${bodyText.slice(0, 800)}`
+      );
+
+      const hint = response.status === 404
+        ? 'Este endereço não está servindo as funções /api. Confirme se você está no domínio publicado na Vercel.'
+        : `O servidor respondeu ${response.status} em formato inesperado (${contentType || 'sem content-type'}).`;
+
+      throw new ApiError(hint, {
+        url,
+        status: response.status,
+        contentType,
+        bodySnippet: bodyText.slice(0, 200)
+      });
+    }
+
+    let data = {};
+    if (bodyText) {
+      try {
+        data = JSON.parse(bodyText);
+      } catch (parseErr) {
+        throw new ApiError('O servidor devolveu uma resposta corrompida.', { url, status: response.status });
+      }
+    }
+
+    if (!response.ok) {
+      throw new ApiError(data.error || `Erro ${response.status} ao chamar ${path}.`, {
+        url,
+        status: response.status,
+        data
+      });
+    }
+
+    return data;
+  }
+
+  class ApiError extends Error {
+    constructor(message, details = {}) {
+      super(message);
+      this.name = 'ApiError';
+      this.status = details.status || 0;
+      this.details = details;
+    }
+  }
+
+  /**
    * Recupera o access token (JWT) da sessão atual do Supabase.
    * É ele que autentica a usuária nos endpoints serverless (/api/*).
    */
@@ -2771,17 +2843,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function handleInitiateCheckout(planType, buttonElement) {
-    // A assinatura precisa estar vinculada a uma conta: é o webhook do Stripe
-    // que grava o plano no perfil da usuária. Sem login não há onde gravar,
-    // e a pessoa perderia o acesso pago ao trocar de dispositivo.
     const token = await getAccessToken();
-    if (!token) {
-      closeModal(modalPremium);
-      openModal(modalAuth);
-      showAuthFeedback('Crie sua conta ou entre para assinar — assim sua assinatura fica vinculada a você e funciona em qualquer aparelho.', 'error');
-      return;
-    }
-
     const originalText = buttonElement ? buttonElement.textContent : '';
     if (buttonElement) {
       buttonElement.disabled = true;
@@ -2795,13 +2857,17 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('Tentando fallback para Checkout Session hospedado:', elementsErr.message);
       // Fallback para o Stripe Checkout hospedado
       try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const data = await safeFetchJson('/api/checkout', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ planType })
+          headers,
+          body: JSON.stringify({
+            planType,
+            userId: appState.currentUser?.id || 'guest',
+            email: appState.currentUser?.email || null
+          })
         });
 
         if (!data.url) {
@@ -2840,14 +2906,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (paymentMessage) paymentMessage.classList.add('hidden');
 
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     // Cria a assinatura no backend e obtém o clientSecret
     const data = await safeFetchJson('/api/create-subscription', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ planType })
+      headers,
+      body: JSON.stringify({
+        planType,
+        userId: appState.currentUser?.id || 'guest',
+        email: appState.currentUser?.email || null
+      })
     });
 
     if (!data.clientSecret) {
