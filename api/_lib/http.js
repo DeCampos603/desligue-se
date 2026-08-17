@@ -85,12 +85,26 @@ function getBearerToken(req) {
 }
 
 /**
- * Valida o JWT contra o próprio Supabase e devolve o usuário autenticado.
- * Retorna null se não houver token ou se ele for inválido/expirado.
+ * Valida o JWT contra o próprio Supabase.
+ *
+ * Devolve { user, reason } para que quem chama consiga distinguir três
+ * situações que antes se confundiam num único `null` — e que exigem respostas
+ * completamente diferentes de quem está usando o app:
+ *   'ok'              → sessão válida
+ *   'sem-token'       → ninguém logado (peça login)
+ *   'token-invalido'  → sessão expirada (peça login de novo)
+ *   'nao-configurado' → o SERVIDOR está sem SUPABASE_URL/ANON_KEY. Não adianta
+ *                       a pessoa logar de novo: é configuração da Vercel.
  */
-async function getAuthenticatedUser(req) {
+async function getAuthContext(req) {
   const token = getBearerToken(req);
-  if (!token || !SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error('SUPABASE_URL/SUPABASE_ANON_KEY ausentes: impossível validar sessões.');
+    return { user: null, reason: 'nao-configurado' };
+  }
+
+  if (!token) return { user: null, reason: 'sem-token' };
 
   try {
     const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
@@ -100,24 +114,52 @@ async function getAuthenticatedUser(req) {
       }
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) return { user: null, reason: 'token-invalido' };
 
     const user = await response.json();
-    return user && user.id ? user : null;
+    return user && user.id
+      ? { user, reason: 'ok' }
+      : { user: null, reason: 'token-invalido' };
   } catch (err) {
     console.warn('Falha ao validar sessão do Supabase:', err.message);
-    return null;
+    return { user: null, reason: 'token-invalido' };
   }
 }
 
-/** Exige autenticação; responde 401 e retorna null quando não houver. */
+/** Compatibilidade: devolve só o usuário (ou null). */
+async function getAuthenticatedUser(req) {
+  const { user } = await getAuthContext(req);
+  return user;
+}
+
+/**
+ * Exige autenticação. Responde e retorna null quando não houver sessão.
+ *
+ * Por que login é obrigatório para pagar: é o webhook que grava o plano no
+ * perfil da usuária. Uma assinatura feita sem conta não tem perfil de destino
+ * — a pessoa pagaria no cartão e nunca receberia o acesso Pro, e a correção
+ * teria de ser manual, um a um, no painel do Stripe.
+ */
 async function requireUser(req, res) {
-  const user = await getAuthenticatedUser(req);
-  if (!user) {
-    res.status(401).json({ error: 'Sessão expirada ou inválida. Entre novamente na sua conta.' });
+  const { user, reason } = await getAuthContext(req);
+  if (user) return user;
+
+  if (reason === 'nao-configurado') {
+    res.status(503).json({
+      error: 'O servidor está sem as variáveis SUPABASE_URL e SUPABASE_ANON_KEY. ' +
+             'Configure-as na Vercel — não é problema da sua conta.',
+      code: 'AUTH_NAO_CONFIGURADA'
+    });
     return null;
   }
-  return user;
+
+  res.status(401).json({
+    error: reason === 'sem-token'
+      ? 'Entre na sua conta para assinar. Assim a assinatura fica vinculada a você e vale em qualquer aparelho.'
+      : 'Sua sessão expirou. Entre novamente para continuar.',
+    code: 'AUTH_NECESSARIA'
+  });
+  return null;
 }
 
 /**
@@ -190,6 +232,7 @@ async function stripeRequest(method, path, params) {
 module.exports = {
   applyCors,
   getBearerToken,
+  getAuthContext,
   getAuthenticatedUser,
   requireUser,
   supabaseAdmin,

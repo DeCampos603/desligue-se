@@ -359,6 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: 'HistoryDetailTabs', fn: initHistoryDetailTabs },
     { name: 'PWA', fn: initPWA },
     { name: 'StripeReturnStatus', fn: initStripeReturnStatus },
+    { name: 'StaticHostCheck', fn: warnIfStaticOnlyHost },
     { name: 'HistoryUI', fn: updateHistoryUI },
     { name: 'DailyLimitUI', fn: checkDailyLimitUI }
   ];
@@ -856,7 +857,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const token = await getAccessToken();
         if (!token) throw new Error('Faça login novamente para gerenciar sua assinatura.');
 
-        const res = await fetch('/api/portal', {
+        const data = await safeFetchJson('/api/portal', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -864,9 +865,8 @@ document.addEventListener('DOMContentLoaded', () => {
           },
           body: JSON.stringify({ returnUrl: window.location.origin })
         });
-        const data = await res.json();
-        if (!res.ok || !data.url) {
-          throw new Error(data.error || 'Não foi possível abrir o portal de assinatura.');
+        if (!data.url) {
+          throw new Error('Não foi possível abrir o portal de assinatura.');
         }
         window.location.href = data.url;
       } catch (err) {
@@ -1454,6 +1454,12 @@ document.addEventListener('DOMContentLoaded', () => {
    * Lança erro se a API não responder (para acionar fallback local)
    */
   async function classifyWithGemini(text, title) {
+    // Numa hospedagem sem funções serverless não existe IA: vamos direto para
+    // o classificador local em vez de gastar 28s esperando um 405 do nginx.
+    if (isStaticOnlyHost()) {
+      throw new Error('Funções /api indisponíveis nesta hospedagem estática.');
+    }
+
     const controller = new AbortController();
     // O servidor tem orçamento de ~22s (ver api/classify.js). O cliente espera
     // um pouco mais para não abortar uma resposta que já está a caminho —
@@ -1465,7 +1471,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const response = await fetch('/api/classify', {
+      const response = await fetch(resolveApiUrl('/api/classify'), {
         method: 'POST',
         headers,
         body: JSON.stringify({ text, title }),
@@ -2737,8 +2743,58 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // HELPER DE REQUISIÇÃO SEGURA (JSON / ERROS GRACIOSOS)
   // ==========================================
+
+  /**
+   * Resolve o endereço de um endpoint /api.
+   *
+   * Duas armadilhas que isso evita:
+   *  1. Caminho absoluto em subpasta: publicado em /desligue-se/app/, o
+   *     fetch('/api/checkout') ia parar na RAIZ do domínio, fora do projeto.
+   *  2. Host sem funções serverless (GitHub Pages e afins), onde qualquer POST
+   *     em /api devolve um "405 Not Allowed" em HTML, do nginx.
+   */
+  function resolveApiUrl(path) {
+    const base = (CONFIG.apiBaseUrl || '').replace(/\/+$/, '');
+    if (base) {
+      return base + (path.startsWith('/') ? path : `/${path}`);
+    }
+    return new URL(path, window.location.origin).href;
+  }
+
+  /** Hospedagens estáticas conhecidas, que nunca executam /api. */
+  function isStaticOnlyHost() {
+    if (CONFIG.apiBaseUrl) return false; // A API foi apontada para outro lugar
+    const host = window.location.hostname;
+    return host.endsWith('.github.io') ||
+           host.endsWith('.netlify.app') ||
+           host.endsWith('.pages.dev') ||
+           window.location.protocol === 'file:';
+  }
+
+  /**
+   * Avisa de saída, e não só quando a pessoa tenta pagar, que esta cópia do
+   * site não tem servidor. Sem isso, a triagem cai calada no classificador
+   * local e o checkout só quebra lá na frente.
+   */
+  function warnIfStaticOnlyHost() {
+    if (!isStaticOnlyHost()) return;
+
+    console.warn(
+      `[Desligue-se] Esta página está em ${window.location.origin}, que serve apenas arquivos estáticos. ` +
+      'As funções /api (IA de triagem, assinatura e pagamento) não existem aqui. ' +
+      'Use a versão publicada na Vercel ou configure apiBaseUrl em config.js.'
+    );
+
+    showToast(
+      'Esta é uma cópia estática do Desligue-se: a triagem por IA e a assinatura não funcionam aqui. ' +
+      'Use o endereço oficial do aplicativo para ter a experiência completa.',
+      'error',
+      0
+    );
+  }
+
   async function safeFetchJson(url, options = {}) {
-    const absoluteUrl = new URL(url, window.location.origin).href;
+    const absoluteUrl = resolveApiUrl(url);
     let res;
 
     try {
@@ -2799,6 +2855,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function handleInitiateCheckout(planType, buttonElement) {
+    if (isStaticOnlyHost()) {
+      closeModal(modalPremium);
+      showToast(
+        'Esta cópia do site não tem servidor de pagamentos. Abra o aplicativo pelo endereço oficial para assinar — nenhuma cobrança pode ser feita a partir daqui.',
+        'error',
+        12000
+      );
+      return;
+    }
+
     const token = await getAccessToken();
     const originalText = buttonElement ? buttonElement.textContent : '';
     if (buttonElement) {
@@ -2833,7 +2899,33 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = data.url;
       } catch (fallbackErr) {
         closeModal(modalStripeElements);
-        showToast('Não foi possível conectar com o checkout: ' + fallbackErr.message, 'error', 10000);
+
+        // 401 não é problema da operadora: é sessão ausente ou expirada.
+        // Mandar a pessoa para a tela de login resolve; falar em "operadora
+        // de pagamentos" só confunde.
+        if (fallbackErr.status === 401) {
+          openModal(modalAuth);
+          showAuthFeedback(
+            fallbackErr.message ||
+            'Para assinar, entre na sua conta. Assim a assinatura fica vinculada a você e continua valendo em qualquer aparelho.',
+            'error'
+          );
+          return;
+        }
+
+        // 503 = configuração do servidor. Mandar a pessoa fazer login de novo
+        // seria inútil e frustrante: o problema não está com ela.
+        if (fallbackErr.status === 503) {
+          showToast(
+            'A assinatura está temporariamente indisponível por uma configuração do servidor. Já estamos vendo isso — tente novamente em alguns minutos.',
+            'error',
+            12000
+          );
+          console.error('[Desligue-se] Configuração do servidor incompleta:', fallbackErr.message);
+          return;
+        }
+
+        showToast('Não foi possível conectar com o checkout: ' + fallbackErr.message, 'error', 12000);
       }
     } finally {
       if (buttonElement) {
@@ -2978,10 +3070,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (status === 'success' && sessionId) {
       try {
         const token = await getAccessToken();
-        const verifyRes = await fetch(`/api/verify-session?session_id=${encodeURIComponent(sessionId)}`, {
+        const verifyData = await safeFetchJson(`/api/verify-session?session_id=${encodeURIComponent(sessionId)}`, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
-        const verifyData = await verifyRes.json();
 
         if (verifyData.paid) {
           showToast('🎉 Pagamento confirmado! Estamos liberando o seu acesso Pro...', 'success', 8000);

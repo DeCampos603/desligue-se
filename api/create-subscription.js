@@ -10,7 +10,7 @@
  *  - CORS restrito e erros do Stripe não são mais repassados crus ao cliente.
  */
 
-const { applyCors, getAuthenticatedUser, stripeRequest } = require('./_lib/http');
+const { applyCors, requireUser, stripeRequest } = require('./_lib/http');
 const { resolvePlan, appendLineItems, getOrCreateStripeCustomer } = require('./_lib/billing');
 
 module.exports = async function handler(req, res) {
@@ -20,36 +20,25 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido.' });
   }
 
-  const user = await getAuthenticatedUser(req);
+  const user = await requireUser(req, res);
+  if (!user) return;
+
   const plan = resolvePlan((req.body || {}).planType);
   const origin = req.headers.origin || 'https://desliguese.vercel.app';
   const returnUrl = `${origin}/?status=success&session_id={CHECKOUT_SESSION_ID}&plan=${plan.key}`;
-  const userId = user ? user.id : (req.body?.userId || 'guest');
-  const userEmail = user ? user.email : (req.body?.email || null);
 
   try {
-    let customerId = null;
-    if (user) {
-      try {
-        customerId = await getOrCreateStripeCustomer(user);
-      } catch (custErr) {
-        console.warn('Aviso ao resolver customer no Stripe:', custErr.message);
-      }
-    }
+    const customerId = await getOrCreateStripeCustomer(user);
 
     const params = new URLSearchParams();
     params.append('ui_mode', 'embedded_page');
     params.append('mode', 'subscription');
     params.append('return_url', returnUrl);
-    if (customerId) {
-      params.append('customer', customerId);
-    } else if (userEmail) {
-      params.append('customer_email', userEmail);
-    }
-    params.append('client_reference_id', userId);
-    params.append('metadata[userId]', userId);
+    params.append('customer', customerId);
+    params.append('client_reference_id', user.id);
+    params.append('metadata[userId]', user.id);
     params.append('metadata[planType]', plan.key);
-    params.append('subscription_data[metadata][userId]', userId);
+    params.append('subscription_data[metadata][userId]', user.id);
     appendLineItems(params, plan);
 
     const session = await stripeRequest('POST', 'checkout/sessions', params);

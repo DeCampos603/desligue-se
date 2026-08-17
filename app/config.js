@@ -12,6 +12,22 @@
  * quebra o checkout silenciosamente.
  */
 window.DESLIGUESE_CONFIG = {
+  /**
+   * Onde vivem as funções /api (triagem por IA, checkout, webhook).
+   *
+   * Vazio = mesma origem da página. É o correto quando o site é servido pela
+   * Vercel, que é quem executa as funções.
+   *
+   * O GitHub Pages (e qualquer hospedagem só-estática) NÃO executa funções:
+   * lá um POST /api/checkout devolve "405 Not Allowed" do nginx. Se você
+   * quiser manter uma cópia publicada fora da Vercel, aponte este campo para
+   * a URL de produção — e acrescente a origem dessa cópia em ALLOWED_ORIGINS
+   * nas variáveis de ambiente da Vercel, senão o CORS bloqueia a chamada.
+   *
+   * Exemplo: apiBaseUrl: 'https://desliguese.vercel.app'
+   */
+  apiBaseUrl: '',
+
   supabaseUrl: 'https://vycflbcaphehlcjkqcjw.supabase.co',
 
   // Chave "anon" do Supabase: pública por design, protegida pelo Row Level

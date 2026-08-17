@@ -1,5 +1,33 @@
 # Passo a passo — o que depende de você
 
+---
+
+## ⚠️ Passo 0 — Use o endereço certo, e decida o que fazer com a cópia do GitHub Pages
+
+Existe uma segunda cópia do aplicativo publicada em:
+
+```
+https://decampos603.github.io/desligue-se/app/
+```
+
+O GitHub Pages serve **apenas arquivos estáticos**. Ele não executa as funções da pasta `api/`, então nessa cópia:
+
+- o checkout responde `405 Not Allowed` (foi o erro que você encontrou);
+- a triagem por IA falha silenciosamente e cai no classificador local por palavras-chave;
+- login, histórico na nuvem e assinatura não funcionam.
+
+**O endereço oficial é `https://desliguese.vercel.app`.** Só ele tem servidor.
+
+Escolha uma das três saídas para a cópia do GitHub Pages:
+
+1. **Desligar** (recomendado): em *Settings → Pages* do repositório, mude a origem para *None*. Evita que alguém caia numa versão quebrada — hoje ela está indexável pelo Google, com um `canonical` apontando para a Vercel.
+2. **Transformar em redirecionamento**: deixe apenas um `index.html` que redireciona para o endereço da Vercel.
+3. **Manter funcionando**: em [`app/config.js`](app/config.js), preencha `apiBaseUrl: 'https://desliguese.vercel.app'` e acrescente `https://decampos603.github.io` à variável `ALLOWED_ORIGINS` na Vercel. Sem as duas coisas juntas, o CORS bloqueia a chamada.
+
+> Se você já instalou o app pelo GitHub Pages no celular, desinstale e instale de novo pelo endereço da Vercel — o Service Worker antigo continua servindo a cópia sem servidor.
+
+---
+
 As correções de código já estão aplicadas e verificadas no navegador. O que resta são ações em painéis externos (Vercel, Supabase, Stripe) e duas decisões suas. Siga na ordem: cada passo depende do anterior.
 
 Tempo estimado total: **40 a 60 minutos**.
@@ -31,6 +59,22 @@ A Vercel publica sozinha em ~1 minuto.
 **Como conferir:** abra https://desliguese.vercel.app, aperte `F12` → aba *Console*. Não pode haver nenhum erro vermelho. Clique em "Premium": o modal precisa abrir.
 
 > Se você já tinha aberto o site antes, force uma atualização com `Ctrl+Shift+R` — o Service Worker antigo pode servir a versão quebrada.
+
+---
+
+> **Atenção ao publicar:** confira que o deploy na Vercel saiu do código atual.
+> Em algum momento o `/api/checkout` publicado passou a aceitar pagamento **sem
+> login**, enquanto o código do repositório exigia. Se as duas coisas
+> divergirem, o comportamento real é o do que está publicado — e uma assinatura
+> feita sem conta não tem perfil onde gravar o plano: a pessoa paga e nunca
+> recebe o acesso. Depois de publicar, valide com:
+>
+> ```bash
+> curl -s -X POST https://desliguese.vercel.app/api/checkout -H "Content-Type: application/json" -d '{"planType":"monthly"}'
+> ```
+>
+> A resposta correta é um erro pedindo login. Se vier uma `url` do Stripe, o
+> deploy está desatualizado.
 
 ---
 
