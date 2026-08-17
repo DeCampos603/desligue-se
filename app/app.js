@@ -259,30 +259,40 @@ document.addEventListener('DOMContentLoaded', () => {
   const historyListContainer = document.getElementById('historyListContainer');
 
   // ==========================================
-  // INICIALIZAÇÃO
+  // INICIALIZAÇÃO RESILIENTE
   // ==========================================
-  initNavigation();
-  initVoiceInput();
-  initPromptChips();
-  initRoutineDuration();
-  initMorningCheckin();
-  initModals();
-  initCategoryWhyToggles();
-  initSupabaseAuth();
-  initCopyAdviceButton();
-  initHistoryDetailTabs();
-  initPWA();
-  initStripeReturnStatus();
-  updateHistoryUI();
-  checkDailyLimitUI();
+  const modulesToInit = [
+    { name: 'Navigation', fn: initNavigation },
+    { name: 'VoiceInput', fn: initVoiceInput },
+    { name: 'PromptChips', fn: initPromptChips },
+    { name: 'RoutineDuration', fn: initRoutineDuration },
+    { name: 'MorningCheckin', fn: initMorningCheckin },
+    { name: 'Modals', fn: initModals },
+    { name: 'CategoryWhyToggles', fn: initCategoryWhyToggles },
+    { name: 'SupabaseAuth', fn: initSupabaseAuth },
+    { name: 'CopyAdvice', fn: initCopyAdviceButton },
+    { name: 'HistoryDetailTabs', fn: initHistoryDetailTabs },
+    { name: 'PWA', fn: initPWA },
+    { name: 'StripeReturnStatus', fn: initStripeReturnStatus },
+    { name: 'HistoryUI', fn: updateHistoryUI },
+    { name: 'DailyLimitUI', fn: checkDailyLimitUI }
+  ];
+
+  modulesToInit.forEach(m => {
+    try {
+      m.fn();
+    } catch (err) {
+      console.warn(`[Desligue-se Init] Erro em ${m.name}:`, err);
+    }
+  });
 
   btnUpgradeDailyLimit?.addEventListener('click', () => {
     modalPremium?.classList.remove('hidden');
   });
 
-  journalInput.addEventListener('input', () => {
-    const hasText = journalInput.value.trim().length > 3;
-    btnProcessDump.disabled = !hasText;
+  journalInput?.addEventListener('input', () => {
+    const hasText = (journalInput.value || '').trim().length > 3;
+    if (btnProcessDump) btnProcessDump.disabled = !hasText;
   });
 
   btnProcessDump.addEventListener('click', handleProcessDump);
