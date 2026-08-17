@@ -64,11 +64,16 @@ function appendLineItems(params, plan) {
  * e ao portal de cobrança abrir a assinatura certa.
  */
 async function getOrCreateStripeCustomer(user) {
-  const rows = await supabaseAdmin(
-    `profiles?id=eq.${encodeURIComponent(user.id)}&select=stripe_customer_id`
-  );
+  let existing = null;
+  try {
+    const rows = await supabaseAdmin(
+      `profiles?id=eq.${encodeURIComponent(user.id)}&select=stripe_customer_id`
+    );
+    existing = Array.isArray(rows) && rows[0]?.stripe_customer_id;
+  } catch (e) {
+    console.warn('Aviso: supabaseAdmin não disponível para buscar customer_id:', e.message);
+  }
 
-  const existing = Array.isArray(rows) && rows[0]?.stripe_customer_id;
   if (existing) return existing;
 
   const params = new URLSearchParams();
@@ -77,14 +82,18 @@ async function getOrCreateStripeCustomer(user) {
 
   const customer = await stripeRequest('POST', 'customers', params);
 
-  await supabaseAdmin(`profiles?id=eq.${encodeURIComponent(user.id)}`, {
-    method: 'PATCH',
-    headers: { 'Prefer': 'return=minimal' },
-    body: JSON.stringify({
-      stripe_customer_id: customer.id,
-      updated_at: new Date().toISOString()
-    })
-  });
+  try {
+    await supabaseAdmin(`profiles?id=eq.${encodeURIComponent(user.id)}`, {
+      method: 'PATCH',
+      headers: { 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        stripe_customer_id: customer.id,
+        updated_at: new Date().toISOString()
+      })
+    });
+  } catch (e) {
+    console.warn('Aviso: não foi possível gravar stripe_customer_id no Supabase:', e.message);
+  }
 
   return customer.id;
 }

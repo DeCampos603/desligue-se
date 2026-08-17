@@ -2734,6 +2734,42 @@ document.addEventListener('DOMContentLoaded', () => {
   let stripeElementsInstance = null;
   let currentElementsPlan = 'monthly';
 
+  // ==========================================
+  // HELPER DE REQUISIÇÃO SEGURA (JSON / ERROS GRACIOSOS)
+  // ==========================================
+  async function safeFetchJson(url, options = {}) {
+    const res = await fetch(url, options);
+    const contentType = res.headers.get('content-type') || '';
+    let data = null;
+
+    if (contentType.includes('application/json')) {
+      try {
+        data = await res.json();
+      } catch (e) {
+        data = null;
+      }
+    } else {
+      const text = await res.text();
+      console.warn(`[safeFetchJson] Resposta não-JSON de ${url}:`, text.substring(0, 150));
+    }
+
+    if (!res.ok) {
+      const errorMsg = data?.error || (res.status === 401 
+        ? 'Sua sessão expirou. Faça login novamente para continuar.' 
+        : `Serviço temporariamente indisponível (${res.status}). Tente novamente em instantes.`);
+      const err = new Error(errorMsg);
+      err.status = res.status;
+      err.data = data;
+      throw err;
+    }
+
+    if (!data) {
+      throw new Error('Não foi possível obter resposta da operadora. Tente novamente em instantes.');
+    }
+
+    return data;
+  }
+
   async function handleInitiateCheckout(planType, buttonElement) {
     // A assinatura precisa estar vinculada a uma conta: é o webhook do Stripe
     // que grava o plano no perfil da usuária. Sem login não há onde gravar,
@@ -2756,10 +2792,10 @@ document.addEventListener('DOMContentLoaded', () => {
       // 1. Tenta abrir o formulário embutido via Stripe Embedded Checkout
       await openStripeElementsCheckout(planType, token);
     } catch (elementsErr) {
-      console.warn('Fallback para Checkout Session tradicional:', elementsErr);
+      console.warn('Tentando fallback para Checkout Session hospedado:', elementsErr.message);
       // Fallback para o Stripe Checkout hospedado
       try {
-        const response = await fetch('/api/checkout', {
+        const data = await safeFetchJson('/api/checkout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2768,15 +2804,14 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({ planType })
         });
 
-        const data = await response.json();
-        if (!response.ok || !data.url) {
+        if (!data.url) {
           throw new Error(data.error || 'Não foi possível iniciar o pagamento.');
         }
 
         window.location.href = data.url;
       } catch (fallbackErr) {
         closeModal(modalStripeElements);
-        showToast('Não conseguimos conectar com a operadora de pagamentos: ' + fallbackErr.message, 'error', 10000);
+        showToast('Não foi possível conectar com o checkout: ' + fallbackErr.message, 'error', 10000);
       }
     } finally {
       if (buttonElement) {
@@ -2806,7 +2841,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (paymentMessage) paymentMessage.classList.add('hidden');
 
     // Cria a assinatura no backend e obtém o clientSecret
-    const res = await fetch('/api/create-subscription', {
+    const data = await safeFetchJson('/api/create-subscription', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2815,9 +2850,8 @@ document.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify({ planType })
     });
 
-    const data = await res.json();
-    if (!res.ok || !data.clientSecret) {
-      throw new Error(data.error || 'Falha ao inicializar o Payment Element.');
+    if (!data.clientSecret) {
+      throw new Error(data.error || 'Falha ao inicializar o formulário seguro de pagamento.');
     }
 
     // Inicializa o Stripe.js

@@ -29,13 +29,22 @@ module.exports = async function handler(req, res) {
   const returnUrl = `${origin}/?status=success&session_id={CHECKOUT_SESSION_ID}&plan=${plan.key}`;
 
   try {
-    const customerId = await getOrCreateStripeCustomer(user);
+    let customerId = null;
+    try {
+      customerId = await getOrCreateStripeCustomer(user);
+    } catch (custErr) {
+      console.warn('Aviso ao resolver customer no Stripe:', custErr.message);
+    }
 
     const params = new URLSearchParams();
     params.append('ui_mode', 'embedded_page');
     params.append('mode', 'subscription');
     params.append('return_url', returnUrl);
-    params.append('customer', customerId);
+    if (customerId) {
+      params.append('customer', customerId);
+    } else if (user.email) {
+      params.append('customer_email', user.email);
+    }
     params.append('client_reference_id', user.id);
     params.append('metadata[userId]', user.id);
     params.append('metadata[planType]', plan.key);
