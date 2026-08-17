@@ -11,6 +11,7 @@
  */
 
 const { applyCors, requireUser, stripeRequest } = require('./_lib/http');
+const { applySubscriptionToProfile } = require('./_lib/billing');
 
 module.exports = async function handler(req, res) {
   if (applyCors(req, res, 'GET, OPTIONS')) return;
@@ -43,8 +44,34 @@ module.exports = async function handler(req, res) {
 
     const paid = session.payment_status === 'paid' || session.status === 'complete';
 
+    // REDE DE SEGURANÇA: se o pagamento está confirmado, liberamos o acesso
+    // aqui mesmo, sem esperar o webhook. O webhook continua sendo a fonte de
+    // verdade para renovação e cancelamento, mas um webhook mal cadastrado,
+    // atrasado ou com segredo errado não pode mais resultar em "paguei e não
+    // recebi". A operação é idempotente e os dados vêm do Stripe, não do
+    // cliente — então repetir não faz mal e ninguém consegue forjar.
+    let planoAtivado = false;
+    if (paid && session.subscription) {
+      try {
+        const subscriptionId = typeof session.subscription === 'string'
+          ? session.subscription
+          : session.subscription.id;
+
+        const subscription = await stripeRequest('GET', `subscriptions/${encodeURIComponent(subscriptionId)}`);
+
+        // Garante o vínculo mesmo que a assinatura não traga o metadata
+        if (!subscription.metadata) subscription.metadata = {};
+        if (!subscription.metadata.userId) subscription.metadata.userId = user.id;
+
+        planoAtivado = await applySubscriptionToProfile(subscription);
+      } catch (activationErr) {
+        console.error('Falha ao ativar o plano na volta do checkout:', activationErr.message);
+      }
+    }
+
     return res.status(200).json({
       paid,
+      planoAtivado,
       status: session.status,
       planType: session.metadata?.planType || 'monthly'
     });

@@ -2917,6 +2917,48 @@ button:active, .nav-pill:active, .mob-nav-btn:active, .btn-primary:active, .btn-
 }
 
 /* ============================================================
+   ESTADO DA CONTA: a interface muda conforme login e plano
+   ============================================================ */
+
+/* Assinante Pro não vê nenhuma oferta de upgrade nem aviso de limite */
+body.plano-pro .daily-limit-banner,
+body.plano-pro .pro-upsell-history-card,
+body.plano-pro .counseling-pro-teaser-wrapper,
+body.plano-pro .btn-unlock-pro-small {
+  display: none !important;
+}
+
+/* Some o cadeado das rotinas longas quando o plano está ativo */
+body.plano-pro .duration-btn.pro-locked .duration-num::after {
+  content: '';
+}
+
+/* Marca visual discreta de assinante na navegação */
+body.plano-pro .premium-pill,
+body.plano-pro .premium-mob-btn {
+  border-color: rgba(149, 167, 136, 0.55);
+  color: var(--sage-calm);
+}
+
+/* Aviso de modo visitante só aparece para quem não entrou */
+body.esta-logada .info-note-visitor {
+  display: none;
+}
+
+/* Consentimento pendente: destaca a caixa que falta marcar */
+.terms-checkbox-label.consentimento-pendente {
+  outline: 2px solid #FF9C9C;
+  outline-offset: 4px;
+  border-radius: 6px;
+  animation: pulsaConsentimento 1.4s ease-in-out 2;
+}
+
+@keyframes pulsaConsentimento {
+  0%, 100% { outline-color: #FF9C9C; }
+  50% { outline-color: rgba(255, 156, 156, 0.25); }
+}
+
+/* ============================================================
    FOCO VISÍVEL PARA NAVEGAÇÃO POR TECLADO
    ============================================================ */
 :focus-visible {

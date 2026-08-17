@@ -64,16 +64,11 @@ function appendLineItems(params, plan) {
  * e ao portal de cobrança abrir a assinatura certa.
  */
 async function getOrCreateStripeCustomer(user) {
-  let existing = null;
-  try {
-    const rows = await supabaseAdmin(
-      `profiles?id=eq.${encodeURIComponent(user.id)}&select=stripe_customer_id`
-    );
-    existing = Array.isArray(rows) && rows[0]?.stripe_customer_id;
-  } catch (e) {
-    console.warn('Aviso: supabaseAdmin não disponível para buscar customer_id:', e.message);
-  }
+  const rows = await supabaseAdmin(
+    `profiles?id=eq.${encodeURIComponent(user.id)}&select=stripe_customer_id`
+  );
 
+  const existing = Array.isArray(rows) && rows[0]?.stripe_customer_id;
   if (existing) return existing;
 
   const params = new URLSearchParams();
@@ -82,19 +77,30 @@ async function getOrCreateStripeCustomer(user) {
 
   const customer = await stripeRequest('POST', 'customers', params);
 
-  try {
-    await supabaseAdmin(`profiles?id=eq.${encodeURIComponent(user.id)}`, {
-      method: 'PATCH',
-      headers: { 'Prefer': 'return=minimal' },
-      body: JSON.stringify({
-        stripe_customer_id: customer.id,
-        updated_at: new Date().toISOString()
-      })
-    });
-  } catch (e) {
-    console.warn('Aviso: não foi possível gravar stripe_customer_id no Supabase:', e.message);
+  // UPSERT, e não PATCH: se a linha do perfil não existir (conta criada antes
+  // do gatilho handle_new_user, por exemplo), um PATCH não afeta nenhuma linha
+  // e falha em silêncio — o vínculo se perde e o webhook depois não acha de
+  // quem é a assinatura. Era o caminho para "paguei e não ativou".
+  const saved = await supabaseAdmin('profiles?on_conflict=id', {
+    method: 'POST',
+    headers: {
+      'Prefer': 'resolution=merge-duplicates,return=representation'
+    },
+    body: JSON.stringify({
+      id: user.id,
+      // Só envia o e-mail quando existe, para não sobrescrever com vazio
+      // o valor já gravado no perfil.
+      ...(user.email ? { email: user.email } : {}),
+      stripe_customer_id: customer.id,
+      updated_at: new Date().toISOString()
+    })
+  });
+
+  if (!Array.isArray(saved) || saved.length === 0) {
+    throw new Error(`Não foi possível vincular o cliente ${customer.id} ao perfil ${user.id}.`);
   }
 
+  console.log(`Customer ${customer.id} vinculado ao perfil ${user.id}.`);
   return customer.id;
 }
 
@@ -128,24 +134,52 @@ async function applySubscriptionToProfile(subscription) {
     ? subscription.customer
     : subscription.customer?.id;
 
-  if (!customerId) {
-    console.warn('Assinatura sem customer associado:', subscription.id);
+  const { plano, subscription_status } = mapSubscriptionToProfile(subscription);
+  const patch = {
+    plano,
+    subscription_status,
+    updated_at: new Date().toISOString()
+  };
+
+  const write = async (filtro, extra) => {
+    const rows = await supabaseAdmin(`profiles?${filtro}`, {
+      method: 'PATCH',
+      headers: { 'Prefer': 'return=representation' },
+      body: JSON.stringify({ ...patch, ...(extra || {}) })
+    });
+    return Array.isArray(rows) ? rows.length : 0;
+  };
+
+  // 1ª tentativa: pelo cliente do Stripe já vinculado ao perfil.
+  let afetadas = 0;
+  if (customerId) {
+    afetadas = await write(`stripe_customer_id=eq.${encodeURIComponent(customerId)}`);
+  }
+
+  // 2ª tentativa: pelo id da usuária, que viajamos junto na assinatura
+  // (subscription_data[metadata][userId]). Sem esta rede de proteção, qualquer
+  // falha no vínculo do customer resultava em pagamento sem ativação — e o
+  // PATCH "com sucesso" em zero linhas não deixava nem rastro no log.
+  const userId = subscription.metadata?.userId;
+  if (afetadas === 0 && userId && userId !== 'guest') {
+    afetadas = await write(
+      `id=eq.${encodeURIComponent(userId)}`,
+      customerId ? { stripe_customer_id: customerId } : null
+    );
+    if (afetadas > 0) {
+      console.log(`Perfil ${userId} atualizado pelo metadata (vínculo do customer estava ausente).`);
+    }
+  }
+
+  if (afetadas === 0) {
+    console.error(
+      `ASSINATURA ÓRFÃ: ${subscription.id} (customer ${customerId}, userId ${userId || 'ausente'}) ` +
+      'não corresponde a nenhum perfil. A pessoa pagou e NÃO recebeu o acesso — é preciso corrigir à mão.'
+    );
     return false;
   }
 
-  const { plano, subscription_status } = mapSubscriptionToProfile(subscription);
-
-  await supabaseAdmin(`profiles?stripe_customer_id=eq.${encodeURIComponent(customerId)}`, {
-    method: 'PATCH',
-    headers: { 'Prefer': 'return=minimal' },
-    body: JSON.stringify({
-      plano,
-      subscription_status,
-      updated_at: new Date().toISOString()
-    })
-  });
-
-  console.log(`Perfil do customer ${customerId} atualizado para ${plano} (${subscription_status}).`);
+  console.log(`${afetadas} perfil(is) atualizado(s) para ${plano} (${subscription_status}).`);
   return true;
 }
 

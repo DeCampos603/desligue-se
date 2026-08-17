@@ -239,6 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSubmitSignup = document.getElementById('btnSubmitSignup');
   const btnManageSubscription = document.getElementById('btnManageSubscription');
   const btnDeleteAccount = document.getElementById('btnDeleteAccount');
+  const btnSyncPlan = document.getElementById('btnSyncPlan');
   const authFeedbackMsg = document.getElementById('authFeedbackMsg');
   const loggedUserName = document.getElementById('loggedUserName');
   const loggedUserEmail = document.getElementById('loggedUserEmail');
@@ -741,6 +742,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Google Login
     btnGoogleLogin?.addEventListener('click', async () => {
+      // O aceite dos Termos e o consentimento para dado sensível valem para
+      // QUALQUER forma de entrada. Antes só o cadastro por e-mail era barrado,
+      // e quem entrava pelo Google criava conta sem nunca ter aceitado nada.
+      if (!validarConsentimentos()) return;
+
+      registrarConsentimentoLocal();
       showAuthFeedback('Redirecionando para login seguro do Google...', 'success');
       try {
         const { error } = await supabase.auth.signInWithOAuth({
@@ -795,20 +802,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const email = authEmail.value.trim();
       const password = authPassword.value;
 
-      // Validação obrigatória dos Termos de Uso & Isenção Médica
-      if (checkTermsConsent && !checkTermsConsent.checked) {
-        showAuthFeedback('Você precisa aceitar os Termos de Uso, Isenção Médica e LGPD para criar uma conta.', 'error');
-        checkTermsConsent.focus();
-        return;
-      }
-
-      // Consentimento específico para dado sensível (LGPD, art. 11, I).
-      // Precisa ser separado e destacado — não pode vir embutido nos Termos.
-      if (checkSensitiveDataConsent && !checkSensitiveDataConsent.checked) {
-        showAuthFeedback('Para criar a conta, precisamos da sua autorização específica para processar o conteúdo dos seus desabafos, inclusive pela IA do Google Gemini.', 'error');
-        checkSensitiveDataConsent.focus();
-        return;
-      }
+      if (!validarConsentimentos()) return;
+      registrarConsentimentoLocal();
 
       if (!email || password.length < 6) {
         showAuthFeedback('Informe um e-mail válido e senha de no mínimo 6 caracteres.', 'error');
@@ -876,6 +871,41 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    // "Já paguei e não recebi o acesso": reconsulta o Stripe e regrava o plano
+    btnSyncPlan?.addEventListener('click', async () => {
+      btnSyncPlan.disabled = true;
+      const rotuloOriginal = btnSyncPlan.textContent;
+      btnSyncPlan.textContent = 'Consultando sua assinatura...';
+      try {
+        const token = await getAccessToken();
+        if (!token) throw new Error('Entre na sua conta para consultar a assinatura.');
+
+        const data = await safeFetchJson('/api/sync-plan', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: '{}'
+        });
+
+        if (data.atualizado) {
+          await loadCloudUserProfile(appState.currentUser.id);
+          renderPlanBadge();
+          checkDailyLimitUI();
+          updateHistoryUI();
+          showToast('Assinatura encontrada e acesso Pro liberado. Obrigado pela paciência! 💜', 'success', 9000);
+        } else {
+          showToast(data.mensagem || 'Nenhuma assinatura ativa foi encontrada para esta conta.', 'info', 10000);
+        }
+      } catch (err) {
+        showToast('Não foi possível consultar sua assinatura: ' + err.message, 'error', 10000);
+      } finally {
+        btnSyncPlan.disabled = false;
+        btnSyncPlan.textContent = rotuloOriginal;
+      }
+    });
+
     // Exclusão definitiva da conta e de todos os dados (LGPD, art. 18, VI)
     btnDeleteAccount?.addEventListener('click', async () => {
       const confirmed = window.confirm(
@@ -911,6 +941,65 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const TERMS_VERSION = '2026-v2';
+  const STORAGE_KEY_CONSENT = 'desliguese_consentimento';
+
+  /**
+   * Exige os dois aceites antes de qualquer forma de entrada ou cadastro.
+   * Retorna false (e explica o motivo) quando falta algum.
+   */
+  function validarConsentimentos() {
+    if (checkTermsConsent && !checkTermsConsent.checked) {
+      showAuthFeedback('Para continuar, é preciso ler e aceitar os Termos de Uso, a Isenção Médica e a Política de Privacidade.', 'error');
+      checkTermsConsent.focus();
+      checkTermsConsent.closest('.terms-checkbox-label')?.classList.add('consentimento-pendente');
+      return false;
+    }
+
+    if (checkSensitiveDataConsent && !checkSensitiveDataConsent.checked) {
+      showAuthFeedback('Precisamos da sua autorização específica para processar o conteúdo dos seus desabafos, inclusive pela IA do Google Gemini.', 'error');
+      checkSensitiveDataConsent.focus();
+      checkSensitiveDataConsent.closest('.terms-checkbox-label')?.classList.add('consentimento-pendente');
+      return false;
+    }
+
+    document.querySelectorAll('.consentimento-pendente')
+      .forEach(el => el.classList.remove('consentimento-pendente'));
+    return true;
+  }
+
+  /** Guarda a prova do aceite antes de sair da página (login via Google). */
+  function registrarConsentimentoLocal() {
+    try {
+      localStorage.setItem(STORAGE_KEY_CONSENT, JSON.stringify({
+        termsVersion: TERMS_VERSION,
+        aceitoEm: new Date().toISOString()
+      }));
+    } catch (e) {}
+  }
+
+  /**
+   * Transfere o aceite para o perfil no banco assim que a sessão existir.
+   * Quem entra pelo Google volta de outro domínio, então o registro precisa
+   * ser concluído aqui, depois do redirecionamento.
+   */
+  async function persistirConsentimento(userId) {
+    if (!supabase) return;
+    try {
+      const bruto = localStorage.getItem(STORAGE_KEY_CONSENT);
+      if (!bruto) return;
+      const consentimento = JSON.parse(bruto);
+
+      await supabase.from('profiles').update({
+        terms_version: consentimento.termsVersion || TERMS_VERSION,
+        terms_accepted_at: consentimento.aceitoEm,
+        sensitive_data_consent_at: consentimento.aceitoEm
+      }).eq('id', userId);
+    } catch (e) {
+      console.warn('Não foi possível registrar o consentimento no perfil:', e.message);
+    }
+  }
+
   /**
    * Recupera o access token (JWT) da sessão atual do Supabase.
    * É ele que autentica a usuária nos endpoints serverless (/api/*).
@@ -940,6 +1029,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loggedUserName) loggedUserName.textContent = `Olá, ${name}!`;
     if (loggedUserEmail) loggedUserEmail.textContent = user.email;
 
+    // O marcador de uso diário do modo visitante não vale para uma conta:
+    // limpamos ao entrar para não herdar o limite de quem usou sem login.
+    try { localStorage.removeItem('desliguese_last_dump_date'); } catch (e) {}
+
+    renderPlanBadge();
+    persistirConsentimento(user.id);
+
     // Carrega histórico associado ao usuário logado
     appState.history = loadHistoryFromLocalStorage();
     updateHistoryUI();
@@ -965,6 +1061,7 @@ document.addEventListener('DOMContentLoaded', () => {
     authViewLoggedOut?.classList.remove('hidden');
     authViewLoggedIn?.classList.add('hidden');
 
+    renderPlanBadge();
     updateHistoryUI();
     checkDailyLimitUI();
   }
@@ -983,23 +1080,60 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  /**
+   * Ponto único que reflete "quem é a pessoa e qual é o plano dela" na
+   * interface inteira. Marca o <body> com classes de estado, e o CSS esconde
+   * de uma vez todas as ofertas de upgrade para quem já é assinante — antes,
+   * cada aviso de plano gratuito era escondido (ou não) por conta própria, e
+   * sobravam mensagens de limite para quem já tinha pago.
+   */
   function renderPlanBadge() {
+    const logado = Boolean(appState.currentUser);
     const isPro = isUserPro();
+    const status = appState.userProfile?.subscription_status;
+
+    document.body.classList.toggle('esta-logada', logado);
+    document.body.classList.toggle('esta-deslogada', !logado);
+    document.body.classList.toggle('plano-pro', isPro);
+    document.body.classList.toggle('plano-free', !isPro);
+
     if (loggedUserPlanBadge) {
-      const status = appState.userProfile?.subscription_status;
       let label = 'Gratuito';
       if (isPro) {
-        label = appState.userProfile?.plano === 'premium_anual' ? '⭐ Premium Anual' : '⭐ Premium Mensal';
-        if (status === 'canceling') label += ' (cancelamento agendado)';
+        label = appState.userProfile?.plano === 'premium_anual' ? '⭐ Pro Anual' : '⭐ Pro Mensal';
+        if (status === 'canceling') label += ' • cancelamento agendado';
+        if (status === 'past_due') label += ' • pagamento pendente';
       }
       loggedUserPlanBadge.textContent = label;
     }
-    // O portal de assinatura só faz sentido para quem já tem um cadastro no Stripe
+
+    // A pílula "Premium" vira indicador de status para quem já assina
+    [navBtns.premium, mobNavBtns.premium].forEach(btn => {
+      if (!btn) return;
+      const rotulo = btn.querySelector('.mob-nav-label');
+      if (rotulo) {
+        rotulo.textContent = isPro ? 'Pro' : 'Premium';
+      } else {
+        btn.lastChild.textContent = isPro ? ' Pro ativo' : ' Premium';
+      }
+      btn.title = isPro ? 'Sua assinatura Pro está ativa' : 'Planos Premium';
+    });
+
+    // Rotinas longas deixam de exibir cadeado
+    durationBtns.forEach(btn => {
+      const minutes = parseInt(btn.getAttribute('data-minutes'), 10);
+      if (minutes > 3) btn.classList.toggle('pro-locked', !isPro);
+    });
+
     if (btnManageSubscription) {
       btnManageSubscription.classList.toggle('hidden', !appState.userProfile?.stripe_customer_id);
     }
     if (btnDeleteAccount) {
-      btnDeleteAccount.classList.toggle('hidden', !appState.currentUser);
+      btnDeleteAccount.classList.toggle('hidden', !logado);
+    }
+    // "Já paguei e não recebi" só faz sentido para quem está logada e sem Pro
+    if (btnSyncPlan) {
+      btnSyncPlan.classList.toggle('hidden', !logado || isPro);
     }
   }
 
@@ -1152,17 +1286,22 @@ document.addEventListener('DOMContentLoaded', () => {
   function hasReachedDailyFreeLimit() {
     if (isUserPro()) return false; // Assinantes Pro possuem registros ilimitados
 
-    // 1. Usuária logada: contagem vinda do servidor é a que vale
-    if (appState.currentUser && typeof appState.dailyEntriesToday === 'number') {
-      return appState.dailyEntriesToday >= FREE_ENTRIES_PER_DAY;
-    }
-
     const todayStr = getTodayDateString();
 
-    // 2. Fallback local (visitante ou servidor indisponível)
-    try {
-      if (localStorage.getItem('desliguese_last_dump_date') === todayStr) return true;
-    } catch (e) {}
+    // 1. Usuária logada: só a contagem do servidor e o histórico da conta valem.
+    //    O marcador local é de visitante e NÃO pode contaminar uma conta —
+    //    era o que fazia o aviso de "1 por dia" aparecer para quem tinha
+    //    acabado de entrar sem ter registrado nada naquele dia.
+    if (appState.currentUser) {
+      if (typeof appState.dailyEntriesToday === 'number') {
+        return appState.dailyEntriesToday >= FREE_ENTRIES_PER_DAY;
+      }
+    } else {
+      // 2. Visitante: marcador local é a única referência disponível
+      try {
+        if (localStorage.getItem('desliguese_last_dump_date') === todayStr) return true;
+      } catch (e) {}
+    }
 
     // 3. Confere o histórico em memória usando SEMPRE o fuso local nos dois lados
     //    (comparar data local com data UTC bloqueava a usuária um dia antes).
@@ -3114,7 +3253,35 @@ document.addEventListener('DOMContentLoaded', () => {
       await new Promise(resolve => setTimeout(resolve, delayMs));
     }
 
-    showToast('Seu pagamento foi recebido, mas a liberação ainda está sendo processada. Atualize a página em alguns instantes.', 'info', 12000);
+    // Última tentativa: reconciliar direto com o Stripe. Se a assinatura
+    // existe lá, o acesso é liberado agora, sem depender do webhook.
+    try {
+      const token = await getAccessToken();
+      if (token) {
+        const data = await safeFetchJson('/api/sync-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: '{}'
+        });
+        if (data.atualizado) {
+          await loadCloudUserProfile(appState.currentUser.id);
+          renderPlanBadge();
+          checkDailyLimitUI();
+          updateHistoryUI();
+          showToast('Bem-vinda ao Desligue-se Pro! Seu acesso ilimitado já está ativo. 💜', 'success', 9000);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('Reconciliação com o Stripe falhou:', e.message);
+    }
+
+    showToast(
+      'Seu pagamento foi recebido, mas a liberação ainda está sendo processada. ' +
+      'Se em alguns minutos o Pro não aparecer, use "Já paguei e não recebi o acesso" em Minha Conta.',
+      'info',
+      14000
+    );
     return false;
   }
 
