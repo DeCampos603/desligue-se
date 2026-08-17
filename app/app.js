@@ -281,10 +281,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   journalInput.addEventListener('input', () => {
-    if (hasReachedDailyFreeLimit()) {
-      btnProcessDump.disabled = true;
-      return;
-    }
     const hasText = journalInput.value.trim().length > 3;
     btnProcessDump.disabled = !hasText;
   });
@@ -897,24 +893,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const isLimitReached = hasReachedDailyFreeLimit();
     if (isLimitReached) {
       if (dailyLimitBanner) dailyLimitBanner.classList.remove('hidden');
-      if (dumpInputContainer) {
-        dumpInputContainer.style.opacity = '0.4';
-        dumpInputContainer.style.pointerEvents = 'none';
-      }
-      if (btnProcessDump) {
-        btnProcessDump.disabled = true;
-        btnProcessDump.title = 'Limite diário atingido. Assine o Pro para registros ilimitados.';
-      }
     } else {
       if (dailyLimitBanner) dailyLimitBanner.classList.add('hidden');
-      if (dumpInputContainer) {
-        dumpInputContainer.style.opacity = '1';
-        dumpInputContainer.style.pointerEvents = 'auto';
-      }
-      if (btnProcessDump && journalInput) {
-        btnProcessDump.disabled = !journalInput.value.trim();
-        btnProcessDump.title = 'Processar pensamentos';
-      }
+    }
+
+    // Garante que o container de escrita NUNCA fique bloqueado para digitação
+    if (dumpInputContainer) {
+      dumpInputContainer.style.opacity = '1';
+      dumpInputContainer.style.pointerEvents = 'auto';
+    }
+    if (btnProcessDump && journalInput) {
+      btnProcessDump.disabled = journalInput.value.trim().length <= 3;
+      btnProcessDump.title = 'Processar pensamentos';
     }
 
     // Atualiza badges visuais nos botões de duração
