@@ -59,9 +59,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // SELETORES DOM
   // ==========================================
   const views = {
+    home: document.getElementById('viewHome'),
     night: document.getElementById('viewNight'),
     morning: document.getElementById('viewMorning'),
-    history: document.getElementById('viewHistory')
+    history: document.getElementById('viewHistory'),
+    stories: document.getElementById('viewStories'),
+    sounds: document.getElementById('viewSounds'),
+    rhythm: document.getElementById('viewRhythm')
   };
 
   const steps = {
@@ -360,6 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: 'HistoryDetailTabs', fn: initHistoryDetailTabs },
     { name: 'PWA', fn: initPWA },
     { name: 'StripeReturnStatus', fn: initStripeReturnStatus },
+    { name: 'NovoSite', fn: initNovoSite },
     { name: 'StaticHostCheck', fn: warnIfStaticOnlyHost },
     { name: 'HistoryUI', fn: updateHistoryUI },
     { name: 'DailyLimitUI', fn: checkDailyLimitUI }
@@ -425,30 +430,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // NAVEGAÇÃO DESKTOP & MOBILE SINCRONIZADA
   // ==========================================
   function initNavigation() {
-    navBtns.night?.addEventListener('click', () => switchView('night'));
-    navBtns.morning?.addEventListener('click', () => switchView('morning'));
-    navBtns.history?.addEventListener('click', () => switchView('history'));
-    navBtns.logo?.addEventListener('click', () => switchView('night'));
-
-    mobNavBtns.night?.addEventListener('click', () => switchView('night'));
-    mobNavBtns.morning?.addEventListener('click', () => switchView('morning'));
-    mobNavBtns.history?.addEventListener('click', () => switchView('history'));
-    mobNavBtns.premium?.addEventListener('click', () => openModal(modalPremium));
+    // Os botões com data-view são ligados em initNovoSite (fonte única).
+    // Aqui ficam só os que não representam uma view.
+    navBtns.logo?.addEventListener('click', () => switchView('home'));
     mobNavBtns.auth?.addEventListener('click', () => openModal(modalAuth));
   }
 
   function switchView(viewName) {
+    if (!views[viewName]) return;
+
     Object.keys(views).forEach(k => {
-      views[k].classList.toggle('active', k === viewName);
+      views[k]?.classList.toggle('active', k === viewName);
     });
 
-    navBtns.night?.classList.toggle('active', viewName === 'night');
-    navBtns.morning?.classList.toggle('active', viewName === 'morning');
-    navBtns.history?.classList.toggle('active', viewName === 'history');
-
-    mobNavBtns.night?.classList.toggle('active', viewName === 'night');
-    mobNavBtns.morning?.classList.toggle('active', viewName === 'morning');
-    mobNavBtns.history?.classList.toggle('active', viewName === 'history');
+    // Marca o item ativo em todas as barras de navegação de uma vez
+    document.querySelectorAll('[data-view]').forEach(el => {
+      el.classList.toggle('active', el.getAttribute('data-view') === viewName);
+    });
 
     if (viewName === 'night') {
       checkDailyLimitUI();
@@ -456,6 +454,10 @@ document.addEventListener('DOMContentLoaded', () => {
       renderMorningView();
     } else if (viewName === 'history') {
       updateHistoryUI();
+    } else if (viewName === 'rhythm' || viewName === 'home') {
+      renderizarRitmo();
+    } else if (viewName === 'stories') {
+      fecharHistoria();
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -637,7 +639,7 @@ document.addEventListener('DOMContentLoaded', () => {
         itemsToRender.push({
           type: 'gratitude',
           tagLabel: 'Coisas Boas',
-          tagStyle: 'background: rgba(212, 163, 115, 0.25); color: var(--accent-amber);',
+          tagStyle: 'background: rgba(59, 130, 246, 0.25); color: var(--acento);',
           title: item.raw,
           note: item.note || 'Momento bom guardado no coração'
         });
@@ -649,7 +651,7 @@ document.addEventListener('DOMContentLoaded', () => {
         itemsToRender.push({
           type: 'tomorrow',
           tagLabel: 'Amanhã',
-          tagStyle: 'background: rgba(212, 163, 115, 0.2); color: var(--accent-amber);',
+          tagStyle: 'background: rgba(59, 130, 246, 0.2); color: var(--acento);',
           title: item.action || item.raw,
           note: 'Ação executável agendada para a manhã'
         });
@@ -1155,6 +1157,8 @@ document.addEventListener('DOMContentLoaded', () => {
         rawText: row.raw_text,
         counselingAdvice: row.triaged_data?.counselingAdvice || '',
         sleepMood: row.sleep_mood,
+        bedTime: row.sleep_times?.bedTime || null,
+        wakeTime: row.sleep_times?.wakeTime || null,
         gratitude: row.triaged_data?.gratitude || [],
         tomorrow: row.triaged_data?.tomorrow || [],
         wait: row.triaged_data?.wait || [],
@@ -2123,7 +2127,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const li = document.createElement('li');
         li.className = 'cat-item';
         li.innerHTML = `
-          <button type="button" class="cat-item-tag interactive" data-tag-type="gratitude" style="background: rgba(212, 163, 115, 0.25); color: var(--accent-amber);" title="Toque para entender por que está aqui">
+          <button type="button" class="cat-item-tag interactive" data-tag-type="gratitude" style="background: rgba(59, 130, 246, 0.25); color: var(--acento);" title="Toque para entender por que está aqui">
             Coisas Boas 🌟
           </button>
           <span><strong>${escapeHTML(item.raw)}</strong> <br><small style="color: var(--sage-calm); display: inline-block; margin-top: 0.25rem;">✨ ${escapeHTML(item.note)}</small></span>
@@ -2586,7 +2590,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       historyListContainer.innerHTML = `
         <div class="empty-state auth-locked-history" style="padding: 2.5rem 1.5rem; text-align: center;">
-          <div class="badge-tag" style="background: rgba(212,163,115,0.25); color: var(--accent-amber); margin-bottom: 0.75rem;">🔒 Diário Protegido</div>
+          <div class="badge-tag" style="background: rgba(59, 130, 246, 0.25); color: var(--acento); margin-bottom: 0.75rem;">🔒 Diário Protegido</div>
           <h3 style="margin: 0 0 0.5rem; color: var(--text-main); font-size: 1.25rem;">Acesse sua Conta para Salvar o Histórico</h3>
           <p style="color: var(--text-muted); font-size: 0.88rem; max-width: 440px; margin: 0 auto 1.5rem; line-height: 1.5;">
             No modo visitante, seus desabafos são temporários para proteger sua privacidade. Crie sua conta gratuita ou assine o Pro para manter seu diário seguro na nuvem.
@@ -2697,15 +2701,15 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="history-card-mood" title="Humor do sono">${moodEmoji} <small style="font-size:0.75rem; color:var(--text-muted);">${formattedDate}</small></span>
         </div>
         <p class="history-card-text">"${escapeHTML(entry.rawText)}"</p>
-        ${entry.counselingAdvice ? `<div style="background: rgba(212,163,115,0.08); border-left: 2px solid var(--accent-amber); padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.78rem; color: var(--text-main); font-style: italic; margin-bottom: 0.65rem;">💌 "${escapeHTML(entry.counselingAdvice.substring(0, 130))}..."</div>` : ''}
+        ${entry.counselingAdvice ? `<div style="background: rgba(59, 130, 246, 0.08); border-left: 2px solid var(--acento); padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.78rem; color: var(--text-main); font-style: italic; margin-bottom: 0.65rem;">💌 "${escapeHTML(entry.counselingAdvice.substring(0, 130))}..."</div>` : ''}
         
         <div class="history-tags">
           ${countGratitude > 0 ? `
-            <button type="button" class="cat-item-tag interactive" data-entry-idx="${index}" data-tag-type="gratitude" style="background: rgba(212, 163, 115, 0.25); color: var(--accent-amber);" title="Toque para ver as coisas boas">
+            <button type="button" class="cat-item-tag interactive" data-entry-idx="${index}" data-tag-type="gratitude" style="background: rgba(59, 130, 246, 0.25); color: var(--acento);" title="Toque para ver as coisas boas">
               ${countGratitude} coisas boas 🌟
             </button>
           ` : ''}
-          <button type="button" class="cat-item-tag interactive" data-entry-idx="${index}" data-tag-type="tomorrow" style="background: rgba(212, 163, 115, 0.2); color: var(--accent-amber);" title="Toque para ver o que foi guardado">
+          <button type="button" class="cat-item-tag interactive" data-entry-idx="${index}" data-tag-type="tomorrow" style="background: rgba(59, 130, 246, 0.2); color: var(--acento);" title="Toque para ver o que foi guardado">
             ${countTomorrow} amanhã 🔍
           </button>
           <button type="button" class="cat-item-tag interactive" data-entry-idx="${index}" data-tag-type="wait" style="background: rgba(149, 167, 136, 0.2); color: var(--sage-calm);" title="Toque para ver o que foi guardado">
@@ -2734,9 +2738,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!isPro) {
       const upsellCard = document.createElement('div');
       upsellCard.className = 'history-card pro-upsell-history-card';
-      upsellCard.style.cssText = 'border: 1px dashed var(--accent-amber); background: rgba(212, 163, 115, 0.06); text-align: center; padding: 1.5rem;';
+      upsellCard.style.cssText = 'border: 1px dashed var(--acento); background: rgba(59, 130, 246, 0.06); text-align: center; padding: 1.5rem;';
       upsellCard.innerHTML = `
-        <div class="badge-tag" style="background: rgba(212,163,115,0.25); color: var(--accent-amber); margin-bottom: 0.5rem;">⭐ Desligue-se Pro</div>
+        <div class="badge-tag" style="background: rgba(59, 130, 246, 0.25); color: var(--acento); margin-bottom: 0.5rem;">⭐ Desligue-se Pro</div>
         <h4 style="margin: 0.35rem 0; color: var(--text-main); font-size: 1.05rem;">Histórico Completo na Nuvem & Padrões Emocionais</h4>
         <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
           No plano gratuito, você visualiza os 3 registros mais recentes. Assine o Pro para acessar todo o seu histórico ilimitado, sincronização e gráficos avançados de autocuidado.
@@ -3127,9 +3131,9 @@ document.addEventListener('DOMContentLoaded', () => {
       appearance: {
         theme: 'night',
         variables: {
-          colorPrimary: '#D4A373',
-          colorBackground: '#131922',
-          colorText: '#E6EDF3',
+          colorPrimary: '#3B82F6',
+          colorBackground: '#111A2B',
+          colorText: '#E8EDF5',
           colorDanger: '#FF8080',
           fontFamily: 'Plus Jakarta Sans, sans-serif',
           borderRadius: '8px'
@@ -3155,9 +3159,9 @@ document.addEventListener('DOMContentLoaded', () => {
         appearance: {
           theme: 'night',
           variables: {
-            colorPrimary: '#D4A373',
-            colorBackground: '#131922',
-            colorText: '#E6EDF3',
+            colorPrimary: '#3B82F6',
+            colorBackground: '#111A2B',
+            colorText: '#E8EDF5',
             colorDanger: '#FF8080',
             fontFamily: 'Plus Jakarta Sans, sans-serif',
             borderRadius: '8px'
@@ -3353,6 +3357,760 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // ==========================================================================
+  // NOVO MODELO DE SITE — HOME, HISTÓRIAS, SONS E MEU RITMO
+  // ==========================================================================
+
+  /**
+   * Catálogo de paisagens sonoras. Tudo é SINTETIZADO no navegador com a Web
+   * Audio API: nenhum arquivo é baixado, não há licenciamento envolvido e o
+   * som nunca se repete igual — o que é justamente o que evita que o cérebro
+   * se acostume e volte a prestar atenção.
+   */
+  const CATALOGO_SONS = [
+    {
+      id: 'chuva',
+      titulo: 'Chuva na floresta',
+      subtitulo: 'Som da natureza',
+      icone: '🌧️',
+      construir: (ctx, saida) => {
+        const ruido = criarRuidoRosa(ctx);
+        const filtro = ctx.createBiquadFilter();
+        filtro.type = 'bandpass';
+        filtro.frequency.value = 1100;
+        filtro.Q.value = 0.55;
+
+        // Variação lenta de intensidade: a chuva aperta e afrouxa
+        const lfo = ctx.createOscillator();
+        const lfoGanho = ctx.createGain();
+        lfo.frequency.value = 0.06;
+        lfoGanho.gain.value = 340;
+        lfo.connect(lfoGanho).connect(filtro.frequency);
+        lfo.start();
+
+        ruido.connect(filtro).connect(saida);
+        return [ruido, lfo];
+      }
+    },
+    {
+      id: 'oceano',
+      titulo: 'Oceano à noite',
+      subtitulo: 'Som da natureza',
+      icone: '🌊',
+      construir: (ctx, saida) => {
+        const ruido = criarRuidoRosa(ctx);
+        const filtro = ctx.createBiquadFilter();
+        filtro.type = 'lowpass';
+        filtro.frequency.value = 500;
+
+        // Ondas: ciclo de ~11s, próximo do ritmo real da arrebentação
+        const onda = ctx.createOscillator();
+        const ondaGanho = ctx.createGain();
+        const volume = ctx.createGain();
+        volume.gain.value = 0.55;
+        onda.frequency.value = 0.09;
+        ondaGanho.gain.value = 0.4;
+        onda.connect(ondaGanho).connect(volume.gain);
+        onda.start();
+
+        ruido.connect(filtro).connect(volume).connect(saida);
+        return [ruido, onda];
+      }
+    },
+    {
+      id: 'vento',
+      titulo: 'Vento entre as árvores',
+      subtitulo: 'Som da natureza',
+      icone: '🍃',
+      construir: (ctx, saida) => {
+        const ruido = criarRuidoRosa(ctx);
+        const filtro = ctx.createBiquadFilter();
+        filtro.type = 'lowpass';
+        filtro.frequency.value = 380;
+        filtro.Q.value = 3;
+
+        const rajada = ctx.createOscillator();
+        const rajadaGanho = ctx.createGain();
+        rajada.frequency.value = 0.045;
+        rajadaGanho.gain.value = 220;
+        rajada.connect(rajadaGanho).connect(filtro.frequency);
+        rajada.start();
+
+        ruido.connect(filtro).connect(saida);
+        return [ruido, rajada];
+      }
+    },
+    {
+      id: 'frequencia432',
+      titulo: 'Frequência 432 Hz',
+      subtitulo: 'Música relaxante',
+      icone: '🎵',
+      construir: (ctx, saida) => {
+        const volume = ctx.createGain();
+        volume.gain.value = 0.09;
+
+        const fundamental = ctx.createOscillator();
+        fundamental.type = 'sine';
+        fundamental.frequency.value = 432;
+
+        const oitava = ctx.createOscillator();
+        oitava.type = 'sine';
+        oitava.frequency.value = 216;
+
+        const ganhoOitava = ctx.createGain();
+        ganhoOitava.gain.value = 0.5;
+
+        fundamental.connect(volume);
+        oitava.connect(ganhoOitava).connect(volume);
+        volume.connect(saida);
+
+        fundamental.start();
+        oitava.start();
+        return [fundamental, oitava];
+      }
+    },
+    {
+      id: 'delta',
+      titulo: 'Batida binaural delta',
+      subtitulo: 'Ondas cerebrais do sono profundo',
+      icone: '🧠',
+      construir: (ctx, saida) => {
+        const volume = ctx.createGain();
+        volume.gain.value = 0.08;
+
+        // Diferença de 2,5 Hz entre os ouvidos = faixa delta.
+        // Precisa de fone de ouvido para o efeito existir.
+        const esquerda = ctx.createOscillator();
+        const direita = ctx.createOscillator();
+        esquerda.frequency.value = 110;
+        direita.frequency.value = 112.5;
+
+        const panEsq = ctx.createStereoPanner();
+        const panDir = ctx.createStereoPanner();
+        panEsq.pan.value = -1;
+        panDir.pan.value = 1;
+
+        esquerda.connect(panEsq).connect(volume);
+        direita.connect(panDir).connect(volume);
+        volume.connect(saida);
+
+        esquerda.start();
+        direita.start();
+        return [esquerda, direita];
+      }
+    },
+    {
+      id: 'lareira',
+      titulo: 'Lareira acesa',
+      subtitulo: 'Som ambiente',
+      icone: '🔥',
+      construir: (ctx, saida) => {
+        const ruido = criarRuidoRosa(ctx);
+        const filtro = ctx.createBiquadFilter();
+        filtro.type = 'lowpass';
+        filtro.frequency.value = 720;
+
+        // Estalos irregulares do fogo
+        const crepitar = ctx.createOscillator();
+        const crepitarGanho = ctx.createGain();
+        crepitar.type = 'sawtooth';
+        crepitar.frequency.value = 0.7;
+        crepitarGanho.gain.value = 260;
+        crepitar.connect(crepitarGanho).connect(filtro.frequency);
+        crepitar.start();
+
+        ruido.connect(filtro).connect(saida);
+        return [ruido, crepitar];
+      }
+    }
+  ];
+
+  /** Ruído rosa em laço — base de quase todas as paisagens acima. */
+  function criarRuidoRosa(ctx) {
+    const tamanho = ctx.sampleRate * 3;
+    const buffer = ctx.createBuffer(1, tamanho, ctx.sampleRate);
+    const dados = buffer.getChannelData(0);
+
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < tamanho; i++) {
+      const branco = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + branco * 0.0555179;
+      b1 = 0.99332 * b1 + branco * 0.0750759;
+      b2 = 0.96900 * b2 + branco * 0.1538520;
+      b3 = 0.86650 * b3 + branco * 0.3104856;
+      b4 = 0.55000 * b4 + branco * 0.5329522;
+      b5 = -0.7616 * b5 - branco * 0.0168980;
+      dados[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + branco * 0.5362) * 0.09;
+      b6 = branco * 0.115926;
+    }
+
+    const fonte = ctx.createBufferSource();
+    fonte.buffer = buffer;
+    fonte.loop = true;
+    fonte.start();
+    return fonte;
+  }
+
+  const somAtual = {
+    ctx: null,
+    nos: [],
+    ganho: null,
+    id: null,
+    timer: null
+  };
+
+  function pararSom() {
+    if (somAtual.timer) { clearTimeout(somAtual.timer); somAtual.timer = null; }
+    somAtual.nos.forEach(no => { try { no.stop(); } catch (e) {} });
+    somAtual.nos = [];
+    if (somAtual.ctx) { try { somAtual.ctx.close(); } catch (e) {} }
+    somAtual.ctx = null;
+    somAtual.ganho = null;
+    somAtual.id = null;
+
+    document.querySelectorAll('.media-card.tocando, .sound-card.tocando')
+      .forEach(el => el.classList.remove('tocando'));
+    const barra = document.getElementById('soundPlayerBar');
+    if (barra) barra.hidden = true;
+  }
+
+  function tocarSom(id) {
+    const som = CATALOGO_SONS.find(s => s.id === id);
+    if (!som) return;
+
+    if (somAtual.id === id) { pararSom(); return; }
+    pararSom();
+
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioCtx();
+      const mestre = ctx.createGain();
+
+      const controleVolume = document.getElementById('soundVolume');
+      const volumeInicial = controleVolume ? Number(controleVolume.value) / 100 : 0.55;
+
+      // Entrada suave: som que começa no volume cheio assusta
+      mestre.gain.setValueAtTime(0.0001, ctx.currentTime);
+      mestre.gain.exponentialRampToValueAtTime(Math.max(volumeInicial, 0.02), ctx.currentTime + 2.5);
+      mestre.connect(ctx.destination);
+
+      somAtual.ctx = ctx;
+      somAtual.ganho = mestre;
+      somAtual.nos = som.construir(ctx, mestre) || [];
+      somAtual.id = id;
+
+      document.querySelectorAll(`[data-som="${id}"]`).forEach(el => el.classList.add('tocando'));
+
+      const barra = document.getElementById('soundPlayerBar');
+      if (barra) {
+        barra.hidden = false;
+        document.getElementById('playerIcon').textContent = som.icone;
+        document.getElementById('playerTitle').textContent = som.titulo;
+        document.getElementById('playerSubtitle').textContent = som.subtitulo;
+      }
+
+      agendarDesligamentoDoSom();
+    } catch (err) {
+      console.warn('Não foi possível iniciar o som:', err);
+      showToast('Não foi possível iniciar o som neste navegador.', 'error');
+    }
+  }
+
+  /** Timer de sono: desliga sozinho, com esmaecimento de 20s. */
+  function agendarDesligamentoDoSom() {
+    if (somAtual.timer) { clearTimeout(somAtual.timer); somAtual.timer = null; }
+    const seletor = document.getElementById('sleepTimer');
+    const minutos = seletor ? Number(seletor.value) : 30;
+    if (!minutos || !somAtual.ctx) return;
+
+    somAtual.timer = setTimeout(() => {
+      if (!somAtual.ganho || !somAtual.ctx) return;
+      const fim = somAtual.ctx.currentTime + 20;
+      try {
+        somAtual.ganho.gain.exponentialRampToValueAtTime(0.0001, fim);
+      } catch (e) {}
+      setTimeout(pararSom, 21000);
+    }, minutos * 60 * 1000);
+  }
+
+  function renderizarSons() {
+    const grade = document.getElementById('soundsGrid');
+    if (!grade) return;
+
+    grade.innerHTML = '';
+    CATALOGO_SONS.forEach(som => {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'media-card sound-card';
+      card.setAttribute('data-som', som.id);
+      card.innerHTML = `
+        <div class="media-thumb"><span class="media-play">▶</span></div>
+        <div class="media-info">
+          <strong>${escapeHTML(som.titulo)}</strong>
+          <span>${escapeHTML(som.subtitulo)}</span>
+        </div>
+      `;
+      card.addEventListener('click', () => tocarSom(som.id));
+      grade.appendChild(card);
+    });
+  }
+
+  /** Vitrine da home: quatro destaques que levam para as telas completas. */
+  function renderizarVitrineHome() {
+    const grade = document.getElementById('homeMediaGrid');
+    if (!grade) return;
+
+    const destaques = [
+      { tipo: 'som', ref: 'chuva' },
+      { tipo: 'som', ref: 'oceano' },
+      { tipo: 'historia', ref: 'casa-na-colina' },
+      { tipo: 'som', ref: 'frequencia432' }
+    ];
+
+    grade.innerHTML = '';
+    destaques.forEach(item => {
+      const dados = item.tipo === 'som'
+        ? CATALOGO_SONS.find(s => s.id === item.ref)
+        : HISTORIAS.find(h => h.id === item.ref);
+      if (!dados) return;
+
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'media-card';
+      if (item.tipo === 'som') card.setAttribute('data-som', dados.id);
+      card.innerHTML = `
+        <div class="media-thumb"><span class="media-play">▶</span></div>
+        <div class="media-info">
+          <strong>${escapeHTML(dados.titulo)}</strong>
+          <span>${escapeHTML(dados.subtitulo)}</span>
+        </div>
+      `;
+      card.addEventListener('click', () => {
+        if (item.tipo === 'som') {
+          tocarSom(dados.id);
+        } else {
+          switchView('stories');
+          abrirHistoria(dados.id);
+        }
+      });
+      grade.appendChild(card);
+    });
+  }
+
+  // ---------- Histórias para dormir (textos originais) ----------
+  const HISTORIAS = [
+    {
+      id: 'casa-na-colina',
+      titulo: 'A casa na colina',
+      subtitulo: 'História para dormir',
+      icone: '🏡',
+      duracao: '6 min de leitura',
+      paragrafos: [
+        'Existe uma casa no alto de uma colina onde as luzes ficam acesas por mais tempo do que em qualquer outro lugar do vale. Não porque alguém esteja esperando: é só o costume da casa, que gosta de ver o fim do dia com calma.',
+        'A colina é coberta de capim alto, do tipo que se deita inteiro quando o vento passa e depois se levanta devagar, sem pressa nenhuma de voltar ao lugar. Daqui de cima dá para ver o rio. Ele é escuro agora, com um risco de lua atravessado no meio.',
+        'Na varanda existe uma cadeira de madeira que range um pouco. É um som bom. Range quando você senta, range quando você balança, e depois fica quieta junto com você.',
+        'A brisa que sobe do rio chega morna. Ela passa pelo capim, passa pela varanda, mexe na cortina lá dentro e vai embora sem fechar a porta.',
+        'Lá longe, uma luz se apaga. Depois outra. O vale vai ficando com menos pontos brilhantes, e os que sobram parecem mais bonitos por causa disso.',
+        'A casa não pede nada de você. Não há nada aqui que precise ser resolvido, respondido ou lembrado. As coisas do dia ficaram lá embaixo, e daqui de cima elas parecem realmente pequenas.',
+        'O capim se deita de novo. O rio continua indo para onde vai desde sempre. A cadeira range uma última vez.',
+        'E a casa na colina, que sempre foi a última a apagar as luzes, apaga as dela também. Boa noite.'
+      ]
+    },
+    {
+      id: 'trem-noturno',
+      titulo: 'O trem noturno',
+      subtitulo: 'História para dormir',
+      icone: '🚂',
+      duracao: '5 min de leitura',
+      paragrafos: [
+        'O trem sai às onze e meia e não tem pressa de chegar. Ninguém a bordo tem. É um trem de vagões antigos, com bancos de tecido gasto e uma luz amarela que não incomoda os olhos.',
+        'O balanço é constante. Um lado, outro lado, um lado. Depois de alguns minutos o corpo desiste de se segurar e simplesmente aceita o movimento.',
+        'Do lado de fora, o campo passa em faixas escuras. De vez em quando uma casa isolada, uma cerca, uma árvore sozinha no meio do nada. Todas ficam para trás sem reclamar.',
+        'O condutor passa pelo corredor, cumprimenta com a cabeça e segue. Ele não pede o bilhete. Neste trem ninguém precisa provar que tem direito de estar descansando.',
+        'As rodas fazem aquele som repetido nos trilhos, sempre no mesmo intervalo, como se alguém estivesse contando baixinho para você não precisar contar.',
+        'A janela está fria de um lado e morna do outro. Você encosta a testa nela e o campo continua passando.',
+        'Faltam muitas horas para chegar. Essa é a melhor parte: não há nada a fazer até lá, e ninguém vai te acordar antes da hora.',
+        'O trem segue. Você não precisa mais ficar acordada para ele chegar. Boa viagem, e boa noite.'
+      ]
+    },
+    {
+      id: 'biblioteca-da-chuva',
+      titulo: 'A biblioteca da chuva',
+      subtitulo: 'História para dormir',
+      icone: '📚',
+      duracao: '5 min de leitura',
+      paragrafos: [
+        'Chove desde a tarde, e a biblioteca ficou vazia mais cedo do que o normal. Sobrou só a bibliotecária, que já foi embora, e a chuva, que ficou.',
+        'As estantes vão até o teto. Entre elas o ar é mais parado, mais quente, e cheira àquele cheiro bom de papel que ficou muito tempo guardado sem se estragar.',
+        'Nas janelas altas, a água escorre em fios que se encontram e se separam. Nenhum deles chega ao fim do mesmo jeito.',
+        'Há uma poltrona funda perto da janela, do tipo que aceita o corpo inteiro sem devolver nada. Sentar nela é praticamente uma decisão de ficar.',
+        'Você não precisa ler nada. Todos esses livros já foram escritos, já foram lidos, já cumpriram o que tinham para cumprir. Eles estão aqui só fazendo companhia.',
+        'A chuva engrossa um pouco e depois afrouxa. O relógio na parede está três minutos atrasado e ninguém nunca se importou com isso.',
+        'Lá fora o mundo continua molhado e apressado. Aqui dentro, não.',
+        'A luz da janela vai diminuindo até virar só um cinza suave. A chuva continua. Você pode fechar os olhos — a biblioteca fica de guarda. Boa noite.'
+      ]
+    }
+  ];
+
+  function renderizarHistorias() {
+    const grade = document.getElementById('storiesGrid');
+    if (!grade) return;
+
+    grade.innerHTML = '';
+    HISTORIAS.forEach(historia => {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'media-card';
+      card.innerHTML = `
+        <div class="media-thumb"><span style="font-size:1.8rem">${historia.icone}</span></div>
+        <div class="media-info">
+          <strong>${escapeHTML(historia.titulo)}</strong>
+          <span>${escapeHTML(historia.duracao)}</span>
+        </div>
+      `;
+      card.addEventListener('click', () => abrirHistoria(historia.id));
+      grade.appendChild(card);
+    });
+  }
+
+  function abrirHistoria(id) {
+    const historia = HISTORIAS.find(h => h.id === id);
+    if (!historia) return;
+
+    const leitor = document.getElementById('storyReader');
+    const grade = document.getElementById('storiesGrid');
+    if (!leitor || !grade) return;
+
+    document.getElementById('storyTitle').textContent = historia.titulo;
+    document.getElementById('storyMeta').textContent = historia.duracao;
+
+    const corpo = document.getElementById('storyBody');
+    corpo.innerHTML = '';
+    historia.paragrafos.forEach(texto => {
+      const p = document.createElement('p');
+      p.textContent = texto;
+      corpo.appendChild(p);
+    });
+
+    leitor.setAttribute('data-historia', id);
+    grade.classList.add('hidden');
+    leitor.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function fecharHistoria() {
+    pararNarracao();
+    document.getElementById('storyReader')?.classList.add('hidden');
+    document.getElementById('storiesGrid')?.classList.remove('hidden');
+  }
+
+  /** Narração pela voz do próprio navegador — sem custo e sem arquivo de áudio. */
+  function narrarHistoria() {
+    if (!('speechSynthesis' in window)) {
+      showToast('Este navegador não oferece leitura em voz alta.', 'info');
+      return;
+    }
+
+    const id = document.getElementById('storyReader')?.getAttribute('data-historia');
+    const historia = HISTORIAS.find(h => h.id === id);
+    if (!historia) return;
+
+    pararNarracao();
+
+    const fala = new SpeechSynthesisUtterance(historia.paragrafos.join('\n\n'));
+    fala.lang = 'pt-BR';
+    fala.rate = 0.82;  // devagar de propósito
+    fala.pitch = 0.95;
+
+    const vozPt = speechSynthesis.getVoices().find(v => v.lang?.startsWith('pt'));
+    if (vozPt) fala.voice = vozPt;
+
+    fala.onend = () => alternarBotoesNarracao(false);
+    fala.onerror = () => alternarBotoesNarracao(false);
+
+    speechSynthesis.speak(fala);
+    alternarBotoesNarracao(true);
+  }
+
+  function pararNarracao() {
+    if ('speechSynthesis' in window) {
+      try { speechSynthesis.cancel(); } catch (e) {}
+    }
+    alternarBotoesNarracao(false);
+  }
+
+  function alternarBotoesNarracao(narrando) {
+    document.getElementById('btnNarrateStory')?.classList.toggle('hidden', narrando);
+    document.getElementById('btnStopNarration')?.classList.toggle('hidden', !narrando);
+  }
+
+  // ---------- Meu Ritmo ----------
+  const PONTUACAO_HUMOR = { great: 100, medium: 65, terrible: 30 };
+
+  /** Converte "23:40" em minutos, tratando a madrugada como continuação da noite. */
+  function minutosDaNoite(horario) {
+    if (!horario || !/^\d{2}:\d{2}$/.test(horario)) return null;
+    const [h, m] = horario.split(':').map(Number);
+    let minutos = h * 60 + m;
+    // Deitar às 00:30 é "mais tarde" que às 23:00, e não 22 horas antes
+    if (h < 12) minutos += 24 * 60;
+    return minutos;
+  }
+
+  function minutosParaHorario(minutos) {
+    const total = ((Math.round(minutos) % (24 * 60)) + 24 * 60) % (24 * 60);
+    const h = String(Math.floor(total / 60)).padStart(2, '0');
+    const m = String(total % 60).padStart(2, '0');
+    return `${h}h${m}`;
+  }
+
+  function calcularRitmo() {
+    const noites = (appState.history || [])
+      .filter(e => e.bedTime && e.wakeTime)
+      .slice(0, 14);
+
+    const comHumor = (appState.history || []).filter(e => e.sleepMood).slice(0, 14);
+
+    const resultado = {
+      noitesComHorario: noites.length,
+      noitesComHumor: comHumor.length,
+      duracaoMedia: null,
+      qualidadeMedia: null,
+      janelaDormir: null,
+      janelaAcordar: null,
+      series: []
+    };
+
+    if (comHumor.length > 0) {
+      const soma = comHumor.reduce((acc, e) => acc + (PONTUACAO_HUMOR[e.sleepMood] || 0), 0);
+      resultado.qualidadeMedia = Math.round(soma / comHumor.length);
+    }
+
+    if (noites.length > 0) {
+      let somaDuracao = 0;
+      const deitar = [];
+      const levantar = [];
+
+      noites.forEach(e => {
+        const ini = minutosDaNoite(e.bedTime);
+        let fim = minutosDaNoite(e.wakeTime);
+        if (ini === null || fim === null) return;
+        if (fim <= ini) fim += 24 * 60;
+        somaDuracao += fim - ini;
+        deitar.push(ini);
+        levantar.push(fim % (24 * 60));
+      });
+
+      if (deitar.length > 0) {
+        const media = somaDuracao / deitar.length;
+        resultado.duracaoMedia = `${Math.floor(media / 60)}h${String(Math.round(media % 60)).padStart(2, '0')}`;
+
+        const mediaDeitar = deitar.reduce((a, b) => a + b, 0) / deitar.length;
+        const mediaLevantar = levantar.reduce((a, b) => a + b, 0) / levantar.length;
+        resultado.janelaDormir = `${minutosParaHorario(mediaDeitar - 22)} - ${minutosParaHorario(mediaDeitar + 22)}`;
+        resultado.janelaAcordar = `${minutosParaHorario(mediaLevantar - 22)} - ${minutosParaHorario(mediaLevantar + 22)}`;
+      }
+    }
+
+    resultado.series = (appState.history || []).slice(0, 7).reverse().map(e => ({
+      data: e.date,
+      qualidade: PONTUACAO_HUMOR[e.sleepMood] || 0,
+      humor: e.sleepMood
+    }));
+
+    return resultado;
+  }
+
+  function renderizarRitmo() {
+    const r = calcularRitmo();
+    const definir = (id, valor) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = valor;
+    };
+
+    const semDados = '—';
+    definir('homeAvgSleep', r.duracaoMedia || semDados);
+    definir('rhythmAvgSleep', r.duracaoMedia || semDados);
+    definir('homeAvgQuality', r.qualidadeMedia !== null ? `${r.qualidadeMedia}%` : semDados);
+    definir('rhythmAvgQuality', r.qualidadeMedia !== null ? `${r.qualidadeMedia}%` : semDados);
+    definir('homeBedWindow', r.janelaDormir || semDados);
+    definir('rhythmBedWindow', r.janelaDormir || semDados);
+    definir('homeWakeWindow', r.janelaAcordar || semDados);
+    definir('rhythmWakeWindow', r.janelaAcordar || semDados);
+
+    const aviso = document.getElementById('rhythmEmptyNote');
+    if (aviso) aviso.classList.toggle('hidden', r.noitesComHorario > 0);
+
+    // Gráfico de barras das últimas noites
+    const grafico = document.getElementById('rhythmChart');
+    if (grafico) {
+      grafico.innerHTML = '';
+      if (r.series.length === 0) {
+        grafico.innerHTML = '<p class="rhythm-empty-note">Ainda não há noites avaliadas. Use o check-in matinal para começar.</p>';
+      } else {
+        const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        r.series.forEach(item => {
+          const coluna = document.createElement('div');
+          coluna.className = 'chart-col';
+          const altura = Math.max(item.qualidade, 6);
+          const rotulo = item.data ? dias[new Date(item.data).getDay()] : '—';
+          coluna.innerHTML = `
+            <div class="chart-bar-track">
+              <div class="chart-bar" style="height: ${altura}%"></div>
+            </div>
+            <span class="chart-label">${rotulo}</span>
+          `;
+          coluna.title = item.humor
+            ? `Qualidade: ${item.qualidade}%`
+            : 'Noite sem avaliação';
+          grafico.appendChild(coluna);
+        });
+      }
+    }
+
+    const insight = document.getElementById('rhythmInsight');
+    if (insight) {
+      if (r.noitesComHorario >= 3 && r.janelaDormir) {
+        insight.innerHTML = `<strong>O que os seus registros mostram:</strong> nas últimas ${r.noitesComHorario} noites você dormiu em média <strong>${r.duracaoMedia}</strong>, deitando por volta de <strong>${r.janelaDormir}</strong>. Manter esse horário nos fins de semana costuma ser o que mais estabiliza o sono.`;
+      } else if (r.noitesComHumor > 0) {
+        insight.innerHTML = `<strong>Começando a entender o seu ritmo:</strong> você já avaliou ${r.noitesComHumor} noite(s). Preencha também os horários no check-in matinal para descobrirmos a sua melhor janela de sono.`;
+      } else {
+        insight.textContent = 'Registre suas noites no check-in matinal para o Desligue-se aprender o seu ritmo.';
+      }
+    }
+  }
+
+  /** Guarda os horários informados na entrada mais recente do diário. */
+  async function salvarHorariosDeSono() {
+    const bed = document.getElementById('inputBedTime')?.value || '';
+    const wake = document.getElementById('inputWakeTime')?.value || '';
+    const feedback = document.getElementById('sleepTimesFeedback');
+
+    const avisar = (msg, ok) => {
+      if (!feedback) return;
+      feedback.textContent = msg;
+      feedback.className = `sleep-times-feedback ${ok ? 'ok' : 'erro'}`;
+      feedback.classList.remove('hidden');
+    };
+
+    if (!bed || !wake) return avisar('Informe os dois horários para calcular o seu ritmo.', false);
+    if (!appState.currentUser) return avisar('Entre na sua conta para guardar os horários das suas noites.', false);
+    if (!appState.history.length) return avisar('Faça um registro no diário antes de anotar os horários.', false);
+
+    const entrada = appState.history[0];
+    entrada.bedTime = bed;
+    entrada.wakeTime = wake;
+    saveLocalHistory(appState.history);
+
+    if (supabase && entrada.id) {
+      try {
+        const dados = { ...(entrada.triagedRaw || {}), bedTime: bed, wakeTime: wake };
+        await supabase.from('journal_entries')
+          .update({ sleep_times: { bedTime: bed, wakeTime: wake } })
+          .eq('id', entrada.id);
+        void dados;
+      } catch (e) {
+        console.warn('Não foi possível sincronizar os horários:', e.message);
+      }
+    }
+
+    renderizarRitmo();
+    avisar('Horários guardados. Seu ritmo já está sendo calculado.', true);
+  }
+
+  // ---------- Ligações da nova navegação ----------
+  function initNovoSite() {
+    // Navegação por data-view (cabeçalho, rodapé, barra inferior e cards)
+    document.querySelectorAll('[data-view]').forEach(el => {
+      el.addEventListener('click', () => switchView(el.getAttribute('data-view')));
+    });
+
+    document.querySelectorAll('.pillar-card[data-goto]').forEach(card => {
+      const ir = () => switchView(card.getAttribute('data-goto'));
+      card.addEventListener('click', ir);
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(); }
+      });
+    });
+
+    // Chamadas para ação da home
+    const irParaDiario = () => switchView('night');
+    document.getElementById('btnHeroStart')?.addEventListener('click', irParaDiario);
+    document.getElementById('btnHeaderStart')?.addEventListener('click', irParaDiario);
+    document.getElementById('btnGoRhythm')?.addEventListener('click', () => switchView('rhythm'));
+    document.getElementById('btnGoSounds')?.addEventListener('click', () => switchView('sounds'));
+    document.getElementById('btnFinalCta')?.addEventListener('click', () => {
+      if (appState.currentUser) switchView('night');
+      else openModal(modalAuth);
+    });
+    document.getElementById('btnHeroHow')?.addEventListener('click', () => {
+      document.getElementById('homeHowSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    // Escrita rápida direto da home
+    const rapido = document.getElementById('quickJournalInput');
+    document.getElementById('btnQuickWrite')?.addEventListener('click', () => {
+      const texto = (rapido?.value || '').trim();
+      switchView('night');
+      if (texto && journalInput) {
+        journalInput.value = texto;
+        journalInput.dispatchEvent(new Event('input', { bubbles: true }));
+        if (rapido) rapido.value = '';
+      }
+      setTimeout(() => journalInput?.focus(), 350);
+    });
+
+    document.querySelectorAll('.mood-face').forEach(face => {
+      face.addEventListener('click', () => {
+        const jaEscolhido = face.classList.contains('escolhido');
+        document.querySelectorAll('.mood-face').forEach(f => f.classList.remove('escolhido'));
+        if (!jaEscolhido) face.classList.add('escolhido');
+      });
+    });
+
+    // Histórias
+    document.getElementById('btnBackToStories')?.addEventListener('click', fecharHistoria);
+    document.getElementById('btnNarrateStory')?.addEventListener('click', narrarHistoria);
+    document.getElementById('btnStopNarration')?.addEventListener('click', pararNarracao);
+    document.getElementById('btnStoryToRoutine')?.addEventListener('click', () => {
+      pararNarracao();
+      switchView('night');
+      showStep('routine');
+      startRelaxationRoutine();
+    });
+
+    // Sons
+    document.getElementById('btnStopSound')?.addEventListener('click', pararSom);
+    document.getElementById('sleepTimer')?.addEventListener('change', agendarDesligamentoDoSom);
+    document.getElementById('soundVolume')?.addEventListener('input', (e) => {
+      if (!somAtual.ganho || !somAtual.ctx) return;
+      const valor = Math.max(Number(e.target.value) / 100, 0.0001);
+      somAtual.ganho.gain.setTargetAtTime(valor, somAtual.ctx.currentTime, 0.2);
+    });
+
+    // Horários do check-in matinal
+    document.getElementById('btnSaveSleepTimes')?.addEventListener('click', salvarHorariosDeSono);
+
+    // Política de privacidade abre o mesmo documento dos termos
+    document.getElementById('linkOpenPrivacyFooter')?.addEventListener('click', () => openModal(modalTerms));
+  }
+
+  /**
+   * Desenha as telas novas a partir dos catálogos.
+   *
+   * Fica SEPARADO de initNovoSite de propósito: CATALOGO_SONS e HISTORIAS são
+   * `const` declarados mais abaixo, e o laço de inicialização roda antes disso.
+   * Ler essas constantes lá dentro cai na zona morta temporal e lança
+   * ReferenceError — o mesmo defeito que derrubava o app inteiro na versão
+   * auditada. Por isso a chamada acontece no fim do arquivo.
+   */
+  function renderizarConteudoNovoSite() {
+    renderizarSons();
+    renderizarHistorias();
+    renderizarVitrineHome();
+    renderizarRitmo();
+  }
+
   function escapeHTML(str) {
     if (!str) return '';
     return str
@@ -3361,5 +4119,12 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  // Última etapa da inicialização: agora os catálogos já existem.
+  try {
+    renderizarConteudoNovoSite();
+  } catch (err) {
+    console.warn('[Desligue-se Init] Erro ao desenhar as telas novas:', err);
   }
 });

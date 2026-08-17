@@ -25,7 +25,9 @@ O sistema atua como uma ponte de descompressão entre o dia agitado e a noite de
 - **Efeito Zeigarnik Mitigado:** o cérebro mantém loops abertos até que tarefas recebam um local confiável de guarda. O Desligue-se fecha esses loops.
 - **Constructive Worry Time:** protocolo padrão-ouro da TCC-I que desassocia a cama da ansiedade de planejamento.
 - **Desativação Simpática & Tônus Vagal:** técnicas somáticas de respiração com expiração prolongada para acionar o sistema nervoso parassimpático.
-- **Design de Baixo Estímulo (Zero Luz Azul):** paleta noturna acolhedora em tons de âmbar quente, azul meia-noite e linho, minimizando a supressão de melatonina.
+- **Design de Baixo Estímulo:** paleta azul-noite de baixa luminância, com superfícies escuras e contraste suave para não agredir a vista no escuro.
+
+> ⚠️ **Nota sobre luz azul.** A versão anterior usava âmbar quente justamente porque comprimentos de onda curtos (azul) são os que mais suprimem a melatonina. O modelo visual de 2026 adota o azul por decisão de produto. A mitigação aplicada foi manter luminância baixa em todas as superfícies e reservar o azul saturado para acentos pequenos — nunca para grandes áreas de fundo. Se quiser reduzir ainda mais a exposição, o caminho é oferecer um seletor de tema âmbar para uso na cama.
 
 ---
 

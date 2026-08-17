@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Desligue-se: Seu diário noturno inteligente que organiza a mente, fecha as pendências do dia e te ajuda a dormir tranquila.">
-  <meta name="theme-color" content="#0D1117">
+  <meta name="theme-color" content="#0B1220">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://desliguese.vercel.app/">
   <meta property="og:title" content="Desligue-se — Organize sua Mente e Durma Tranquila">
@@ -42,7 +42,7 @@
   
   <!-- Stripe.js CDN -->
   <script defer src="https://js.stripe.com/v3/"></script>
-  <link rel="stylesheet" href="styles.css?v=2.0.8">
+  <link rel="stylesheet" href="styles.css?v=2.1.1">
 </head>
 <body class="theme-night">
   <!-- Glow decorativo suave de fundo -->
@@ -65,19 +65,15 @@
         </div>
       </div>
 
-      <nav class="nav-controls">
-        <button id="btnTabNight" class="nav-pill active" title="Ritual Noturno de Despejo">
-          <span class="pill-icon">🌙</span> Noite
-        </button>
-        <button id="btnTabMorning" class="nav-pill" title="Check-in Matinal do Sono">
-          <span class="pill-icon">☀️</span> Manhã
-        </button>
-        <button id="btnTabHistory" class="nav-pill" title="Histórico e Padrões">
-          <span class="pill-icon">📖</span> Diário
-        </button>
-        <button id="btnOpenPremium" class="nav-pill premium-pill" title="Planos Premium">
-          <span class="pill-spark">✨</span> Premium
-        </button>
+      <nav class="nav-controls" aria-label="Navegação principal">
+        <button id="btnTabHome" class="nav-link active" data-view="home">Início</button>
+        <button id="btnTabNight" class="nav-link" data-view="night">Diário</button>
+        <button id="btnTabStories" class="nav-link" data-view="stories">Histórias</button>
+        <button id="btnTabSounds" class="nav-link" data-view="sounds">Sons</button>
+        <button id="btnTabRhythm" class="nav-link" data-view="rhythm">Meu Ritmo</button>
+        <button id="btnTabMorning" class="nav-link" data-view="morning">Check-in</button>
+        <button id="btnTabHistory" class="nav-link" data-view="history">Histórico</button>
+        <button id="btnOpenPremium" class="nav-link" title="Planos Premium">Planos</button>
       </nav>
 
       <!-- Ações do Cabeçalho (Visíveis no Mobile e Desktop) -->
@@ -85,9 +81,10 @@
         <button id="btnInstallApp" class="nav-pill install-pill hidden" title="Instalar aplicativo no celular ou computador">
           <span class="pill-icon">📲</span> <span class="install-pill-label">Instalar App</span>
         </button>
-        <button id="btnOpenAuth" class="nav-pill auth-pill" title="Minha Conta / Login">
+        <button id="btnOpenAuth" class="btn-header-ghost" title="Minha Conta / Login">
           <span id="userAvatarIcon" class="pill-icon">👤</span> <span id="userAuthLabel">Entrar</span>
         </button>
+        <button id="btnHeaderStart" class="btn-header-primary">Começar agora</button>
       </div>
     </div>
   </header>
@@ -96,9 +93,233 @@
   <main class="main-content">
 
     <!-- ======================================================== -->
+    <!-- VIEW 0: INÍCIO (APRESENTAÇÃO DO PRODUTO)                -->
+    <!-- ======================================================== -->
+    <section id="viewHome" class="app-view active view-home">
+
+      <!-- HERO -->
+      <div class="home-hero">
+        <div class="hero-copy">
+          <span class="hero-eyebrow">✧ Desacelere. Respire. Durma melhor.</span>
+          <h1 class="hero-headline">
+            Um lugar para <span class="destaque">desligar a mente</span> e dormir melhor.
+          </h1>
+          <p class="hero-lead">
+            Escreva, desabafe, escute histórias relaxantes, sons da natureza e descubra o
+            seu melhor ritmo de sono com a nossa IA.
+          </p>
+          <div class="hero-ctas">
+            <button id="btnHeroStart" class="btn-primary btn-cta">Começar agora <span aria-hidden="true">→</span></button>
+            <button id="btnHeroHow" class="btn-ghost-outline">Saiba como funciona</button>
+          </div>
+
+          <ul class="hero-features" role="list">
+            <li><span class="hf-icon" aria-hidden="true">📝</span> Diário inteligente</li>
+            <li><span class="hf-icon" aria-hidden="true">📖</span> Histórias para dormir</li>
+            <li><span class="hf-icon" aria-hidden="true">🌿</span> Sons da natureza</li>
+            <li><span class="hf-icon" aria-hidden="true">✧</span> IA do sono</li>
+            <li><span class="hf-icon" aria-hidden="true">🕐</span> Meu ritmo</li>
+          </ul>
+        </div>
+
+        <div class="hero-visual">
+          <div class="hero-scene" aria-hidden="true">
+            <div class="scene-moon"></div>
+            <div class="scene-stars"></div>
+            <div class="scene-hills"></div>
+          </div>
+
+          <!-- Atalho de escrita direto da home -->
+          <div class="hero-quick-journal">
+            <h2 class="quick-title">Como você está se sentindo hoje?</h2>
+            <label for="quickJournalInput" class="sr-only">Escreva no seu diário</label>
+            <textarea id="quickJournalInput" class="quick-textarea" rows="3"
+              placeholder="Escreva no seu diário..."></textarea>
+
+            <div class="quick-footer">
+              <div class="quick-moods">
+                <span class="quick-moods-label">Como definir meu humor?</span>
+                <div class="mood-face-row" role="group" aria-label="Como você está se sentindo">
+                  <button type="button" class="mood-face" data-humor="pesado" title="Dia muito pesado" aria-label="Dia muito pesado">☹</button>
+                  <button type="button" class="mood-face" data-humor="cansado" title="Cansada" aria-label="Cansada">😕</button>
+                  <button type="button" class="mood-face" data-humor="neutro" title="Neutra" aria-label="Neutra">🙂</button>
+                  <button type="button" class="mood-face" data-humor="leve" title="Leve e tranquila" aria-label="Leve e tranquila">😊</button>
+                </div>
+              </div>
+              <button type="button" id="btnQuickWrite" class="btn-primary btn-quick">✎ Escrever</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUATRO PILARES -->
+      <div class="home-pillars">
+        <article class="pillar-card" data-goto="night" tabindex="0" role="button">
+          <div class="pillar-art art-journal" aria-hidden="true">📓</div>
+          <h3>Diário Inteligente</h3>
+          <p>Escreva seus pensamentos e receba reflexões da IA para te ajudar a entender melhor suas emoções.</p>
+          <span class="pillar-arrow" aria-hidden="true">→</span>
+        </article>
+
+        <article class="pillar-card" data-goto="stories" tabindex="0" role="button">
+          <div class="pillar-art art-story" aria-hidden="true">📖</div>
+          <h3>Histórias para Dormir</h3>
+          <p>Contos relaxantes para acalmar a mente e te levar aos poucos para um sono profundo.</p>
+          <span class="pillar-arrow" aria-hidden="true">→</span>
+        </article>
+
+        <article class="pillar-card" data-goto="sounds" tabindex="0" role="button">
+          <div class="pillar-art art-sound" aria-hidden="true">🌊</div>
+          <h3>Sons da Natureza</h3>
+          <p>Sons ambientes, músicas calmas e frequências que ajudam a relaxar o corpo e a mente.</p>
+          <span class="pillar-arrow" aria-hidden="true">→</span>
+        </article>
+
+        <article class="pillar-card" data-goto="night" tabindex="0" role="button">
+          <div class="pillar-art art-ai" aria-hidden="true">🧠</div>
+          <h3>IA do Sono</h3>
+          <p>Nossa IA conversa com você, te acolhe e te ajuda a criar pensamentos mais leves antes de dormir.</p>
+          <span class="pillar-arrow" aria-hidden="true">→</span>
+        </article>
+      </div>
+
+      <!-- MEU RITMO (PRÉVIA) -->
+      <div class="home-rhythm">
+        <div class="rhythm-intro">
+          <span class="badge-tag">✧ Meu Ritmo</span>
+          <h2 class="section-headline">Descubra seu <span class="destaque">melhor horário para dormir</span></h2>
+          <p class="section-lead">
+            Acompanhe seus padrões de sono e veja os horários em que você funciona melhor.
+          </p>
+          <ul class="rhythm-benefits" role="list">
+            <li>Entenda sua qualidade de sono</li>
+            <li>Descubra seus melhores horários</li>
+            <li>Mais disposição durante o dia</li>
+          </ul>
+          <button type="button" id="btnGoRhythm" class="btn-primary btn-cta">Ver meu ritmo</button>
+        </div>
+
+        <div class="rhythm-preview" id="rhythmPreviewCard">
+          <div class="rhythm-preview-head">
+            <h3>Seu padrão de sono</h3>
+            <span class="rhythm-period">Últimos 14 dias</span>
+          </div>
+
+          <div class="rhythm-metrics">
+            <div class="metric-box">
+              <span class="metric-icon" aria-hidden="true">🌙</span>
+              <div>
+                <span class="metric-label">Tempo médio dormindo</span>
+                <strong class="metric-value" id="homeAvgSleep">—</strong>
+              </div>
+            </div>
+            <div class="metric-box">
+              <span class="metric-icon" aria-hidden="true">◐</span>
+              <div>
+                <span class="metric-label">Qualidade média</span>
+                <strong class="metric-value" id="homeAvgQuality">—</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="rhythm-windows">
+            <h4>Melhores horários para você</h4>
+            <div class="window-row">
+              <div class="window-box">
+                <span class="window-icon" aria-hidden="true">🌙</span>
+                <span class="window-label">Dormir entre</span>
+                <strong id="homeBedWindow">—</strong>
+              </div>
+              <div class="window-box">
+                <span class="window-icon" aria-hidden="true">☀️</span>
+                <span class="window-label">Acordar entre</span>
+                <strong id="homeWakeWindow">—</strong>
+              </div>
+            </div>
+          </div>
+
+          <p class="rhythm-empty-note" id="rhythmEmptyNote">
+            Registre algumas noites no check-in matinal para o seu ritmo aparecer aqui.
+          </p>
+        </div>
+      </div>
+
+      <!-- COMO FUNCIONA + PRÉVIA DO DIÁRIO -->
+      <div class="home-how-wrapper" id="homeHowSection">
+        <div class="home-how">
+          <h2 class="section-headline pequeno">Como funciona</h2>
+          <ol class="how-steps" role="list">
+            <li>
+              <span class="how-num" aria-hidden="true">📝</span>
+              <div>
+                <strong>Escreva no diário</strong>
+                <p>Conte como foi seu dia e como está se sentindo.</p>
+              </div>
+            </li>
+            <li>
+              <span class="how-num" aria-hidden="true">✧</span>
+              <div>
+                <strong>Receba apoio da IA</strong>
+                <p>Nossa IA lê e responde com carinho, insights e acolhimento.</p>
+              </div>
+            </li>
+            <li>
+              <span class="how-num" aria-hidden="true">🌙</span>
+              <div>
+                <strong>Relaxe e durma melhor</strong>
+                <p>Escute histórias e sons que preparam sua mente para um sono profundo.</p>
+              </div>
+            </li>
+          </ol>
+        </div>
+
+        <div class="home-journal-preview">
+          <h2 class="section-headline pequeno">Prévia do Diário</h2>
+          <div class="preview-entry">
+            <span class="preview-meta">Hoje · 23:58</span>
+            <p>
+              Hoje foi um dia cansativo. Me senti sobrecarregada com tantas coisas.
+              Queria poder me desconectar um pouco. Acho que preciso de mais calma.
+            </p>
+          </div>
+          <div class="preview-answer">
+            <span class="preview-answer-tag">Resposta da IA</span>
+            <p>
+              Parece que você teve um dia cheio de altos e baixos. É normal se sentir assim.
+              Que tal respirar fundo, ouvir um som da natureza e lembrar que você fez o seu
+              melhor hoje? Você merece descansar.
+            </p>
+          </div>
+          <p class="preview-note">Exemplo ilustrativo — sua resposta é escrita a partir do que você contar.</p>
+        </div>
+      </div>
+
+      <!-- SONS E HISTÓRIAS -->
+      <div class="home-media">
+        <div class="media-head">
+          <h2 class="section-headline pequeno">Sons e histórias para te levar para longe</h2>
+          <button type="button" id="btnGoSounds" class="btn-link-arrow">Ver todos <span aria-hidden="true">›</span></button>
+        </div>
+        <div class="media-grid" id="homeMediaGrid">
+          <!-- Injetado via JS a partir do catálogo real -->
+        </div>
+      </div>
+
+      <!-- CHAMADA FINAL -->
+      <div class="home-final-cta">
+        <div>
+          <h2>Pronto para transformar suas noites?</h2>
+          <p>Crie sua conta e tenha acesso completo a todas as ferramentas para sono e bem-estar.</p>
+          <button type="button" id="btnFinalCta" class="btn-primary btn-cta">Criar minha conta <span aria-hidden="true">→</span></button>
+        </div>
+        <div class="final-cta-art" aria-hidden="true">🌙</div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
     <!-- VIEW 1: RITUAL NOTURNO (DESPEJO MENTAL & TRIAGEM TCC-I) -->
     <!-- ======================================================== -->
-    <section id="viewNight" class="app-view active">
+    <section id="viewNight" class="app-view">
       
       <!-- ETAPA 1: INPUT DO DIÁRIO / BRAIN DUMP -->
       <div id="stepDump" class="step-card fade-in">
@@ -531,6 +752,24 @@
           </button>
         </div>
 
+        <!-- Horários da noite: alimentam o Meu Ritmo -->
+        <div class="sleep-times-box">
+          <h3 class="morning-box-title">🕐 Que horas foi a sua noite?</h3>
+          <p class="morning-box-sub">Opcional — é com isso que o Meu Ritmo descobre seus melhores horários.</p>
+          <div class="sleep-times-row">
+            <div class="sleep-time-field">
+              <label for="inputBedTime">Fui dormir às</label>
+              <input type="time" id="inputBedTime" class="auth-input">
+            </div>
+            <div class="sleep-time-field">
+              <label for="inputWakeTime">Acordei às</label>
+              <input type="time" id="inputWakeTime" class="auth-input">
+            </div>
+            <button type="button" id="btnSaveSleepTimes" class="btn-secondary">Salvar horários</button>
+          </div>
+          <p id="sleepTimesFeedback" class="sleep-times-feedback hidden" role="status" aria-live="polite"></p>
+        </div>
+
         <!-- Tarefas Entregues Suavemente para o Dia de Hoje -->
         <div id="morningTasksBox" class="morning-tasks-box">
           <h3 class="morning-box-title">🌱 Suas prioridades anotadas ontem à noite</h3>
@@ -626,6 +865,148 @@
         <!-- Lista de Noites Anteriores -->
         <div id="historyListContainer" class="history-list">
           <!-- Injetado via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 4: HISTÓRIAS PARA DORMIR -->
+    <!-- ======================================================== -->
+    <section id="viewStories" class="app-view">
+      <div class="step-card fade-in">
+        <div class="card-hero">
+          <div class="badge-tag">Leitura Noturna</div>
+          <h1 class="hero-title">Histórias para Dormir</h1>
+          <p class="hero-subtitle">
+            Contos originais, escritos em ritmo lento e sem sobressaltos, para a mente
+            desacelerar junto com a leitura. Você pode ler ou deixar que o aplicativo leia para você.
+          </p>
+        </div>
+
+        <div class="stories-grid" id="storiesGrid">
+          <!-- Injetado via JS -->
+        </div>
+
+        <!-- Leitor de história -->
+        <div id="storyReader" class="story-reader hidden">
+          <div class="step-nav-bar">
+            <button type="button" id="btnBackToStories" class="btn-text-nav">← Voltar para as histórias</button>
+          </div>
+          <h2 id="storyTitle" class="story-title"></h2>
+          <span id="storyMeta" class="story-meta"></span>
+
+          <div class="story-controls">
+            <button type="button" id="btnNarrateStory" class="btn-secondary">🔊 Narrar história</button>
+            <button type="button" id="btnStopNarration" class="btn-secondary hidden">⏹ Parar narração</button>
+          </div>
+
+          <div id="storyBody" class="story-body"></div>
+
+          <div class="story-end">
+            <p>Se os olhos já estiverem pesados, pode fechar aqui. Boa noite. 🌙</p>
+            <button type="button" id="btnStoryToRoutine" class="btn-primary" style="width: auto; padding: 0.7rem 1.5rem;">
+              🧘‍♀️ Ir para o ritual de respiração
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 5: SONS DA NATUREZA -->
+    <!-- ======================================================== -->
+    <section id="viewSounds" class="app-view">
+      <div class="step-card fade-in">
+        <div class="card-hero">
+          <div class="badge-tag">Paisagens Sonoras</div>
+          <h1 class="hero-title">Sons da Natureza</h1>
+          <p class="hero-subtitle">
+            Todos os sons são gerados aqui no seu aparelho, em tempo real — não há download,
+            não consomem internet e nunca se repetem exatamente igual.
+          </p>
+        </div>
+
+        <div class="sounds-grid" id="soundsGrid">
+          <!-- Injetado via JS -->
+        </div>
+
+        <div class="sound-player-bar" id="soundPlayerBar" hidden>
+          <div class="player-now">
+            <span class="player-icon" id="playerIcon">🌧️</span>
+            <div>
+              <strong id="playerTitle">—</strong>
+              <span id="playerSubtitle">—</span>
+            </div>
+          </div>
+          <div class="player-actions">
+            <label for="soundVolume" class="sr-only">Volume</label>
+            <input type="range" id="soundVolume" min="0" max="100" value="55">
+            <label for="sleepTimer" class="player-timer-label">Desligar em</label>
+            <select id="sleepTimer" class="player-timer">
+              <option value="0">Sem limite</option>
+              <option value="15">15 min</option>
+              <option value="30" selected>30 min</option>
+              <option value="60">60 min</option>
+            </select>
+            <button type="button" id="btnStopSound" class="btn-secondary">⏹ Parar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 6: MEU RITMO -->
+    <!-- ======================================================== -->
+    <section id="viewRhythm" class="app-view">
+      <div class="step-card fade-in">
+        <div class="card-hero">
+          <div class="badge-tag">Padrões de Sono</div>
+          <h1 class="hero-title">Meu Ritmo</h1>
+          <p class="hero-subtitle">
+            O que os seus registros mostram sobre como você tem dormido.
+          </p>
+        </div>
+
+        <div class="rhythm-metrics" id="rhythmMainMetrics">
+          <div class="metric-box">
+            <span class="metric-icon" aria-hidden="true">🌙</span>
+            <div>
+              <span class="metric-label">Tempo médio dormindo</span>
+              <strong class="metric-value" id="rhythmAvgSleep">—</strong>
+            </div>
+          </div>
+          <div class="metric-box">
+            <span class="metric-icon" aria-hidden="true">◐</span>
+            <div>
+              <span class="metric-label">Qualidade média</span>
+              <strong class="metric-value" id="rhythmAvgQuality">—</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="window-row" style="margin-top: 1rem;">
+          <div class="window-box">
+            <span class="window-icon" aria-hidden="true">🌙</span>
+            <span class="window-label">Dormir entre</span>
+            <strong id="rhythmBedWindow">—</strong>
+          </div>
+          <div class="window-box">
+            <span class="window-icon" aria-hidden="true">☀️</span>
+            <span class="window-label">Acordar entre</span>
+            <strong id="rhythmWakeWindow">—</strong>
+          </div>
+        </div>
+
+        <h3 class="rhythm-section-title">Comparação de noites</h3>
+        <div class="rhythm-chart" id="rhythmChart">
+          <!-- Barras injetadas via JS -->
+        </div>
+
+        <div class="balance-insight-card" style="margin-top: 1rem;">
+          <span class="balance-insight-icon">💡</span>
+          <p id="rhythmInsight">
+            Registre suas noites no check-in matinal para o Desligue-se aprender o seu ritmo.
+          </p>
         </div>
       </div>
     </section>
@@ -735,7 +1116,7 @@
     <div class="modal-card trial-modal-card">
       <button id="btnCloseTrialBlock" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
       <div class="modal-header">
-        <div class="badge-tag" style="background: rgba(212,163,115,0.25); color: var(--accent-amber);">Degustação Gratuita Concluída</div>
+        <div class="badge-tag" style="background: rgba(59,130,246,0.25); color: var(--acento);">Degustação Gratuita Concluída</div>
         <h2 class="modal-title">Você já aproveitou seu 1º registro de teste!</h2>
         <p class="modal-subtitle">
           Sem login e sem plano ativo, o acesso inicial é apenas uma degustação de demonstração.
@@ -1052,30 +1433,65 @@
   </div>
 
   <footer class="app-footer">
-    <p>“Você não tem insônia. Às vezes você simplesmente levou o dia inteiro para a cama.”</p>
-    <div class="footer-links-row">
-      <a href="#" id="linkOpenTermsFooter" class="footer-legal-link">Termos de Uso, Isenção Médica & Privacidade (LGPD)</a>
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <span>Desligue-se</span>
+        </div>
+        <p class="footer-tagline">Desacelere. Respire. Durma melhor.</p>
+        <p class="footer-quote">“Você não tem insônia. Às vezes você simplesmente levou o dia inteiro para a cama.”</p>
+      </div>
+
+      <nav class="footer-col" aria-label="Navegação do rodapé">
+        <h3>Navegação</h3>
+        <button type="button" class="footer-nav-link" data-view="home">Início</button>
+        <button type="button" class="footer-nav-link" data-view="night">Diário</button>
+        <button type="button" class="footer-nav-link" data-view="stories">Histórias</button>
+        <button type="button" class="footer-nav-link" data-view="sounds">Sons</button>
+        <button type="button" class="footer-nav-link" data-view="rhythm">Meu Ritmo</button>
+      </nav>
+
+      <div class="footer-col">
+        <h3>Suporte</h3>
+        <a href="mailto:privacidade@desliguese.com.br" class="footer-nav-link">Falar com a gente</a>
+        <button type="button" id="linkOpenTermsFooter" class="footer-nav-link">Termos de uso</button>
+        <button type="button" id="linkOpenPrivacyFooter" class="footer-nav-link">Política de privacidade</button>
+      </div>
+
+      <div class="footer-col">
+        <h3>Em caso de crise</h3>
+        <a href="tel:188" class="footer-nav-link destaque-crise">CVV — 188 (24h, gratuito)</a>
+        <a href="https://www.cvv.org.br" target="_blank" rel="noopener" class="footer-nav-link">Chat do CVV</a>
+        <a href="tel:192" class="footer-nav-link">SAMU — 192</a>
+      </div>
     </div>
-    <small>Desligue-se © 2026 • Fundamentado em TCC-I e Neurociência do Sono.</small>
+
+    <div class="footer-bottom">
+      <small>Desligue-se © 2026 • Fundamentado em TCC-I e Neurociência do Sono.</small>
+      <small>Ferramenta de autocuidado — não substitui acompanhamento médico ou psicológico.</small>
+    </div>
   </footer>
 
   <!-- Barra de Navegação Inferior Fixa para Celular (Mobile App Experience) -->
   <nav class="mobile-bottom-nav">
-    <button id="btnMobNight" class="mob-nav-btn active" title="Ritual Noturno">
+    <button id="btnMobHome" class="mob-nav-btn active" title="Início" data-view="home">
+      <span class="mob-nav-icon">🏠</span>
+      <span class="mob-nav-label">Início</span>
+    </button>
+    <button id="btnMobNight" class="mob-nav-btn" title="Diário Noturno" data-view="night">
       <span class="mob-nav-icon">🌙</span>
-      <span class="mob-nav-label">Noite</span>
-    </button>
-    <button id="btnMobMorning" class="mob-nav-btn" title="Check-in Matinal">
-      <span class="mob-nav-icon">☀️</span>
-      <span class="mob-nav-label">Manhã</span>
-    </button>
-    <button id="btnMobHistory" class="mob-nav-btn" title="Diário e Histórico">
-      <span class="mob-nav-icon">📖</span>
       <span class="mob-nav-label">Diário</span>
     </button>
-    <button id="btnMobPremium" class="mob-nav-btn premium-mob-btn" title="Planos Premium">
-      <span class="mob-nav-icon">✨</span>
-      <span class="mob-nav-label">Premium</span>
+    <button id="btnMobSounds" class="mob-nav-btn" title="Sons da Natureza" data-view="sounds">
+      <span class="mob-nav-icon">🌿</span>
+      <span class="mob-nav-label">Sons</span>
+    </button>
+    <button id="btnMobRhythm" class="mob-nav-btn" title="Meu Ritmo" data-view="rhythm">
+      <span class="mob-nav-icon">🕐</span>
+      <span class="mob-nav-label">Ritmo</span>
     </button>
     <button id="btnMobAuth" class="mob-nav-btn" title="Minha Conta">
       <span class="mob-nav-icon" id="mobAvatarIcon">👤</span>
@@ -1083,8 +1499,8 @@
     </button>
   </nav>
 
-  <script src="config.js?v=2.0.8"></script>
-  <script src="app.js?v=2.0.8"></script>
+  <script src="config.js?v=2.1.1"></script>
+  <script src="app.js?v=2.1.1"></script>
   <!-- Vercel Web Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
   <!-- Vercel Speed Insights -->

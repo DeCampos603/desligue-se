@@ -56,6 +56,10 @@ CREATE TABLE IF NOT EXISTS public.journal_entries (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Horários de dormir e acordar informados no check-in matinal.
+-- É o que alimenta a tela "Meu Ritmo" (duração média e melhor janela de sono).
+ALTER TABLE public.journal_entries ADD COLUMN IF NOT EXISTS sleep_times JSONB;
+
 -- Sustenta a contagem "quantos registros esta usuária fez hoje?",
 -- que é o limite do plano gratuito aplicado do lado do servidor.
 CREATE INDEX IF NOT EXISTS journal_entries_user_created_idx
