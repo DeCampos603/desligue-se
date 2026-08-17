@@ -6,7 +6,7 @@
  * o erro cru do Stripe (que expunha o id da conta e a URL de log do dashboard).
  */
 
-const { applyCors, requireUser, stripeRequest } = require('./_lib/http');
+const { applyCors, getAuthenticatedUser, stripeRequest } = require('./_lib/http');
 const { resolvePlan, appendLineItems, getOrCreateStripeCustomer } = require('./_lib/billing');
 
 module.exports = async function handler(req, res) {

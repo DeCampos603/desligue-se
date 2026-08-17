@@ -10,9 +10,8 @@
  *  - CORS restrito e erros do Stripe não são mais repassados crus ao cliente.
  */
 
-const { applyCors, requireUser } = require('./_lib/http');
+const { applyCors, getAuthenticatedUser, stripeRequest } = require('./_lib/http');
 const { resolvePlan, appendLineItems, getOrCreateStripeCustomer } = require('./_lib/billing');
-const { stripeRequest } = require('./_lib/http');
 
 module.exports = async function handler(req, res) {
   if (applyCors(req, res)) return;
