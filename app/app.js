@@ -259,8 +259,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const historyListContainer = document.getElementById('historyListContainer');
 
   // ==========================================
+  // GERENCIADOR CENTRAL DE MODAIS
+  // ==========================================
+  function openModal(modal) {
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.removeAttribute('hidden');
+  }
+
+  function closeModal(modal) {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.setAttribute('hidden', '');
+  }
+
+  function closeAllModals() {
+    [modalPremium, modalAuth, modalTagDetail, modalHistoryDetail, modalTerms, modalTrialBlock, modalStripeElements].forEach(closeModal);
+  }
+
+  // ==========================================
   // INICIALIZAÇÃO RESILIENTE
   // ==========================================
+  closeAllModals();
+
   const modulesToInit = [
     { name: 'Navigation', fn: initNavigation },
     { name: 'VoiceInput', fn: initVoiceInput },
@@ -287,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnUpgradeDailyLimit?.addEventListener('click', () => {
-    modalPremium?.classList.remove('hidden');
+    openModal(modalPremium);
   });
 
   journalInput?.addEventListener('input', () => {
@@ -341,8 +362,8 @@ document.addEventListener('DOMContentLoaded', () => {
     mobNavBtns.night?.addEventListener('click', () => switchView('night'));
     mobNavBtns.morning?.addEventListener('click', () => switchView('morning'));
     mobNavBtns.history?.addEventListener('click', () => switchView('history'));
-    mobNavBtns.premium?.addEventListener('click', () => modalPremium.classList.remove('hidden'));
-    mobNavBtns.auth?.addEventListener('click', () => modalAuth.classList.remove('hidden'));
+    mobNavBtns.premium?.addEventListener('click', () => openModal(modalPremium));
+    mobNavBtns.auth?.addEventListener('click', () => openModal(modalAuth));
   }
 
   function switchView(viewName) {
@@ -447,7 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tagDetailBadge.textContent = info.badge;
     tagDetailMeaning.textContent = info.meaning;
     tagDetailNeuro.textContent = info.neuro;
-    modalTagDetail.classList.remove('hidden');
+    openModal(modalTagDetail);
   }
 
   function initCopyAdviceButton() {
@@ -512,7 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     renderHistoryDetailList();
-    modalHistoryDetail.classList.remove('hidden');
+    openModal(modalHistoryDetail);
   }
 
   function renderHistoryDetailList() {
@@ -726,7 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Logout
     btnSignOut?.addEventListener('click', async () => {
       await supabase.auth.signOut();
-      modalAuth.classList.add('hidden');
+      closeModal(modalAuth);
       showAuthFeedback('Você saiu da conta.', 'success');
     });
   }
@@ -1085,9 +1106,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const trialSub = modalTrialBlock.querySelector('.modal-subtitle');
         if (trialTitle) trialTitle.textContent = '🌙 Limite Diário Atingido (1/1 no Plano Gratuito)';
         if (trialSub) trialSub.textContent = 'Você já completou o seu descarrego mental de hoje! Para desabafar quantas vezes quiser ao longo do dia, ter IA ilimitada e histórico completo, assine o Desligue-se Pro.';
-        modalTrialBlock.classList.remove('hidden');
+        openModal(modalTrialBlock);
       } else if (modalPremium) {
-        modalPremium.classList.remove('hidden');
+        openModal(modalPremium);
       }
       return;
     }
@@ -1624,7 +1645,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         `;
         counselingText.querySelector('.btn-unlock-counseling')?.addEventListener('click', () => {
-          if (modalPremium) modalPremium.classList.remove('hidden');
+          openModal(modalPremium);
         });
       }
     }
@@ -1755,7 +1776,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const minutes = parseInt(btn.getAttribute('data-minutes'), 10);
         if (minutes > 3 && !isUserPro()) {
           // Bloqueio rigoroso: abre o modal de upgrade e trava seleção
-          if (modalPremium) modalPremium.classList.remove('hidden');
+          openModal(modalPremium);
           return;
         }
         durationBtns.forEach(b => b.classList.remove('active'));
@@ -1772,7 +1793,7 @@ document.addEventListener('DOMContentLoaded', () => {
       appState.selectedRoutineMinutes = 3;
       durationBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-minutes') === '3'));
       if (routineTimeBadge) routineTimeBadge.textContent = '3 min';
-      if (modalPremium) modalPremium.classList.remove('hidden');
+      openModal(modalPremium);
       return;
     }
 
@@ -2116,7 +2137,7 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
 
       historyListContainer.querySelector('.btn-history-auth-prompt')?.addEventListener('click', () => {
-        if (modalAuth) modalAuth.classList.remove('hidden');
+        openModal(modalAuth);
       });
       return;
     }
@@ -2264,7 +2285,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </button>
       `;
       upsellCard.querySelector('.btn-history-upgrade')?.addEventListener('click', () => {
-        if (modalPremium) modalPremium.classList.remove('hidden');
+        openModal(modalPremium);
       });
       historyListContainer.appendChild(upsellCard);
     }
@@ -2290,76 +2311,99 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
+  // GERENCIADOR CENTRAL DE MODAIS
+  // ==========================================
+  function openModal(modal) {
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.removeAttribute('hidden');
+  }
+
+  function closeModal(modal) {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.setAttribute('hidden', '');
+  }
+
+  function closeAllModals() {
+    [modalPremium, modalAuth, modalTagDetail, modalHistoryDetail, modalTerms, modalTrialBlock, modalStripeElements].forEach(closeModal);
+  }
+
+  // ==========================================
   // MODAIS (PREMIUM, AUTH, TAGS, DETALHES DO DIÁRIO & TECLA ESC)
   // ==========================================
   function initModals() {
-    // Premium
-    navBtns.premium?.addEventListener('click', () => modalPremium.classList.remove('hidden'));
-    btnCloseModal?.addEventListener('click', () => modalPremium.classList.add('hidden'));
-    btnDismissPremium?.addEventListener('click', () => modalPremium.classList.add('hidden'));
+    // Garante que ao iniciar todos os modais estejam 100% fechados
+    closeAllModals();
+
+    // Premium Modal
+    const openPremium = () => openModal(modalPremium);
+    navBtns.premium?.addEventListener('click', openPremium);
+    mobNavBtns.premium?.addEventListener('click', openPremium);
+    btnCloseModal?.addEventListener('click', () => closeModal(modalPremium));
     modalPremium?.addEventListener('click', (e) => {
-      if (e.target === modalPremium) modalPremium.classList.add('hidden');
+      if (e.target === modalPremium) closeModal(modalPremium);
     });
 
     // Auth (Desktop & Mobile)
     const openAuthModal = (e) => {
       if (e) e.preventDefault();
-      modalAuth?.classList.remove('hidden');
+      openModal(modalAuth);
     };
     navBtns.auth?.addEventListener('click', openAuthModal);
     mobNavBtns.auth?.addEventListener('click', openAuthModal);
     document.getElementById('btnOpenAuth')?.addEventListener('click', openAuthModal);
     document.getElementById('btnMobAuth')?.addEventListener('click', openAuthModal);
 
-    btnCloseAuthModal?.addEventListener('click', () => modalAuth?.classList.add('hidden'));
+    btnCloseAuthModal?.addEventListener('click', () => closeModal(modalAuth));
     modalAuth?.addEventListener('click', (e) => {
-      if (e.target === modalAuth) modalAuth?.classList.add('hidden');
+      if (e.target === modalAuth) closeModal(modalAuth);
     });
 
     // Tag Info Modal (TCC-I)
-    btnCloseTagModal?.addEventListener('click', () => modalTagDetail.classList.add('hidden'));
-    btnDismissTagModal?.addEventListener('click', () => modalTagDetail.classList.add('hidden'));
+    btnCloseTagModal?.addEventListener('click', () => closeModal(modalTagDetail));
+    btnDismissTagModal?.addEventListener('click', () => closeModal(modalTagDetail));
     modalTagDetail?.addEventListener('click', (e) => {
-      if (e.target === modalTagDetail) modalTagDetail.classList.add('hidden');
+      if (e.target === modalTagDetail) closeModal(modalTagDetail);
     });
 
     // History Entry Detail Modal
-    btnCloseHistoryDetailModal?.addEventListener('click', () => modalHistoryDetail.classList.add('hidden'));
-    btnDismissHistoryDetail?.addEventListener('click', () => modalHistoryDetail.classList.add('hidden'));
+    btnCloseHistoryDetailModal?.addEventListener('click', () => closeModal(modalHistoryDetail));
+    btnDismissHistoryDetail?.addEventListener('click', () => closeModal(modalHistoryDetail));
     modalHistoryDetail?.addEventListener('click', (e) => {
-      if (e.target === modalHistoryDetail) modalHistoryDetail.classList.add('hidden');
+      if (e.target === modalHistoryDetail) closeModal(modalHistoryDetail);
     });
 
     // Termos de Uso, Consentimento & Isenção Médica Modal
     linkOpenTermsAuth?.addEventListener('click', (e) => {
       e.preventDefault();
-      modalTerms?.classList.remove('hidden');
+      openModal(modalTerms);
     });
     linkOpenTermsFooter?.addEventListener('click', (e) => {
       e.preventDefault();
-      modalTerms?.classList.remove('hidden');
+      openModal(modalTerms);
     });
-    btnCloseTermsModal?.addEventListener('click', () => modalTerms?.classList.add('hidden'));
+    btnCloseTermsModal?.addEventListener('click', () => closeModal(modalTerms));
     btnDismissTermsModal?.addEventListener('click', () => {
-      modalTerms?.classList.add('hidden');
+      closeModal(modalTerms);
       if (checkTermsConsent) checkTermsConsent.checked = true;
     });
     modalTerms?.addEventListener('click', (e) => {
-      if (e.target === modalTerms) modalTerms?.classList.add('hidden');
+      if (e.target === modalTerms) closeModal(modalTerms);
     });
 
     // Modal de Bloqueio de Trial (Degustação Expirada)
-    btnCloseTrialBlock?.addEventListener('click', () => modalTrialBlock?.classList.add('hidden'));
+    btnCloseTrialBlock?.addEventListener('click', () => closeModal(modalTrialBlock));
     btnTrialOpenLogin?.addEventListener('click', () => {
-      modalTrialBlock?.classList.add('hidden');
-      modalAuth?.classList.remove('hidden');
+      closeModal(modalTrialBlock);
+      openModal(modalAuth);
     });
     btnTrialOpenPremium?.addEventListener('click', () => {
-      modalTrialBlock?.classList.add('hidden');
-      modalPremium?.classList.remove('hidden');
+      closeModal(modalTrialBlock);
+      openModal(modalPremium);
     });
     modalTrialBlock?.addEventListener('click', (e) => {
-      if (e.target === modalTrialBlock) modalTrialBlock?.classList.add('hidden');
+      if (e.target === modalTrialBlock) closeModal(modalTrialBlock);
     });
 
     // Ações dos Planos de Assinatura Premium via Stripe Checkout
@@ -2371,9 +2415,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Modal de Pagamento In-App com Stripe Elements
-    btnCloseElementsModal?.addEventListener('click', () => modalStripeElements?.classList.add('hidden'));
+    btnCloseElementsModal?.addEventListener('click', () => closeModal(modalStripeElements));
     modalStripeElements?.addEventListener('click', (e) => {
-      if (e.target === modalStripeElements) modalStripeElements?.classList.add('hidden');
+      if (e.target === modalStripeElements) closeModal(modalStripeElements);
     });
 
     // Tecla Escape para todos os modais
@@ -2444,8 +2488,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const userId = appState.currentUser?.id || '';
 
     // Fecha o modal de pricing e abre o modal do formulário embutido
-    if (modalPremium) modalPremium.classList.add('hidden');
-    if (modalStripeElements) modalStripeElements.classList.remove('hidden');
+    closeModal(modalPremium);
+    openModal(modalStripeElements);
 
     if (elementsModalPlanTitle) {
       elementsModalPlanTitle.textContent = planType === 'annual' ? 'Desligue-se Pro (Anual - 12x R$ 12)' : 'Desligue-se Pro (Mensal)';

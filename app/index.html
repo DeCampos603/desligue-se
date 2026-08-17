@@ -42,7 +42,7 @@
   
   <!-- Stripe.js CDN -->
   <script defer src="https://js.stripe.com/v3/"></script>
-  <link rel="stylesheet" href="styles.css?v=2.0.2">
+  <link rel="stylesheet" href="styles.css?v=2.0.3">
 </head>
 <body class="theme-night">
   <!-- Glow decorativo suave de fundo -->
@@ -632,7 +632,7 @@
   </main>
 
   <!-- Modal de Assinatura Premium MicroSaaS -->
-  <div id="modalPremium" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+  <div id="modalPremium" class="modal-backdrop hidden" hidden role="dialog" aria-modal="true">
     <div class="modal-card">
       <button id="btnCloseModal" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
       
@@ -698,7 +698,7 @@
   </div>
 
   <!-- Modal Embutido de Pagamento Stripe Elements -->
-  <div id="modalStripeElements" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+  <div id="modalStripeElements" class="modal-backdrop hidden" hidden role="dialog" aria-modal="true">
     <div class="modal-card stripe-elements-card">
       <button id="btnCloseElementsModal" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
       
@@ -730,7 +730,7 @@
   </div>
 
   <!-- Modal de Bloqueio de Degustação / Trial Expirado -->
-  <div id="modalTrialBlock" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+  <div id="modalTrialBlock" class="modal-backdrop hidden" hidden role="dialog" aria-modal="true">
     <div class="modal-card trial-modal-card">
       <button id="btnCloseTrialBlock" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
       <div class="modal-header">
@@ -764,7 +764,7 @@
   </div>
 
   <!-- Modal de Login / Autenticação com Supabase -->
-  <div id="modalAuth" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+  <div id="modalAuth" class="modal-backdrop hidden" hidden role="dialog" aria-modal="true">
     <div class="modal-card auth-modal-card">
       <button id="btnCloseAuthModal" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
       
@@ -840,7 +840,7 @@
   </div>
 
   <!-- Modal de Detalhes da Noite & Conteúdo Guardado no Diário -->
-  <div id="modalHistoryDetail" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+  <div id="modalHistoryDetail" class="modal-backdrop hidden" hidden role="dialog" aria-modal="true">
     <div class="modal-card history-detail-modal-card">
       <button id="btnCloseHistoryDetailModal" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
       
@@ -888,7 +888,7 @@
   </div>
 
   <!-- Modal Informativo de Legendas Clínicas (TCC-I) -->
-  <div id="modalTagDetail" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+  <div id="modalTagDetail" class="modal-backdrop hidden" hidden role="dialog" aria-modal="true">
     <div class="modal-card tag-detail-modal-card">
       <button id="btnCloseTagModal" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
       <div class="modal-header">
@@ -912,7 +912,7 @@
   </div>
 
   <!-- Modal de Termos de Uso, Consentimento, Isenção Médica & LGPD -->
-  <div id="modalTerms" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+  <div id="modalTerms" class="modal-backdrop hidden" hidden role="dialog" aria-modal="true">
     <div class="modal-card terms-modal-card">
       <button id="btnCloseTermsModal" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
       <div class="modal-header">
@@ -1014,7 +1014,7 @@
     </button>
   </nav>
 
-  <script src="app.js?v=2.0.2"></script>
+  <script src="app.js?v=2.0.3"></script>
   <!-- Vercel Web Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
   <!-- Vercel Speed Insights -->
