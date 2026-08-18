@@ -2,13 +2,13 @@
  * DESLIGUE-SE — Service Worker para Suporte PWA Offline & Instalação
  */
 
-const CACHE_NAME = 'desliguese-cache-v2.4.2';
+const CACHE_NAME = 'desliguese-cache-v2.4.4';
 const ASSETS_TO_CACHE = [
   './',
-  './index.html?v=2.4.2',
-  './styles.css?v=2.4.2',
-  './config.js?v=2.4.2',
-  './app.js?v=2.4.2',
+  './index.html?v=2.4.4',
+  './styles.css?v=2.4.4',
+  './config.js?v=2.4.4',
+  './app.js?v=2.4.4',
   './manifest.json',
   './favicon.svg'
 ];
@@ -37,33 +37,53 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: Network-first com fallback para Cache para navegação e assets
+// Fetch: rede primeiro, cache como rede de segurança para uso offline
 self.addEventListener('fetch', (event) => {
-  // Ignora requisições de API (ex: /api/classify) e extensões do navegador
-  if (event.request.url.includes('/api/') || !event.request.url.startsWith(self.location.origin)) {
-    return;
-  }
+  const requisicao = event.request;
+
+  // 1. Só GET pode ser guardado. O Cache Storage recusa POST/PUT/DELETE, e
+  //    tentar guardar disparava "Request method 'POST' is unsupported" no
+  //    console a cada envio de formulário.
+  if (requisicao.method !== 'GET') return;
+
+  // 2. Chamadas de API nunca são cacheadas: elas dependem de sessão e de
+  //    dados do momento. Recursos de outras origens também ficam de fora.
+  const url = new URL(requisicao.url);
+  if (url.pathname.startsWith('/api/') || url.origin !== self.location.origin) return;
+
+  // 3. Endereços de retorno do pagamento carregam parâmetros de uso único.
+  //    Guardar um deles faria a próxima visita reviver uma sessão vencida.
+  const temParametros = url.search.length > 0 && !url.search.startsWith('?v=');
 
   event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        // Se a resposta for válida, atualiza o cache
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+    fetch(requisicao)
+      .then((respostaDaRede) => {
+        const podeGuardar =
+          respostaDaRede &&
+          respostaDaRede.status === 200 &&
+          respostaDaRede.type === 'basic' &&   // ignora respostas opacas
+          !temParametros;
+
+        if (podeGuardar) {
+          const copia = respostaDaRede.clone();
+          caches.open(CACHE_NAME)
+            .then((cache) => cache.put(requisicao, copia))
+            .catch(() => { /* cota cheia ou modo privado: seguir sem cache */ });
         }
-        return networkResponse;
+        return respostaDaRede;
       })
       .catch(() => {
-        // Fallback offline a partir do cache
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) return cachedResponse;
-          if (event.request.mode === 'navigate') {
-            return caches.match('./index.html');
-          }
+        // Offline: devolve o que houver guardado
+        return caches.match(requisicao).then((guardada) => {
+          if (guardada) return guardada;
+          if (requisicao.mode === 'navigate') return caches.match('./index.html');
+          return Response.error();
         });
       })
   );
+});
+
+// Permite que a página peça a ativação imediata de uma versão nova
+self.addEventListener('message', (event) => {
+  if (event.data === 'ativar-agora') self.skipWaiting();
 });

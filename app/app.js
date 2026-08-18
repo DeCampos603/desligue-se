@@ -3309,10 +3309,31 @@ document.addEventListener('DOMContentLoaded', () => {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
           .then((reg) => {
+            // Versão nova disponível: ativa na hora em vez de esperar a pessoa
+            // fechar todas as abas. Sem isto, cada publicação exigia um
+            // Ctrl+Shift+R manual para sair da versão antiga guardada.
+            reg.addEventListener('updatefound', () => {
+              const novaVersao = reg.installing;
+              if (!novaVersao) return;
+              novaVersao.addEventListener('statechange', () => {
+                if (novaVersao.state === 'installed' && navigator.serviceWorker.controller) {
+                  novaVersao.postMessage('ativar-agora');
+                }
+              });
+            });
           })
           .catch((err) => {
             console.warn('Falha ao registrar Service Worker:', err);
           });
+
+        // Quando o novo assume o controle, recarrega uma única vez para que a
+        // página passe a rodar o código recém-publicado.
+        let jaRecarregou = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (jaRecarregou) return;
+          jaRecarregou = true;
+          window.location.reload();
+        });
       });
     }
 
