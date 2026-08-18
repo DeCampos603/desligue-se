@@ -42,8 +42,8 @@
   
   <!-- Stripe.js CDN -->
   <script defer src="https://js.stripe.com/v3/"></script>
-  <link rel="stylesheet" href="styles.css?v=3.0.0">
-  <link rel="stylesheet" href="sistema.css?v=3.0.0">
+  <link rel="stylesheet" href="styles.css?v=3.1.0">
+  <link rel="stylesheet" href="sistema.css?v=3.1.0">
 </head>
 <body class="theme-night">
   <!-- Glow decorativo suave de fundo -->
@@ -145,17 +145,9 @@
 
       <div class="menu-grupo">
         <h3>Acompanhar</h3>
-        <button class="menu-item" data-view="rhythm">
+        <button class="menu-item" data-view="nights">
           <span class="menu-item-icone" aria-hidden="true">🕐</span>
-          <span><strong>Meu Ritmo</strong><small>Seus horários e qualidade de sono</small></span>
-        </button>
-        <button class="menu-item" data-view="morning">
-          <span class="menu-item-icone" aria-hidden="true">☀️</span>
-          <span><strong>Check-in matinal</strong><small>Como foi a noite que passou</small></span>
-        </button>
-        <button class="menu-item" data-view="history">
-          <span class="menu-item-icone" aria-hidden="true">📚</span>
-          <span><strong>Histórico</strong><small>Todas as noites registradas</small></span>
+          <span><strong>Minhas noites</strong><small>Ritmo, check-in e histórico</small></span>
         </button>
       </div>
 
@@ -492,27 +484,13 @@
       
       <!-- ETAPA 1: INPUT DO DIÁRIO / BRAIN DUMP -->
       <div id="stepDump" class="step-card fade-in">
-        <div class="card-hero">
-          <div class="badge-tag">Ritual de Fechamento do Dia</div>
-          <h1 class="hero-title">Como está sua cabeça agora?</h1>
-          <p class="hero-subtitle">
-            Fale ou escreva tudo o que estiver rondando seus pensamentos. 
-            Não organize nada agora — a IA vai separar o que é urgente, o que pode esperar e o que você pode soltar para descansar.
-          </p>
+        <div class="diario-topo">
+          <h1 class="tela-titulo">O que está na sua cabeça?</h1>
+          <p class="tela-apoio">Escreva sem organizar. A IA separa o que pede ação, o que pode esperar e o que dá para soltar.</p>
         </div>
 
         <!-- Explicação do Diário Pessoal -->
-        <div class="journal-explanation-card">
-          <span class="info-icon">📖</span>
-          <div class="info-text">
-            <strong>Seu Diário Pessoal & Descarrego Noturno</strong>
-            <p>Além de aliviar a mente para adormecer em paz, o que você escreve pode ficar guardado no seu diário para acompanhar suas reflexões dia após dia.</p>
-          </div>
-        </div>
-
-        <!-- Banner de Limite Diário (Exibido para usuários gratuitos que já fizeram o registro de hoje) -->
-        <div id="dailyLimitBanner" class="daily-limit-banner hidden">
-          <div class="limit-moon-badge">🌙 Ritual de Hoje Concluído</div>
+        
           <h3>Você já descarregou sua mente hoje!</h3>
           <p>
             No plano gratuito, você tem direito a 1 desabafo noturno por dia. Para registrar sem limites a qualquer hora do dia, receber IA avançada e gráficos de bem-estar, faça o upgrade para o Pro.
@@ -526,8 +504,9 @@
         <div class="dump-input-container" id="dumpInputContainer">
           
           <!-- Campo de Título do Dia -->
-          <div class="title-input-wrapper">
-            <label for="journalTitleInput" class="title-input-label">Título da Noite / Reflexão (Opcional)</label>
+          <details class="title-input-wrapper">
+            <summary class="title-input-label">Dar um título a esta noite (opcional)</summary>
+            <label for="journalTitleInput" class="sr-only">Título da noite</label>
             <input 
               type="text" 
               id="journalTitleInput" 
@@ -535,7 +514,7 @@
               placeholder="Ex: Dia produtivo no trabalho, Conversa com a família, Noite de alívio..."
               maxlength="80"
             />
-          </div>
+          </details>
 
           <div class="input-actions-bar">
             <button type="button" id="btnVoiceInput" class="voice-btn" title="Gravar por voz">
@@ -558,7 +537,7 @@
           ></textarea>
 
           <div class="prompt-chips">
-            <span class="chips-label">Sugestões de desabafo:</span>
+            
             <button class="chip-btn" data-text="Tenho muitas coisas para fazer amanhã no trabalho e estou com medo de esquecer alguma prioridade.">💼 Trabalho amanhã</button>
             <button class="chip-btn" data-text="Estou remoendo uma discussão que tive hoje e não consigo parar de pensar no que deveria ter dito.">💬 Conversa que ficou na cabeça</button>
             <button class="chip-btn" data-text="Preciso lembrar de ligar para a escola das crianças, comprar frutas e pagar o boleto do condomínio.">🛒 Tarefas e recados</button>
@@ -1245,6 +1224,23 @@
       </div>
     </section>
 
+    <!-- ========================================================== -->
+    <!-- MINHAS NOITES — reune ritmo, check-in e histórico          -->
+    <!-- Os três painéis são movidos para cá pelo app.js: mexer no  -->
+    <!-- HTML por recorte já custou telas apagadas uma vez.         -->
+    <!-- ========================================================== -->
+    <section id="viewNights" class="app-view tela">
+      <h1 class="tela-titulo">Minhas noites</h1>
+
+      <div class="abas" role="tablist" aria-label="Minhas noites">
+        <button type="button" class="aba ativa" role="tab" data-aba="rhythm" aria-selected="true">Ritmo</button>
+        <button type="button" class="aba" role="tab" data-aba="morning" aria-selected="false">Check-in</button>
+        <button type="button" class="aba" role="tab" data-aba="history" aria-selected="false">Histórico</button>
+      </div>
+
+      <div class="abas-conteudo" id="abasConteudo"></div>
+    </section>
+
     <section id="viewSettings" class="app-view modulo">
       <header class="modulo-cabecalho">
         <div>
@@ -1893,8 +1889,8 @@
     </div>
   </div>
 
-  <script src="config.js?v=3.0.0"></script>
-  <script src="app.js?v=3.0.0"></script>
+  <script src="config.js?v=3.1.0"></script>
+  <script src="app.js?v=3.1.0"></script>
   <!-- Vercel Web Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
   <!-- Vercel Speed Insights -->

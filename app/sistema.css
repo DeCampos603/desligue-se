@@ -422,3 +422,68 @@ body.modo-app .mobile-bottom-nav {
   .pulso span { animation: none; opacity: 0.3; transform: scale(0.85); }
   .escolha:hover, .escolha:focus-visible, .botao-sono:hover, .acao-principal:hover { transform: none; }
 }
+
+/* ============================================================
+   MINHAS NOITES — abas
+   Três destinos que respondiam à mesma pergunta viraram um só.
+   ============================================================ */
+.abas {
+  display: flex;
+  gap: 0.3rem;
+  background: var(--bg-surface-1);
+  border: 1px solid var(--borda-sutil);
+  border-radius: 999px;
+  padding: 0.3rem;
+  margin: 0 0 1.75rem;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.aba {
+  flex: 1;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.88rem;
+  padding: 0.6rem 1.15rem;
+  cursor: pointer;
+  transition: background var(--transicao-calma), color var(--transicao-calma);
+}
+.aba.ativa { background: rgba(59, 130, 246, 0.16); color: var(--text-main); }
+
+/* Os painéis vieram de telas inteiras: perdem a moldura e o respiro de tela */
+.painel-aba { animation: entrarSuave var(--transicao-calma) both; }
+.painel-aba[hidden] { display: none; }
+.painel-aba > .step-card { background: none; border: none; padding: 0; box-shadow: none; }
+.painel-aba .card-hero,
+.painel-aba .step-nav-bar { display: none; }
+
+/* ============================================================
+   DIÁRIO — menos moldura, mais espaço para escrever
+   ============================================================ */
+.diario-topo { margin-bottom: 1.5rem; }
+
+body.modo-app #stepDump.step-card,
+body.modo-app #stepResult.step-card {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* O título da noite deixou de ocupar espaço fixo para quem não usa */
+.title-input-wrapper > summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  padding: 0.35rem 0;
+  list-style: none;
+}
+.title-input-wrapper > summary::-webkit-details-marker { display: none; }
+.title-input-wrapper > summary::before { content: '+ '; opacity: 0.6; }
+.title-input-wrapper[open] > summary::before { content: '− '; }
+
+.prompt-chips { gap: 0.45rem; }

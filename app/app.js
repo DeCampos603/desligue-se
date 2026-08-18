@@ -68,7 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
     sounds: document.getElementById('viewSounds'),
     rhythm: document.getElementById('viewRhythm'),
     chat: document.getElementById('viewChat'),
-    breathe: document.getElementById('viewBreathe')
+    breathe: document.getElementById('viewBreathe'),
+    nights: document.getElementById('viewNights')
   };
 
   const steps = {
@@ -524,7 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Telas que só existem depois do login. A apresentação ('home') é o oposto:
   // some assim que a pessoa entra, para não competir com o aplicativo.
-  const VIEWS_DO_APP = ['dashboard', 'breathe', 'night', 'morning', 'history', 'stories', 'sounds', 'rhythm', 'chat', 'settings'];
+  const VIEWS_DO_APP = ['dashboard', 'breathe', 'night', 'nights', 'stories', 'sounds', 'chat', 'settings'];
 
   /**
    * Define o modo da interface a partir do estado de autenticação.
@@ -557,6 +558,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function switchView(viewName) {
+    // Ritmo, check-in e histórico deixaram de ser telas: viraram abas de
+    // "Minhas noites". Quem chamar pelo nome antigo continua chegando ao
+    // lugar certo — links, botões e memória muscular não quebram.
+    if (ABAS_DAS_NOITES.includes(viewName)) {
+      const aba = viewName;
+      viewName = 'nights';
+      setTimeout(() => abrirAbaDasNoites(aba), 0);
+    }
+
     if (!views[viewName]) return;
 
     // Porta de entrada única: qualquer tentativa de abrir o aplicativo sem
@@ -595,7 +605,9 @@ document.addEventListener('DOMContentLoaded', () => {
       renderMorningView();
     } else if (viewName === 'history') {
       updateHistoryUI();
-    } else if (viewName === 'rhythm' || viewName === 'home') {
+    } else if (viewName === 'nights') {
+      abrirAbaDasNoites(abaAtual);
+    } else if (viewName === 'home') {
       renderizarRitmo();
     } else if (viewName === 'stories') {
       fecharHistoria();
@@ -5390,6 +5402,57 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
+  // MINHAS NOITES — ritmo, check-in e histórico em abas
+  //
+  // Eram três destinos separados no menu para responder a uma pergunta só:
+  // "como tenho dormido?". Os painéis originais são movidos para dentro desta
+  // tela em tempo de execução — nada de recortar HTML, que já custou caro.
+  // ==========================================================================
+  const ABAS_DAS_NOITES = ['rhythm', 'morning', 'history'];
+  let abaAtual = 'rhythm';
+
+  function montarMinhasNoites() {
+    const destino = document.getElementById('abasConteudo');
+    if (!destino) return;
+
+    ABAS_DAS_NOITES.forEach(chave => {
+      const secao = views[chave];
+      if (!secao || secao.dataset.movida === 'sim') return;
+
+      // Deixa de ser uma tela para virar painel de aba
+      secao.classList.remove('app-view', 'active');
+      secao.classList.add('painel-aba');
+      secao.dataset.movida = 'sim';
+      secao.hidden = chave !== abaAtual;
+      destino.appendChild(secao);
+    });
+
+    document.querySelectorAll('#viewNights .aba').forEach(botao => {
+      botao.addEventListener('click', () => abrirAbaDasNoites(botao.getAttribute('data-aba')));
+    });
+  }
+
+  function abrirAbaDasNoites(chave) {
+    if (!ABAS_DAS_NOITES.includes(chave)) chave = 'rhythm';
+    abaAtual = chave;
+
+    ABAS_DAS_NOITES.forEach(k => {
+      if (views[k]) views[k].hidden = k !== chave;
+    });
+
+    document.querySelectorAll('#viewNights .aba').forEach(b => {
+      const ativa = b.getAttribute('data-aba') === chave;
+      b.classList.toggle('ativa', ativa);
+      b.setAttribute('aria-selected', String(ativa));
+    });
+
+    // Cada painel se redesenha ao aparecer
+    if (chave === 'rhythm') renderizarRitmo();
+    if (chave === 'morning') renderMorningView();
+    if (chave === 'history') updateHistoryUI();
+  }
+
+  // ==========================================================================
   // TELA RESPIRAR
   // ==========================================================================
   function initRespirar() {
@@ -5440,6 +5503,7 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: 'MenuLateral', fn: initMenuLateral },
     { name: 'Player', fn: initPlayer },
     { name: 'Respirar', fn: initRespirar },
+    { name: 'MinhasNoites', fn: montarMinhasNoites },
     { name: 'PainelAssinante', fn: initPainelDaAssinante },
     { name: 'Configuracoes', fn: initConfiguracoes },
     { name: 'VoiceInput', fn: initVoiceInput },
