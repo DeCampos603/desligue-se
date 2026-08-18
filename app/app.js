@@ -4456,12 +4456,27 @@ document.addEventListener('DOMContentLoaded', () => {
           salvarConversa();
         }
 
-        console.error('[Desligue-se] Falha na conversa:', err.status || 'sem status', err.message);
+        console.error('[Desligue-se] Falha na conversa:', err.status || 'sem status', err.message, err.data || '');
+
+        // Mostrar o motivo real em vez de "falhou": a mensagem genérica
+        // escondia 401 de sessão vencida, 402 de plano e 502 do modelo, e
+        // deixava quem usa (e quem depura) sem nenhuma pista.
+        const motivo = {
+          401: 'Sua sessão expirou. Entre novamente e a conversa continua de onde parou.',
+          429: 'Muitas mensagens em pouco tempo. Espere um minuto e tente de novo.',
+          502: 'A IA não respondeu a tempo agora. Tente de novo em instantes.',
+          503: 'Serviço temporariamente indisponível. Tente de novo em instantes.'
+        }[err.status];
+
         adicionarMensagem(
           'model',
-          'Não consegui responder agora. Tente de novo em instantes — eu continuo aqui.',
+          motivo || err.message || 'Não consegui responder agora. Tente de novo em instantes.',
           { salvar: false }
         );
+
+        if (err.status === 401) {
+          openModal(modalAuth);
+        }
       }
     } finally {
       chatState.enviando = false;

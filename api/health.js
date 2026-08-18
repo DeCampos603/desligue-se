@@ -10,13 +10,61 @@
  * Pode ser apagado quando a configuração estiver estável.
  */
 
-const { applyCors } = require('./_lib/http');
+const { applyCors, getAuthContext, supabaseAdmin } = require('./_lib/http');
+const { gerarTexto, MODELOS } = require('./_lib/gemini');
 
 function stripeMode() {
   const key = process.env.STRIPE_SECRET_KEY || '';
   if (key.startsWith('sk_live_')) return 'producao';
   if (key.startsWith('sk_test_')) return 'teste';
   return 'nao configurada';
+}
+
+/**
+ * Faz uma chamada minima ao Gemini para provar se a IA responde de verdade.
+ * Vale um punhado de tokens e responde a pergunta que os logs nao respondem
+ * de fora: "o problema esta no modelo ou no resto do caminho?".
+ */
+async function testarGemini() {
+  const inicio = Date.now();
+  try {
+    const { texto, modelo } = await gerarTexto({
+      contents: [{ role: 'user', parts: [{ text: 'Responda apenas: ok' }] }],
+      systemInstruction: 'Voce responde em uma palavra.',
+      generationConfig: { temperature: 0, maxOutputTokens: 10 },
+      orcamentoMs: 18000
+    });
+    return { ok: true, modelo, resposta: (texto || '').trim().slice(0, 40), ms: Date.now() - inicio };
+  } catch (err) {
+    return { ok: false, erro: err.message.slice(0, 400), ms: Date.now() - inicio };
+  }
+}
+
+/** Relata o plano de quem chamou, quando houver sessao valida. */
+async function planoDeQuemChamou(req) {
+  const { user, reason } = await getAuthContext(req);
+  if (!user) return { autenticada: false, motivo: reason };
+
+  try {
+    const linhas = await supabaseAdmin(
+      `profiles?id=eq.${encodeURIComponent(user.id)}&select=plano,subscription_status,stripe_customer_id`
+    );
+    const perfil = Array.isArray(linhas) ? linhas[0] : null;
+    if (!perfil) return { autenticada: true, perfilExiste: false };
+
+    return {
+      autenticada: true,
+      perfilExiste: true,
+      plano: perfil.plano,
+      subscription_status: perfil.subscription_status,
+      temCustomerNoStripe: Boolean(perfil.stripe_customer_id),
+      podeUsarOChat: ['premium_mensal', 'premium_anual'].includes(perfil.plano) &&
+        (!perfil.subscription_status ||
+         ['active', 'trialing', 'canceling', 'past_due'].includes(perfil.subscription_status))
+    };
+  } catch (err) {
+    return { autenticada: true, erroAoLerPerfil: err.message.slice(0, 200) };
+  }
 }
 
 module.exports = async function handler(req, res) {
@@ -49,11 +97,25 @@ module.exports = async function handler(req, res) {
     problemas.push('STRIPE_WEBHOOK_SECRET ausente: o webhook recusa todos os eventos e ninguém vira Pro.');
   }
 
-  return res.status(200).json({
+  const resposta = {
     ok: problemas.length === 0,
     ambienteStripe: stripeMode(),
+    modelosConfigurados: MODELOS,
     variaveis: env,
     problemas,
     verificadoEm: new Date().toISOString()
-  });
+  };
+
+  // ?gemini=1 executa uma chamada real ao modelo
+  if (req.query?.gemini === '1') {
+    resposta.gemini = await testarGemini();
+  }
+
+  // Com sessao valida, informa o plano lido pelo servidor — que e o mesmo
+  // criterio usado para liberar a conversa com a IA.
+  if (req.headers.authorization) {
+    resposta.suaConta = await planoDeQuemChamou(req);
+  }
+
+  return res.status(200).json(resposta);
 };
