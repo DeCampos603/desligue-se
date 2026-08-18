@@ -99,8 +99,7 @@ function normalizarHistorico(mensagens) {
   for (const m of limpas) {
     const anterior = alternado[alternado.length - 1];
     if (anterior && anterior.role === m.role) {
-      anterior.text += '
-' + m.text;
+      anterior.text += '\n' + m.text;
     } else {
       alternado.push({ ...m });
     }
