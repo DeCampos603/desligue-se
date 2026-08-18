@@ -106,14 +106,19 @@ module.exports = async function handler(req, res) {
     verificadoEm: new Date().toISOString()
   };
 
-  // ?gemini=1 executa uma chamada real ao modelo
+  // As sondas abaixo custam cota ou revelam configuracao, entao exigem sessao.
+  // Os booleanos acima seguem publicos: eles nao expoem valor nenhum.
+  const { user: quemChamou } = await getAuthContext(req);
+
   if (req.query?.gemini === '1') {
-    resposta.gemini = await testarGemini();
+    resposta.gemini = quemChamou
+      ? await testarGemini()
+      : { erro: 'Entre na sua conta para executar esta verificacao.' };
   }
 
   // ?modelos=1 lista o que a chave realmente pode usar hoje. Modelos sao
   // descontinuados sem aviso, e uma lista fixa no codigo envelhece calada.
-  if (req.query?.modelos === '1' && process.env.GEMINI_API_KEY) {
+  if (req.query?.modelos === '1' && quemChamou && process.env.GEMINI_API_KEY) {
     try {
       const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
         headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY }

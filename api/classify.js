@@ -135,7 +135,9 @@ module.exports = async function handler(req, res) {
       generationConfig: {
         temperature: 0.7,
         topP: 0.9,
-        maxOutputTokens: 2048,
+        // Folga proposital: o raciocinio interno dos modelos novos consome do
+        // mesmo teto, e um JSON truncado cai direto no classificador local.
+        maxOutputTokens: 4096,
         responseMimeType: 'application/json'
       },
       orcamentoMs: TOTAL_BUDGET_MS - (Date.now() - startedAt)
