@@ -1363,7 +1363,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const planoNoMenu = document.getElementById('menuPlanoAtual');
     if (planoNoMenu) {
-      planoNoMenu.textContent = !logada
+      planoNoMenu.textContent = !logado
         ? 'Entre para começar'
         : (isPro ? 'Plano Pro ativo' : 'Plano gratuito');
     }
