@@ -36,7 +36,7 @@ async function testarGemini() {
     });
     return { ok: true, modelo, resposta: (texto || '').trim().slice(0, 40), ms: Date.now() - inicio };
   } catch (err) {
-    return { ok: false, erro: err.message.slice(0, 400), ms: Date.now() - inicio };
+    return { ok: false, porModelo: err.porModelo || [err.message.slice(0, 300)], ms: Date.now() - inicio };
   }
 }
 

@@ -7,7 +7,7 @@
  * mal, como já aconteceu com os preços dos planos.
  */
 
-const MODELOS = (process.env.GEMINI_MODELS || 'gemini-2.5-flash,gemini-2.0-flash')
+const MODELOS = (process.env.GEMINI_MODELS || 'gemini-flash-latest,gemini-3.5-flash,gemini-2.5-flash')
   .split(',')
   .map(m => m.trim())
   .filter(Boolean);
@@ -56,7 +56,7 @@ async function gerarTexto({ contents, generationConfig, systemInstruction, orcam
   }
 
   const inicio = Date.now();
-  let ultimoErro = null;
+  const erros = [];
 
   for (const modelo of MODELOS) {
     const restante = orcamentoMs - (Date.now() - inicio);
@@ -77,19 +77,21 @@ async function gerarTexto({ contents, generationConfig, systemInstruction, orcam
 
       const texto = dados.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!texto) {
-        ultimoErro = `${modelo}: resposta vazia`;
+        erros.push(`${modelo}: resposta vazia`);
         continue;
       }
 
       return { texto, modelo };
     } catch (err) {
-      ultimoErro = `${modelo}: ${err.name === 'AbortError' ? 'tempo esgotado' : err.message}`;
-      console.warn('Gemini —', ultimoErro);
+      const descricao = `${modelo}: ${err.name === 'AbortError' ? 'tempo esgotado' : err.message}`;
+      erros.push(descricao);
+      console.warn('Gemini —', descricao);
     }
   }
 
-  const erro = new Error(ultimoErro || 'Nenhum modelo respondeu.');
+  const erro = new Error(erros.join(' | ') || 'Nenhum modelo respondeu.');
   erro.indisponivel = true;
+  erro.porModelo = erros;
   throw erro;
 }
 
