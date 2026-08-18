@@ -144,7 +144,9 @@ module.exports = async function handler(req, res) {
       generationConfig: {
         temperature: 0.85,
         topP: 0.95,
-        maxOutputTokens: 400   // respostas curtas por desenho
+        // Teto alto porque o raciocinio interno dos modelos novos consome do
+        // mesmo orcamento; o tamanho da resposta e controlado pela instrucao.
+        maxOutputTokens: 2048
       },
       orcamentoMs: 20000
     });

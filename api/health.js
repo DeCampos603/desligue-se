@@ -31,7 +31,7 @@ async function testarGemini() {
     const { texto, modelo } = await gerarTexto({
       contents: [{ role: 'user', parts: [{ text: 'Responda apenas: ok' }] }],
       systemInstruction: 'Voce responde em uma palavra.',
-      generationConfig: { temperature: 0, maxOutputTokens: 10 },
+      generationConfig: { temperature: 0, maxOutputTokens: 512 },
       orcamentoMs: 18000
     });
     return { ok: true, modelo, resposta: (texto || '').trim().slice(0, 40), ms: Date.now() - inicio };

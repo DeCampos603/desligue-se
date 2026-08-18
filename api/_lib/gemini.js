@@ -43,6 +43,28 @@ async function chamarModelo(modelo, apiKey, corpo, timeoutMs) {
   }
 }
 
+
+/**
+ * Extrai o texto da resposta.
+ *
+ * Os modelos da geracao 3 devolvem varias "parts", alguma delas marcadas como
+ * `thought` (raciocinio interno, que nao deve ser mostrado). Ler apenas
+ * parts[0].text — como fazia antes — devolvia string vazia sempre que a
+ * primeira parte era de raciocinio, e a IA parecia estar fora do ar.
+ */
+function extrairTexto(dados) {
+  const candidato = dados?.candidates?.[0];
+  const partes = candidato?.content?.parts || [];
+
+  const texto = partes
+    .filter(p => p && typeof p.text === 'string' && p.thought !== true)
+    .map(p => p.text)
+    .join('')
+    .trim();
+
+  return { texto, motivoDeParada: candidato?.finishReason };
+}
+
 /**
  * Percorre os modelos em ordem de preferência até um responder.
  * Devolve { texto, modelo } ou lança quando o orçamento acabar.
@@ -75,9 +97,11 @@ async function gerarTexto({ contents, generationConfig, systemInstruction, orcam
         Math.min(TIMEOUT_POR_MODELO_MS, restante)
       );
 
-      const texto = dados.candidates?.[0]?.content?.parts?.[0]?.text;
+      const { texto, motivoDeParada } = extrairTexto(dados);
       if (!texto) {
-        erros.push(`${modelo}: resposta vazia`);
+        // MAX_TOKENS aqui costuma significar que o raciocinio interno consumiu
+        // todo o orcamento antes de sobrar espaco para a resposta.
+        erros.push(`${modelo}: resposta vazia (motivo: ${motivoDeParada || 'desconhecido'})`);
         continue;
       }
 
