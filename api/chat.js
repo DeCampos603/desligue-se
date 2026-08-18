@@ -71,6 +71,49 @@ const RESPOSTA_DE_CRISE =
   'Você também pode conversar por chat em www.cvv.org.br. ' +
   'Se estiver em perigo imediato, ligue para o SAMU no 192. Eu fico aqui com você.';
 
+
+/**
+ * Prepara o histórico no formato que o Gemini aceita.
+ *
+ * A API tem duas exigências que o histórico da tela não cumpre sozinho:
+ *   1. a conversa precisa COMEÇAR com um turno da usuária. Como a tela abre
+ *      com uma saudação da IA, toda requisição começava com role "model" e
+ *      voltava 400 — a conversa nunca respondia;
+ *   2. os turnos devem alternar. Duas mensagens seguidas da usuária (comum
+ *      quando ela escreve de novo antes da resposta chegar) também quebravam.
+ */
+function normalizarHistorico(mensagens) {
+  const limpas = (mensagens || [])
+    .filter(m => m && typeof m.text === 'string' && m.text.trim())
+    .map(m => ({
+      role: m.role === 'model' ? 'model' : 'user',
+      text: m.text.slice(0, MAX_CARACTERES).trim()
+    }))
+    .slice(-MAX_MENSAGENS);
+
+  // Descarta a saudação (e qualquer turno da IA) até achar a primeira fala dela
+  while (limpas.length > 0 && limpas[0].role === 'model') limpas.shift();
+
+  // Junta turnos consecutivos do mesmo papel num só
+  const alternado = [];
+  for (const m of limpas) {
+    const anterior = alternado[alternado.length - 1];
+    if (anterior && anterior.role === m.role) {
+      anterior.text += '
+' + m.text;
+    } else {
+      alternado.push({ ...m });
+    }
+  }
+
+  // A última palavra tem de ser da usuária: é a ela que a IA vai responder
+  while (alternado.length > 0 && alternado[alternado.length - 1].role === 'model') {
+    alternado.pop();
+  }
+
+  return alternado.map(m => ({ role: m.role, parts: [{ text: m.text }] }));
+}
+
 module.exports = async function handler(req, res) {
   if (applyCors(req, res)) return;
 
@@ -86,14 +129,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Envie ao menos uma mensagem.' });
   }
 
-  // Normaliza e limita o histórico
-  const historico = messages
-    .slice(-MAX_MENSAGENS)
-    .filter(m => m && typeof m.text === 'string' && m.text.trim())
-    .map(m => ({
-      role: m.role === 'model' ? 'model' : 'user',
-      parts: [{ text: m.text.slice(0, MAX_CARACTERES).trim() }]
-    }));
+  const historico = normalizarHistorico(messages);
 
   if (historico.length === 0) {
     return res.status(400).json({ error: 'Mensagem vazia.' });
@@ -135,6 +171,7 @@ module.exports = async function handler(req, res) {
 
     return res.status(502).json({
       error: 'A IA do Sono não conseguiu responder agora. Tente de novo em instantes.',
+      etapa: 'gemini',
       fallback: true
     });
   }

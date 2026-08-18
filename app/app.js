@@ -4411,6 +4411,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const dados = await safeFetchJson('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        // A saudação inicial da IA não entra: a conversa enviada precisa
+        // começar por uma fala da usuária (exigência da API do Gemini).
         body: JSON.stringify({ messages: chatState.mensagens.slice(-24) })
       });
 
@@ -4425,9 +4427,18 @@ document.addEventListener('DOMContentLoaded', () => {
         prepararChat();
         showToast(err.message, 'info', 10000);
       } else {
+        // A mensagem que falhou fica FORA do histórico: mantê-la fazia a
+        // próxima tentativa reenviar dois turnos seguidos da usuária.
+        const ultima = chatState.mensagens[chatState.mensagens.length - 1];
+        if (ultima && ultima.role === 'user') {
+          chatState.mensagens.pop();
+          salvarConversa();
+        }
+
+        console.error('[Desligue-se] Falha na conversa:', err.status || 'sem status', err.message);
         adicionarMensagem(
           'model',
-          'Não consegui responder agora — parece que a conexão falhou. Tente de novo em instantes: eu continuo aqui.',
+          'Não consegui responder agora. Tente de novo em instantes — eu continuo aqui.',
           { salvar: false }
         );
       }
