@@ -59,13 +59,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   const views = {
     home: document.getElementById('viewHome'),
+    dashboard: document.getElementById('viewDashboard'),
+    settings: document.getElementById('viewSettings'),
     night: document.getElementById('viewNight'),
     morning: document.getElementById('viewMorning'),
     history: document.getElementById('viewHistory'),
     stories: document.getElementById('viewStories'),
     sounds: document.getElementById('viewSounds'),
     rhythm: document.getElementById('viewRhythm'),
-    chat: document.getElementById('viewChat')
+    chat: document.getElementById('viewChat'),
+    breathe: document.getElementById('viewBreathe')
   };
 
   const steps = {
@@ -521,7 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Telas que só existem depois do login. A apresentação ('home') é o oposto:
   // some assim que a pessoa entra, para não competir com o aplicativo.
-  const VIEWS_DO_APP = ['night', 'morning', 'history', 'stories', 'sounds', 'rhythm', 'chat'];
+  const VIEWS_DO_APP = ['dashboard', 'breathe', 'night', 'morning', 'history', 'stories', 'sounds', 'rhythm', 'chat', 'settings'];
 
   /**
    * Define o modo da interface a partir do estado de autenticação.
@@ -550,7 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Corrige a tela ativa caso ela não pertença ao modo atual
     const ativa = Object.keys(views).find(k => views[k]?.classList.contains('active'));
     if (!logada && ativa && ativa !== 'home') switchView('home');
-    if (logada && (!ativa || ativa === 'home')) switchView('night');
+    if (logada && (!ativa || ativa === 'home')) switchView('dashboard');
   }
 
   function switchView(viewName) {
@@ -566,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Quem já entrou não volta para a página de vendas
-    if (viewName === 'home' && appState.currentUser) viewName = 'night';
+    if (viewName === 'home' && appState.currentUser) viewName = 'dashboard';
 
     Object.keys(views).forEach(k => {
       views[k]?.classList.toggle('active', k === viewName);
@@ -577,10 +580,16 @@ document.addEventListener('DOMContentLoaded', () => {
       el.classList.toggle('active', el.getAttribute('data-view') === viewName);
     });
 
+    // No celular a sidebar e gaveta e precisa fechar ao navegar;
+    // no desktop ela e fixa e o metodo simplesmente nao faz nada.
     if (menuEstaAberto()) fecharMenu();
     marcarItemAtivoNoMenu();
 
-    if (viewName === 'night') {
+    if (viewName === 'dashboard') {
+      renderizarPainel();
+    } else if (viewName === 'settings') {
+      renderizarConfiguracoes();
+    } else if (viewName === 'night') {
       checkDailyLimitUI();
     } else if (viewName === 'morning') {
       renderMorningView();
@@ -1384,6 +1393,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     renderizarPainelDaAssinante();
+    if (views.dashboard?.classList.contains('active')) renderizarPainel();
+    if (views.settings?.classList.contains('active')) renderizarConfiguracoes();
 
     // A conversa e recurso pago: se a view estiver aberta, revalida na hora
     if (views.chat && views.chat.classList.contains('active')) prepararChat();
@@ -3905,8 +3916,21 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   /** Monta a miniatura com a arte correspondente e, quando cabe, o botão de tocar. */
+  let contadorDeMiniaturas = 0;
+
   function montarMiniatura(chave, mapa, mostrarPlay) {
-    const desenho = mapa[chave] || '';
+    let desenho = mapa[chave] || '';
+
+    // A mesma arte pode aparecer em duas grades ao mesmo tempo (vitrine da home
+    // e biblioteca). Os ids de gradiente dentro do SVG seriam repetidos no
+    // documento, e o navegador passa a resolver todos para o primeiro.
+    if (desenho.includes('id="ceu')) {
+      const sufixo = `-${++contadorDeMiniaturas}`;
+      desenho = desenho
+        .replace(/id="(ceu[A-Za-z]+)"/g, `id="$1${sufixo}"`)
+        .replace(/url\(#(ceu[A-Za-z]+)\)/g, `url(#$1${sufixo})`);
+    }
+
     const svg = desenho
       ? `<svg class="thumb-arte" viewBox="0 0 160 104" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${desenho}</svg>`
       : '';
@@ -3959,8 +3983,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.media-card.tocando, .sound-card.tocando')
       .forEach(el => el.classList.remove('tocando'));
-    const barra = document.getElementById('soundPlayerBar');
-    if (barra) barra.hidden = true;
+
+    const mini = document.getElementById('miniPlayer');
+    if (mini) mini.hidden = true;
   }
 
   function tocarSom(id) {
@@ -3990,13 +4015,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       document.querySelectorAll(`[data-som="${id}"]`).forEach(el => el.classList.add('tocando'));
 
-      const barra = document.getElementById('soundPlayerBar');
-      if (barra) {
-        barra.hidden = false;
-        document.getElementById('playerIcon').textContent = som.icone;
-        document.getElementById('playerTitle').textContent = som.titulo;
-        document.getElementById('playerSubtitle').textContent = som.subtitulo;
-      }
+      abrirPlayer({
+        tipo: 'som',
+        id,
+        titulo: som.titulo,
+        subtitulo: som.subtitulo,
+        arte: ARTE_SOM[id]
+      });
 
       agendarDesligamentoDoSom();
     } catch (err) {
@@ -4005,11 +4030,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  /** Pausa mantendo o contexto vivo: recriar o áudio custaria um corte seco. */
+  function pausarSom() {
+    if (somAtual.ctx && somAtual.ctx.state === 'running') {
+      somAtual.ctx.suspend().catch(() => {});
+    }
+  }
+
+  function retomarSom() {
+    if (somAtual.ctx && somAtual.ctx.state === 'suspended') {
+      somAtual.ctx.resume().catch(() => {});
+    }
+  }
+
   /** Timer de sono: desliga sozinho, com esmaecimento de 20s. */
   function agendarDesligamentoDoSom() {
     if (somAtual.timer) { clearTimeout(somAtual.timer); somAtual.timer = null; }
-    const seletor = document.getElementById('sleepTimer');
-    const minutos = seletor ? Number(seletor.value) : 30;
+    const minutos = player.minutosTimer;
     if (!minutos || !somAtual.ctx) return;
 
     somAtual.timer = setTimeout(() => {
@@ -4322,6 +4359,13 @@ document.addEventListener('DOMContentLoaded', () => {
     narrador.pausado = false;
 
     alternarBotoesNarracao(true);
+    abrirPlayer({
+      tipo: 'historia',
+      id: historia.id,
+      titulo: historia.titulo,
+      subtitulo: 'História narrada',
+      arte: ARTE_HISTORIA[historia.id]
+    });
 
     // Contorna o bug conhecido do Chrome, que suspende a fila sozinho
     narrador.vigia = setInterval(() => {
@@ -4918,6 +4962,458 @@ document.addEventListener('DOMContentLoaded', () => {
     try { sessionStorage.removeItem(RASCUNHO_KEY); } catch (e) {}
   }
 
+  // ==========================================================================
+  // MÓDULO: PAINEL
+  // Responde "o que está acontecendo agora?" — indicadores, pendência do dia,
+  // tendência e atalhos. Sem texto explicativo: quem está aqui já entrou.
+  // ==========================================================================
+
+  /** Quantos dias seguidos, contando de hoje (ou de ontem) para trás. */
+  function calcularSequencia() {
+    const datas = new Set(
+      (appState.history || [])
+        .map(e => getTodayDateString(e.date || e.timestamp))
+        .filter(Boolean)
+    );
+    if (datas.size === 0) return 0;
+
+    const hoje = getTodayDateString();
+    const ontem = getTodayDateString(new Date(Date.now() - 86400000));
+
+    // A sequência continua se houve registro hoje OU ontem; senão, foi quebrada.
+    let cursor = datas.has(hoje) ? new Date() : (datas.has(ontem) ? new Date(Date.now() - 86400000) : null);
+    if (!cursor) return 0;
+
+    let total = 0;
+    while (datas.has(getTodayDateString(cursor))) {
+      total++;
+      cursor = new Date(cursor.getTime() - 86400000);
+    }
+    return total;
+  }
+
+  function renderizarPainel() {
+    if (!appState.currentUser) return;
+
+    const definir = (id, valor) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = valor;
+    };
+
+    const nome = (appState.currentUser.user_metadata?.full_name || '').split(' ')[0];
+    const hora = new Date().getHours();
+    const cumprimento = hora < 5 ? 'Boa madrugada' : hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+    definir('painelSaudacao', nome ? `${cumprimento}, ${nome}` : cumprimento);
+    definir('painelData', new Date().toLocaleDateString('pt-BR', {
+      weekday: 'long', day: '2-digit', month: 'long'
+    }));
+
+    const historico = appState.history || [];
+    const ritmo = calcularRitmo();
+    const sequencia = calcularSequencia();
+
+    definir('kpiNoites', historico.length);
+    definir('kpiNoitesNota', historico.length === 0 ? 'nenhum registro ainda' : 'desde o início');
+    definir('kpiSequencia', sequencia);
+    definir('kpiQualidade', ritmo.qualidadeMedia !== null ? `${ritmo.qualidadeMedia}%` : '—');
+    definir('kpiSono', ritmo.duracaoMedia || '—');
+    definir('kpiSonoNota', ritmo.duracaoMedia ? `${ritmo.noitesComHorario} noites com horário` : 'informe seus horários');
+
+    // Pendência do dia: uma frase, uma ação. Só aparece quando existe.
+    const alerta = document.getElementById('painelAlerta');
+    if (alerta) {
+      const registrouHoje = historico.some(e => getTodayDateString(e.date || e.timestamp) === getTodayDateString());
+      const ultima = historico[0];
+      const faltaCheckin = ultima && !ultima.sleepMood;
+
+      let conteudo = null;
+      if (!registrouHoje) {
+        conteudo = {
+          texto: 'Você ainda não registrou a noite de hoje.',
+          botao: 'Escrever agora',
+          destino: 'night',
+          classe: 'alerta-faixa'
+        };
+      } else if (faltaCheckin) {
+        conteudo = {
+          texto: 'Falta avaliar como foi a última noite.',
+          botao: 'Fazer check-in',
+          destino: 'morning',
+          classe: 'alerta-faixa atencao'
+        };
+      }
+
+      alerta.classList.toggle('hidden', !conteudo);
+      if (conteudo) {
+        alerta.className = conteudo.classe;
+        alerta.innerHTML = `<span>${escapeHTML(conteudo.texto)}</span>`;
+        const acao = document.createElement('button');
+        acao.type = 'button';
+        acao.className = 'btn-modulo primario';
+        acao.textContent = conteudo.botao;
+        acao.addEventListener('click', () => switchView(conteudo.destino));
+        alerta.appendChild(acao);
+      }
+    }
+
+    desenharGraficoDeQualidade('painelGrafico', ritmo.series);
+    renderizarUltimosRegistros();
+  }
+
+  /** Gráfico de barras simples — mesma leitura no painel e no Meu Ritmo. */
+  function desenharGraficoDeQualidade(idDoElemento, series) {
+    const grafico = document.getElementById(idDoElemento);
+    if (!grafico) return;
+
+    grafico.innerHTML = '';
+    if (!series || series.length === 0) {
+      grafico.innerHTML = '<div class="vazio"><span class="vazio-icone" aria-hidden="true">📊</span>' +
+        '<strong>Sem noites avaliadas</strong><p>O gráfico aparece depois do primeiro check-in matinal.</p></div>';
+      return;
+    }
+
+    const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    series.forEach(item => {
+      const coluna = document.createElement('div');
+      coluna.className = 'chart-col';
+      const altura = Math.max(item.qualidade, 6);
+      const rotulo = item.data ? dias[new Date(item.data).getDay()] : '—';
+      coluna.innerHTML = `
+        <div class="chart-bar-track"><div class="chart-bar" style="height: ${altura}%"></div></div>
+        <span class="chart-label">${rotulo}</span>
+      `;
+      coluna.title = item.humor ? `Qualidade: ${item.qualidade}%` : 'Noite sem avaliação';
+      grafico.appendChild(coluna);
+    });
+  }
+
+  const SELO_DO_HUMOR = {
+    great: { classe: 'bom', texto: 'Descansada' },
+    medium: { classe: 'medio', texto: 'Regular' },
+    terrible: { classe: 'ruim', texto: 'Difícil' }
+  };
+
+  function montarLinhaDeRegistro(entrada, indiceReal) {
+    const data = new Date(entrada.date || entrada.timestamp);
+    const dataCurta = data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    const hora = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const selo = SELO_DO_HUMOR[entrada.sleepMood] || { classe: 'neutro', texto: 'Sem avaliação' };
+    const tarefas = (entrada.tomorrow || []).length;
+    const titulo = entrada.title || 'Registro noturno';
+
+    const tr = document.createElement('tr');
+    tr.tabIndex = 0;
+    tr.innerHTML = `
+      <td data-rotulo="Data"><strong>${escapeHTML(dataCurta)}</strong> <span style="color:var(--text-dim)">${hora}</span></td>
+      <td data-rotulo="Registro" class="celula-texto">${escapeHTML(titulo)}</td>
+      <td data-rotulo="Sono"><span class="selo ${selo.classe}">${selo.texto}</span></td>
+      <td data-rotulo="Tarefas" class="col-num">${tarefas}</td>
+    `;
+    const abrir = () => openHistoryEntryDetailModal(indiceReal, 'all');
+    tr.addEventListener('click', abrir);
+    tr.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); }
+    });
+    return tr;
+  }
+
+  function montarTabelaDeRegistros(entradas, indices) {
+    const tabela = document.createElement('table');
+    tabela.className = 'tabela tabela-adaptavel';
+    tabela.innerHTML = `
+      <thead>
+        <tr>
+          <th>Data</th><th>Registro</th><th>Sono</th><th class="col-num">Tarefas</th>
+        </tr>
+      </thead>
+    `;
+    const corpo = document.createElement('tbody');
+    entradas.forEach((entrada, i) => corpo.appendChild(montarLinhaDeRegistro(entrada, indices[i])));
+    tabela.appendChild(corpo);
+    return tabela;
+  }
+
+  function renderizarUltimosRegistros() {
+    const destino = document.getElementById('painelUltimos');
+    if (!destino) return;
+
+    const historico = appState.history || [];
+    destino.innerHTML = '';
+
+    if (historico.length === 0) {
+      destino.innerHTML = `
+        <div class="vazio">
+          <span class="vazio-icone" aria-hidden="true">🌙</span>
+          <strong>Nenhum registro ainda</strong>
+          <p>Escreva o que está na sua cabeça e a IA organiza o resto.</p>
+        </div>`;
+      const botao = document.createElement('button');
+      botao.type = 'button';
+      botao.className = 'btn-modulo primario';
+      botao.textContent = 'Fazer o primeiro registro';
+      botao.addEventListener('click', () => switchView('night'));
+      destino.querySelector('.vazio').appendChild(botao);
+      return;
+    }
+
+    const recentes = historico.slice(0, 5);
+    destino.appendChild(montarTabelaDeRegistros(recentes, recentes.map((_, i) => i)));
+  }
+
+  // ==========================================================================
+  // MÓDULO: CONFIGURAÇÕES
+  // ==========================================================================
+  function renderizarConfiguracoes() {
+    if (!appState.currentUser) return;
+
+    const definir = (id, valor) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = valor;
+    };
+
+    const usuario = appState.currentUser;
+    definir('configNome', usuario.user_metadata?.full_name || usuario.email?.split('@')[0] || 'Minha conta');
+    definir('configEmail', usuario.email || '');
+
+    const isPro = isUserPro();
+    const perfil = appState.userProfile || {};
+    definir('configPlano', isPro
+      ? (perfil.plano === 'premium_anual' ? 'Pro Anual' : 'Pro Mensal')
+      : 'Plano gratuito');
+
+    if (isPro) {
+      const dias = diasRestantes(perfil.subscription_ends_at);
+      const restante = descreverTempoRestante(dias);
+      definir('configPlanoDetalhe', restante
+        ? (perfil.subscription_status === 'canceling'
+            ? `Acesso garantido por mais ${restante}. Não haverá nova cobrança.`
+            : `Renova em ${restante}. Cancele quando quiser, sem multa.`)
+        : 'Assinatura ativa.');
+    } else {
+      definir('configPlanoDetalhe', '1 registro por dia e rotina de 3 minutos.');
+    }
+
+    document.getElementById('btnConfigPlanos')?.classList.toggle('hidden', isPro);
+    document.getElementById('btnConfigAssinatura')?.classList.toggle('hidden', !perfil.stripe_customer_id);
+    document.getElementById('btnConfigSincronizar')?.classList.toggle('hidden', isPro);
+  }
+
+  function initConfiguracoes() {
+    document.getElementById('btnConfigPlanos')?.addEventListener('click', () => openModal(modalPremium));
+    document.getElementById('btnConfigTermos')?.addEventListener('click', () => openModal(modalTerms));
+    document.getElementById('btnConfigSair')?.addEventListener('click', () => document.getElementById('btnSignOut')?.click());
+    document.getElementById('btnConfigAssinatura')?.addEventListener('click', () => document.getElementById('btnManageSubscription')?.click());
+    document.getElementById('btnConfigSincronizar')?.addEventListener('click', () => document.getElementById('btnSyncPlan')?.click());
+    document.getElementById('btnConfigExcluir')?.addEventListener('click', () => document.getElementById('btnDeleteAccount')?.click());
+  }
+
+  // ==========================================================================
+  // PLAYER — mini-player persistente + Modo Sono
+  //
+  // Antes o áudio era controlado por uma barra que só existia na tela de Sons:
+  // sair da tela era perder o controle do que estava tocando. Agora existe um
+  // player único, que acompanha a pessoa por todas as telas e se expande no
+  // Modo Sono — a tela para a qual ela não precisa mais olhar.
+  // ==========================================================================
+  const player = {
+    tipo: null,        // 'som' | 'historia'
+    id: null,
+    titulo: '',
+    subtitulo: '',
+    tocando: false,
+    minutosTimer: 30,
+    fimDoTimer: null,
+    relogio: null
+  };
+
+  function elementoPorId(id) { return document.getElementById(id); }
+
+  /** Liga o player ao que começou a tocar e mostra o mini-player. */
+  function abrirPlayer({ tipo, id, titulo, subtitulo, arte }) {
+    Object.assign(player, { tipo, id, titulo, subtitulo, tocando: true });
+
+    const mini = elementoPorId('miniPlayer');
+    if (mini) {
+      mini.hidden = false;
+      elementoPorId('miniTitulo').textContent = titulo;
+      elementoPorId('miniStatus').textContent = subtitulo;
+      const areaArte = elementoPorId('miniArte');
+      if (areaArte) {
+        areaArte.innerHTML = arte
+          ? `<svg viewBox="0 0 160 104" preserveAspectRatio="xMidYMid slice">${arte}</svg>`
+          : '';
+      }
+    }
+
+    elementoPorId('sonoTipo').textContent = subtitulo;
+    elementoPorId('sonoTitulo').textContent = titulo;
+    atualizarBotoesDoPlayer();
+    iniciarRelogioDoTimer();
+  }
+
+  function fecharPlayer() {
+    player.tocando = false;
+    player.id = null;
+    player.fimDoTimer = null;
+    if (player.relogio) { clearInterval(player.relogio); player.relogio = null; }
+
+    const mini = elementoPorId('miniPlayer');
+    if (mini) mini.hidden = true;
+    fecharModoSono();
+  }
+
+  function atualizarBotoesDoPlayer() {
+    const simbolo = player.tocando ? '❚❚' : '▶';
+    const rotulo = player.tocando ? 'Pausar' : 'Tocar';
+
+    const mini = elementoPorId('btnMiniPlayPause');
+    if (mini) { mini.firstElementChild.textContent = simbolo; mini.setAttribute('aria-label', rotulo); }
+
+    const grande = elementoPorId('iconeSonoPlay');
+    if (grande) grande.textContent = simbolo;
+    elementoPorId('btnSonoPlayPause')?.setAttribute('aria-label', rotulo);
+
+    elementoPorId('modoSono')?.classList.toggle('pausado', !player.tocando);
+    const status = elementoPorId('miniStatus');
+    if (status) status.textContent = player.tocando ? player.subtitulo : 'pausado';
+  }
+
+  function alternarPlayPause() {
+    if (!player.id) return;
+
+    if (player.tipo === 'som') {
+      if (player.tocando) {
+        pausarSom();
+      } else {
+        retomarSom();
+      }
+    } else if (player.tipo === 'historia') {
+      player.tocando ? pausarNarracao() : narrarHistoria();
+    }
+
+    player.tocando = !player.tocando;
+    atualizarBotoesDoPlayer();
+  }
+
+  // ---------- Modo Sono ----------
+  function abrirModoSono() {
+    const tela = elementoPorId('modoSono');
+    if (!tela || !player.id) return;
+
+    tela.hidden = false;
+    void tela.offsetWidth;      // reflow síncrono: rAF não roda em aba oculta
+    tela.classList.add('aberto');
+    document.body.style.overflow = 'hidden';
+    elementoPorId('btnSonoPlayPause')?.focus();
+  }
+
+  function fecharModoSono() {
+    const tela = elementoPorId('modoSono');
+    if (!tela) return;
+    tela.classList.remove('aberto');
+    document.body.style.overflow = '';
+    setTimeout(() => {
+      if (!tela.classList.contains('aberto')) tela.hidden = true;
+    }, 560);
+  }
+
+  function modoSonoAberto() {
+    return elementoPorId('modoSono')?.classList.contains('aberto');
+  }
+
+  // ---------- Timer de sono ----------
+  function definirTimer(minutos) {
+    player.minutosTimer = minutos;
+    document.querySelectorAll('.timer-opcao').forEach(b => {
+      b.classList.toggle('ativa', Number(b.getAttribute('data-minutos')) === minutos);
+    });
+    iniciarRelogioDoTimer();
+    agendarDesligamentoDoSom();
+  }
+
+  function iniciarRelogioDoTimer() {
+    if (player.relogio) { clearInterval(player.relogio); player.relogio = null; }
+
+    const rotulo = elementoPorId('sonoRestante');
+    if (!player.minutosTimer) {
+      player.fimDoTimer = null;
+      if (rotulo) rotulo.textContent = 'Sem limite de tempo';
+      return;
+    }
+
+    player.fimDoTimer = Date.now() + player.minutosTimer * 60 * 1000;
+
+    const pintar = () => {
+      if (!rotulo || !player.fimDoTimer) return;
+      const restante = Math.max(0, player.fimDoTimer - Date.now());
+      const min = Math.floor(restante / 60000);
+      const seg = Math.floor((restante % 60000) / 1000);
+      rotulo.textContent = min > 0
+        ? `Desliga em ${min} min`
+        : `Desliga em ${seg}s`;
+      if (restante <= 0) { clearInterval(player.relogio); player.relogio = null; }
+    };
+
+    pintar();
+    player.relogio = setInterval(pintar, 1000);
+  }
+
+  function initPlayer() {
+    elementoPorId('btnAbrirModoSono')?.addEventListener('click', abrirModoSono);
+    elementoPorId('btnSairModoSono')?.addEventListener('click', fecharModoSono);
+    elementoPorId('btnMiniPlayPause')?.addEventListener('click', alternarPlayPause);
+    elementoPorId('btnSonoPlayPause')?.addEventListener('click', alternarPlayPause);
+    elementoPorId('btnMiniParar')?.addEventListener('click', () => {
+      if (player.tipo === 'som') pararSom();
+      else pararNarracao();
+      fecharPlayer();
+    });
+
+    document.querySelectorAll('.timer-opcao').forEach(b => {
+      b.addEventListener('click', () => definirTimer(Number(b.getAttribute('data-minutos'))));
+    });
+
+    elementoPorId('sonoVolume')?.addEventListener('input', (e) => {
+      const valor = Math.max(Number(e.target.value) / 100, 0.0001);
+      if (somAtual.ganho && somAtual.ctx) {
+        somAtual.ganho.gain.setTargetAtTime(valor, somAtual.ctx.currentTime, 0.25);
+      }
+    });
+
+    // Esc sai do Modo Sono antes de qualquer outra coisa
+    document.addEventListener('keydown', (e) => {
+      if ((e.key === 'Escape' || e.key === 'Esc') && modoSonoAberto()) {
+        e.stopPropagation();
+        fecharModoSono();
+      }
+    }, true);
+  }
+
+  // ==========================================================================
+  // TELA RESPIRAR
+  // ==========================================================================
+  function initRespirar() {
+    document.querySelectorAll('#viewBreathe .duracao').forEach(botao => {
+      botao.addEventListener('click', () => {
+        const minutos = Number(botao.getAttribute('data-minutos'));
+        if (minutos > 3 && !isUserPro()) {
+          openModal(modalPremium);
+          return;
+        }
+        document.querySelectorAll('#viewBreathe .duracao').forEach(b => b.classList.remove('ativa'));
+        botao.classList.add('ativa');
+        appState.selectedRoutineMinutes = minutos;
+      });
+    });
+
+    elementoPorId('btnIniciarRespiracao')?.addEventListener('click', () => {
+      // Reaproveita o motor de respiração que já existia dentro do diário
+      switchView('night');
+      showStep('routine');
+      startRelaxationRoutine();
+    });
+  }
+
   function escapeHTML(str) {
     if (!str) return '';
     return str
@@ -4942,7 +5438,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const modulesToInit = [
     { name: 'Navigation', fn: initNavigation },
     { name: 'MenuLateral', fn: initMenuLateral },
+    { name: 'Player', fn: initPlayer },
+    { name: 'Respirar', fn: initRespirar },
     { name: 'PainelAssinante', fn: initPainelDaAssinante },
+    { name: 'Configuracoes', fn: initConfiguracoes },
     { name: 'VoiceInput', fn: initVoiceInput },
     { name: 'PromptChips', fn: initPromptChips },
     { name: 'RoutineDuration', fn: initRoutineDuration },

@@ -42,7 +42,8 @@
   
   <!-- Stripe.js CDN -->
   <script defer src="https://js.stripe.com/v3/"></script>
-  <link rel="stylesheet" href="styles.css?v=2.6.0">
+  <link rel="stylesheet" href="styles.css?v=3.0.0">
+  <link rel="stylesheet" href="sistema.css?v=3.0.0">
 </head>
 <body class="theme-night">
   <!-- Glow decorativo suave de fundo -->
@@ -69,10 +70,11 @@
            O mapa completo vive no menu lateral, para nada ficar escondido
            atrás de rolagem horizontal. -->
       <nav class="nav-controls somente-logada" aria-label="Atalhos">
-        <button id="btnTabNight" class="nav-link active" data-view="night">Diário</button>
-        <button id="btnTabChat" class="nav-link" data-view="chat">IA do Sono</button>
+        <button id="btnTabHome" class="nav-link active" data-view="dashboard">Início</button>
+        <button id="btnTabBreathe" class="nav-link" data-view="breathe">Respirar</button>
         <button id="btnTabSounds" class="nav-link" data-view="sounds">Sons</button>
-        <button id="btnTabRhythm" class="nav-link" data-view="rhythm">Meu Ritmo</button>
+        <button id="btnTabStories" class="nav-link" data-view="stories">Histórias</button>
+        <button id="btnTabNight" class="nav-link" data-view="night">Diário</button>
       </nav>
 
       <div class="header-actions">
@@ -98,13 +100,25 @@
   <!-- Menu lateral: mapa completo do aplicativo, agrupado por intenção -->
   <div id="menuOverlay" class="menu-overlay" hidden></div>
 
-  <aside id="menuLateral" class="menu-lateral" hidden aria-label="Menu do aplicativo">
+  <aside id="menuLateral" class="app-sidebar somente-logada" aria-label="Navegacao do aplicativo">
     <div class="menu-topo">
-      <span class="menu-titulo">Menu</span>
+      <span class="menu-titulo">Navegacao</span>
       <button type="button" id="btnFecharMenu" class="menu-fechar" aria-label="Fechar menu">&times;</button>
     </div>
 
     <nav class="menu-corpo">
+      <div class="menu-grupo">
+        <h3>Agora</h3>
+        <button class="menu-item" data-view="dashboard">
+          <span class="menu-item-icone" aria-hidden="true">◐</span>
+          <span><strong>Início</strong><small>Escolha como quer relaxar</small></span>
+        </button>
+        <button class="menu-item" data-view="breathe">
+          <span class="menu-item-icone" aria-hidden="true">◎</span>
+          <span><strong>Respirar</strong><small>Ritual 4-7-8 guiado</small></span>
+        </button>
+      </div>
+
       <div class="menu-grupo">
         <h3>Antes de dormir</h3>
         <button class="menu-item" data-view="night">
@@ -146,14 +160,10 @@
       </div>
 
       <div class="menu-grupo">
-        <h3>Conta</h3>
-        <button class="menu-item" id="btnMenuConta">
-          <span class="menu-item-icone" aria-hidden="true">👤</span>
-          <span><strong>Minha conta</strong><small id="menuPlanoAtual">Plano gratuito</small></span>
-        </button>
-        <button class="menu-item" id="btnOpenPremium">
-          <span class="menu-item-icone" aria-hidden="true">⭐</span>
-          <span><strong>Planos</strong><small>Assinatura e benefícios do Pro</small></span>
+        <h3>Sistema</h3>
+        <button class="menu-item" data-view="settings">
+          <span class="menu-item-icone" aria-hidden="true">⚙</span>
+          <span><strong>Configurações</strong><small id="menuPlanoAtual">Conta, plano e privacidade</small></span>
         </button>
       </div>
     </nav>
@@ -383,6 +393,95 @@
           <button type="button" id="btnFinalCta" class="btn-primary btn-cta">Criar minha conta <span aria-hidden="true">→</span></button>
         </div>
         <div class="final-cta-art" aria-hidden="true">🌙</div>
+      </div>
+    </section>
+
+
+    <!-- ======================================================== -->
+    <!-- MÓDULO: PAINEL (tela inicial de quem está autenticada)   -->
+    <!-- ======================================================== -->
+    <!-- ========================================================== -->
+    <!-- INÍCIO — a pergunta primeiro, a informação depois           -->
+    <!-- ========================================================== -->
+    <section id="viewDashboard" class="app-view tela">
+      <div class="inicio">
+        <p class="inicio-saudacao" id="inicioSaudacao">Boa noite</p>
+        <h1 class="inicio-pergunta">O que você precisa agora?</h1>
+
+        <div class="escolhas" role="list">
+          <button type="button" class="escolha" data-view="breathe" role="listitem">
+            <span class="escolha-arte" aria-hidden="true">
+              <svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="9" class="anel-1"/><circle cx="24" cy="24" r="15" class="anel-2"/><circle cx="24" cy="24" r="21" class="anel-3"/></svg>
+            </span>
+            <span class="escolha-texto">
+              <strong>Respirar</strong>
+              <small>Desacelerar o corpo em 3 minutos</small>
+            </span>
+          </button>
+
+          <button type="button" class="escolha" data-view="sounds" role="listitem">
+            <span class="escolha-arte" aria-hidden="true">
+              <svg viewBox="0 0 48 48"><path d="M4 24 Q12 10 20 24 T36 24 T52 24" class="traco"/><path d="M4 32 Q14 22 24 32 T44 32" class="traco fraco"/></svg>
+            </span>
+            <span class="escolha-texto">
+              <strong>Ouvir sons</strong>
+              <small>Chuva, oceano, lareira</small>
+            </span>
+          </button>
+
+          <button type="button" class="escolha" data-view="stories" role="listitem">
+            <span class="escolha-arte" aria-hidden="true">
+              <svg viewBox="0 0 48 48"><path d="M8 12 h14 a4 4 0 0 1 4 4 v22 a4 4 0 0 0 -4 -4 h-14 z" class="forma"/><path d="M40 12 h-14 a4 4 0 0 0 -4 4 v22 a4 4 0 0 1 4 -4 h14 z" class="forma fraco"/></svg>
+            </span>
+            <span class="escolha-texto">
+              <strong>Ouvir uma história</strong>
+              <small>Contos lentos, narrados</small>
+            </span>
+          </button>
+
+          <button type="button" class="escolha" data-view="night" role="listitem">
+            <span class="escolha-arte" aria-hidden="true">
+              <svg viewBox="0 0 48 48"><path d="M12 10 h20 l6 6 v22 a2 2 0 0 1 -2 2 h-24 a2 2 0 0 1 -2 -2 z" class="forma"/><path d="M17 22 h14 M17 28 h10" class="traco"/></svg>
+            </span>
+            <span class="escolha-texto">
+              <strong>Tirar da cabeça</strong>
+              <small>Escreva e a IA organiza</small>
+            </span>
+          </button>
+
+          <button type="button" class="escolha somente-pro" data-view="chat" role="listitem">
+            <span class="escolha-arte" aria-hidden="true">
+              <svg viewBox="0 0 48 48"><path d="M10 12 h28 a3 3 0 0 1 3 3 v14 a3 3 0 0 1 -3 3 h-17 l-8 6 v-6 h-3 a3 3 0 0 1 -3 -3 v-14 a3 3 0 0 1 3 -3 z" class="forma"/></svg>
+            </span>
+            <span class="escolha-texto">
+              <strong>Conversar</strong>
+              <small>A IA do Sono escuta você</small>
+            </span>
+          </button>
+        </div>
+
+        <!-- Uma linha, só quando há algo que valha a pena dizer -->
+        <p class="inicio-nota hidden" id="inicioNota"></p>
+      </div>
+    </section>
+
+    <!-- ========================================================== -->
+    <!-- RESPIRAR — deixou de ser etapa do diário e virou tela      -->
+    <!-- ========================================================== -->
+    <section id="viewBreathe" class="app-view tela">
+      <div class="respirar">
+        <h1 class="tela-titulo">Respirar</h1>
+        <p class="tela-apoio">Inspire por 4, segure por 7, solte por 8. O corpo entende o resto.</p>
+
+        <div class="duracoes" role="group" aria-label="Duração">
+          <button type="button" class="duracao ativa" data-minutos="3">3 min</button>
+          <button type="button" class="duracao" data-minutos="5">5 min</button>
+          <button type="button" class="duracao" data-minutos="10">10 min</button>
+        </div>
+
+        <button type="button" id="btnIniciarRespiracao" class="acao-principal">Começar</button>
+
+        <p class="tela-nota">As sessões de 5 e 10 minutos fazem parte do plano Pro.</p>
       </div>
     </section>
 
@@ -1146,6 +1245,70 @@
       </div>
     </section>
 
+    <section id="viewSettings" class="app-view modulo">
+      <header class="modulo-cabecalho">
+        <div>
+          <h1 class="modulo-titulo">Configurações</h1>
+          <p class="modulo-subtitulo">Conta, assinatura e privacidade.</p>
+        </div>
+      </header>
+
+      <section class="config-grupo">
+        <h2>Conta</h2>
+        <div class="config-linha">
+          <div>
+            <strong id="configNome">—</strong>
+            <span id="configEmail">—</span>
+          </div>
+          <button type="button" id="btnConfigSair" class="btn-modulo">Sair da conta</button>
+        </div>
+      </section>
+
+      <section class="config-grupo">
+        <h2>Assinatura</h2>
+        <div class="config-linha">
+          <div>
+            <strong id="configPlano">Plano gratuito</strong>
+            <span id="configPlanoDetalhe">1 registro por dia e rotina de 3 minutos.</span>
+          </div>
+          <div class="config-acoes">
+            <button type="button" id="btnConfigPlanos" class="btn-modulo primario">Ver planos</button>
+            <button type="button" id="btnConfigAssinatura" class="btn-modulo hidden">Gerenciar</button>
+            <button type="button" id="btnConfigSincronizar" class="btn-modulo hidden">Já paguei</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="config-grupo">
+        <h2>Privacidade e dados</h2>
+        <div class="config-linha">
+          <div>
+            <strong>Termos, isenção médica e LGPD</strong>
+            <span>Quem processa seus dados, seus direitos e como exercê-los.</span>
+          </div>
+          <button type="button" id="btnConfigTermos" class="btn-modulo">Ler</button>
+        </div>
+        <div class="config-linha perigo">
+          <div>
+            <strong>Excluir minha conta</strong>
+            <span>Apaga o diário, o perfil e a conta. Imediato e irreversível.</span>
+          </div>
+          <button type="button" id="btnConfigExcluir" class="btn-modulo perigo">Excluir</button>
+        </div>
+      </section>
+
+      <section class="config-grupo">
+        <h2>Em caso de crise</h2>
+        <div class="config-linha">
+          <div>
+            <strong>CVV — 188</strong>
+            <span>24 horas, gratuito e sigiloso. Chat em cvv.org.br. SAMU: 192.</span>
+          </div>
+          <a href="tel:188" class="btn-modulo primario">Ligar</a>
+        </div>
+      </section>
+    </section>
+
   </main>
 
   <!-- Modal de Assinatura Premium MicroSaaS -->
@@ -1642,31 +1805,96 @@
   </footer>
 
   <!-- Barra de Navegação Inferior Fixa para Celular (Mobile App Experience) -->
-  <nav class="mobile-bottom-nav somente-logada">
-    <button id="btnMobNight" class="mob-nav-btn active" title="Diário Noturno" data-view="night">
-      <span class="mob-nav-icon">🌙</span>
-      <span class="mob-nav-label">Diário</span>
+  <nav class="mobile-bottom-nav somente-logada" aria-label="Navegação principal">
+    <button id="btnMobHome" class="mob-nav-btn active" data-view="dashboard" title="Início">
+      <span class="mob-nav-icon" aria-hidden="true">◐</span>
+      <span class="mob-nav-label">Início</span>
     </button>
-    <button id="btnMobChat" class="mob-nav-btn" title="IA do Sono" data-view="chat">
-      <span class="mob-nav-icon">✨</span>
-      <span class="mob-nav-label">Conversar</span>
+    <button id="btnMobBreathe" class="mob-nav-btn" data-view="breathe" title="Respirar">
+      <span class="mob-nav-icon" aria-hidden="true">◎</span>
+      <span class="mob-nav-label">Respirar</span>
     </button>
-    <button id="btnMobSounds" class="mob-nav-btn" title="Sons da Natureza" data-view="sounds">
-      <span class="mob-nav-icon">🌿</span>
+    <button id="btnMobSounds" class="mob-nav-btn" data-view="sounds" title="Sons">
+      <span class="mob-nav-icon" aria-hidden="true">≈</span>
       <span class="mob-nav-label">Sons</span>
     </button>
-    <button id="btnMobRhythm" class="mob-nav-btn" title="Meu Ritmo" data-view="rhythm">
-      <span class="mob-nav-icon">🕐</span>
-      <span class="mob-nav-label">Ritmo</span>
+    <button id="btnMobNight" class="mob-nav-btn" data-view="night" title="Diário">
+      <span class="mob-nav-icon" aria-hidden="true">✎</span>
+      <span class="mob-nav-label">Diário</span>
     </button>
-    <button id="btnMobAuth" class="mob-nav-btn" title="Minha Conta">
-      <span class="mob-nav-icon" id="mobAvatarIcon">👤</span>
-      <span class="mob-nav-label" id="mobAuthLabel">Conta</span>
+    <button id="btnMobAuth" class="mob-nav-btn" data-view="settings" title="Perfil">
+      <span class="mob-nav-icon" id="mobAvatarIcon" aria-hidden="true">◍</span>
+      <span class="mob-nav-label" id="mobAuthLabel">Perfil</span>
     </button>
   </nav>
 
-  <script src="config.js?v=2.6.0"></script>
-  <script src="app.js?v=2.6.0"></script>
+
+  <!-- ============================================================
+       PLAYER PERSISTENTE
+       Fica acima da navegação inferior e acompanha a pessoa por
+       todas as telas. Tocar nele abre o Modo Sono.
+       ============================================================ -->
+  <div id="miniPlayer" class="mini-player" hidden>
+    <button type="button" class="mini-player-corpo" id="btnAbrirModoSono" aria-label="Abrir modo sono">
+      <span class="mini-player-arte" id="miniArte" aria-hidden="true"></span>
+      <span class="mini-player-info">
+        <strong id="miniTitulo">—</strong>
+        <small id="miniStatus">tocando</small>
+      </span>
+    </button>
+    <button type="button" id="btnMiniPlayPause" class="mini-player-botao" aria-label="Pausar">
+      <span aria-hidden="true">❚❚</span>
+    </button>
+    <button type="button" id="btnMiniParar" class="mini-player-botao discreto" aria-label="Parar">
+      <span aria-hidden="true">✕</span>
+    </button>
+  </div>
+
+  <!-- ============================================================
+       MODO SONO
+       Tela cheia, quase vazia. Depois de iniciar o áudio não deve
+       haver motivo para continuar olhando para o telefone.
+       ============================================================ -->
+  <div id="modoSono" class="modo-sono" hidden>
+    <button type="button" id="btnSairModoSono" class="modo-sono-sair" aria-label="Sair do modo sono">
+      <span aria-hidden="true">↓</span>
+    </button>
+
+    <div class="modo-sono-centro">
+      <div class="pulso" id="pulsoSono" aria-hidden="true"><span></span><span></span><span></span></div>
+
+      <p class="modo-sono-tipo" id="sonoTipo">Som da natureza</p>
+      <h2 class="modo-sono-titulo" id="sonoTitulo">—</h2>
+
+      <button type="button" id="btnSonoPlayPause" class="botao-sono" aria-label="Pausar">
+        <span id="iconeSonoPlay" aria-hidden="true">❚❚</span>
+      </button>
+
+      <p class="modo-sono-restante" id="sonoRestante"></p>
+    </div>
+
+    <div class="modo-sono-controles">
+      <div class="controle-linha">
+        <label for="sonoVolume" class="controle-rotulo">Volume</label>
+        <input type="range" id="sonoVolume" min="0" max="100" value="55" aria-label="Volume">
+      </div>
+
+      <div class="controle-linha">
+        <span class="controle-rotulo" id="rotuloTimer">Desligar em</span>
+        <div class="timer-opcoes" role="group" aria-labelledby="rotuloTimer">
+          <button type="button" class="timer-opcao" data-minutos="15">15</button>
+          <button type="button" class="timer-opcao ativa" data-minutos="30">30</button>
+          <button type="button" class="timer-opcao" data-minutos="45">45</button>
+          <button type="button" class="timer-opcao" data-minutos="60">60</button>
+          <button type="button" class="timer-opcao" data-minutos="90">90</button>
+          <button type="button" class="timer-opcao" data-minutos="0">∞</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js?v=3.0.0"></script>
+  <script src="app.js?v=3.0.0"></script>
   <!-- Vercel Web Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
   <!-- Vercel Speed Insights -->

@@ -1,0 +1,424 @@
+/* ============================================================================
+   DESLIGUE-SE — CAMADA DE APLICATIVO (modo autenticado)
+   ============================================================================
+   styles.css cuida do design system e da apresentação pública.
+   Este arquivo cuida da EXPERIÊNCIA DE APLICATIVO: telas, escolhas, player e
+   modo sono.
+
+   Três regras guiaram cada decisão daqui:
+     1. Quem abre isto pode estar com sono, no escuro, com pouca paciência.
+        Menos texto, alvos grandes, uma decisão por tela.
+     2. Nada de linguagem de painel administrativo — sem KPI, sem tabela,
+        sem densidade de dashboard.
+     3. Movimento lento. Transições entre 0.4s e 0.7s, sem salto e sem
+        chamar atenção para si.
+   ============================================================================ */
+
+:root {
+  --transicao-calma: 520ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  --respiro: clamp(1.25rem, 4vw, 2.5rem);
+  --raio-suave: 18px;
+}
+
+/* ----------------------------------------------------------------------------
+   ESQUELETO
+   O aplicativo não tem rodapé institucional nem brilhos decorativos: são
+   elementos de página, e dentro do produto só competem por atenção.
+   ---------------------------------------------------------------------------- */
+body.modo-app .app-footer,
+body.modo-app .ambient-glow { display: none; }
+
+body.modo-app .main-content {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: var(--respiro) 1.15rem calc(9rem + env(safe-area-inset-bottom));
+}
+
+/* O cabeçalho no aplicativo é discreto: a navegação de verdade fica embaixo,
+   ao alcance do polegar, e no menu lateral. */
+body.modo-app .app-header { border-bottom: 1px solid var(--borda-sutil); }
+body.modo-app .brand-subtitle { display: none; }
+
+/* ----------------------------------------------------------------------------
+   TELA (base de todas as áreas)
+   ---------------------------------------------------------------------------- */
+.tela { animation: entrarSuave var(--transicao-calma) both; }
+
+@keyframes entrarSuave {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tela-titulo {
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 5vw, 2.1rem);
+  font-weight: 400;
+  color: var(--text-main);
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.01em;
+}
+
+.tela-apoio {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+  margin: 0 0 2rem;
+  max-width: 30rem;
+}
+
+.tela-nota { font-size: 0.8rem; color: var(--text-dim); margin: 1.5rem 0 0; }
+
+/* ----------------------------------------------------------------------------
+   INÍCIO — a pergunta ocupa o lugar que antes era do painel de números
+   ---------------------------------------------------------------------------- */
+.inicio { padding-top: clamp(1rem, 6vh, 3.5rem); }
+
+.inicio-saudacao {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.02em;
+}
+
+.inicio-pergunta {
+  font-family: var(--font-serif);
+  font-size: clamp(1.75rem, 6vw, 2.4rem);
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--text-main);
+  margin: 0 0 2.25rem;
+}
+
+.escolhas { display: grid; gap: 0.7rem; }
+
+.escolha {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-surface-1);
+  border: 1px solid var(--borda-sutil);
+  border-radius: var(--raio-suave);
+  padding: 1.15rem 1.2rem;
+  font-family: inherit;
+  cursor: pointer;
+  /* Alvo confortável para o dedo, mesmo com sono */
+  min-height: 5rem;
+  transition: background var(--transicao-calma),
+              border-color var(--transicao-calma),
+              transform var(--transicao-calma);
+}
+
+.escolha:hover,
+.escolha:focus-visible {
+  background: var(--bg-surface-2);
+  border-color: rgba(96, 165, 250, 0.35);
+  /* Escala mínima: percebe-se, mas não salta */
+  transform: scale(1.008);
+}
+
+.escolha-arte {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0.85;
+}
+.escolha-arte svg { width: 100%; height: 100%; }
+.escolha-arte .anel-1 { fill: none; stroke: var(--acento); stroke-width: 1.5; opacity: 0.95; }
+.escolha-arte .anel-2 { fill: none; stroke: var(--acento); stroke-width: 1.2; opacity: 0.55; }
+.escolha-arte .anel-3 { fill: none; stroke: var(--acento); stroke-width: 1; opacity: 0.28; }
+.escolha-arte .traco { fill: none; stroke: var(--acento); stroke-width: 1.8; stroke-linecap: round; }
+.escolha-arte .traco.fraco { opacity: 0.45; }
+.escolha-arte .forma { fill: none; stroke: var(--acento); stroke-width: 1.5; stroke-linejoin: round; }
+.escolha-arte .forma.fraco { opacity: 0.45; }
+
+.escolha-texto strong {
+  display: block;
+  font-size: 1.02rem;
+  font-weight: 500;
+  color: var(--text-main);
+  margin-bottom: 0.15rem;
+}
+.escolha-texto small { font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; }
+
+/* Uma linha de contexto, e só quando há o que dizer */
+.inicio-nota {
+  margin: 1.75rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.55;
+}
+
+/* ----------------------------------------------------------------------------
+   RESPIRAR — deixou de ser etapa escondida e virou destino
+   ---------------------------------------------------------------------------- */
+.respirar { padding-top: clamp(1rem, 6vh, 3rem); text-align: center; }
+.respirar .tela-apoio { margin-inline: auto; }
+
+.duracoes { display: flex; gap: 0.6rem; justify-content: center; margin-bottom: 2rem; }
+
+.duracao {
+  background: var(--bg-surface-1);
+  border: 1px solid var(--borda-sutil);
+  border-radius: 999px;
+  color: var(--text-muted);
+  padding: 0.7rem 1.4rem;
+  font-family: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: all var(--transicao-calma);
+}
+.duracao.ativa { background: rgba(59, 130, 246, 0.14); border-color: var(--acento); color: var(--text-main); }
+
+.acao-principal {
+  background: var(--acento);
+  border: none;
+  border-radius: 999px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1.02rem;
+  font-weight: 500;
+  padding: 1rem 3rem;
+  cursor: pointer;
+  transition: filter var(--transicao-calma), transform var(--transicao-calma);
+}
+.acao-principal:hover { filter: brightness(1.08); transform: scale(1.01); }
+
+/* ----------------------------------------------------------------------------
+   PLAYER PERSISTENTE
+   ---------------------------------------------------------------------------- */
+.mini-player {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(4.6rem + env(safe-area-inset-bottom));
+  z-index: 900;
+  width: min(94vw, 40rem);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(22, 34, 58, 0.94);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--borda-media);
+  border-radius: 14px;
+  padding: 0.55rem 0.7rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  animation: entrarSuave var(--transicao-calma) both;
+}
+.mini-player[hidden] { display: none; }
+
+.mini-player-corpo {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 0;
+  padding: 0.25rem;
+}
+
+.mini-player-arte {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--bg-surface-2);
+}
+.mini-player-arte svg { width: 100%; height: 100%; display: block; }
+
+.mini-player-info { min-width: 0; }
+.mini-player-info strong {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--text-main);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mini-player-info small { font-size: 0.72rem; color: var(--text-muted); }
+
+.mini-player-botao {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--borda-sutil);
+  color: var(--text-main);
+  font-size: 0.78rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  transition: background var(--transicao-calma);
+}
+.mini-player-botao:hover { background: rgba(255, 255, 255, 0.14); }
+.mini-player-botao.discreto { color: var(--text-muted); background: none; border-color: transparent; }
+
+/* ----------------------------------------------------------------------------
+   MODO SONO
+   Tudo o que não for o essencial desaparece. É a tela para a qual a pessoa
+   não deveria precisar mais olhar.
+   ---------------------------------------------------------------------------- */
+.modo-sono {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #070C16;
+  padding: calc(1.5rem + env(safe-area-inset-top)) 1.5rem calc(2rem + env(safe-area-inset-bottom));
+  opacity: 0;
+  transition: opacity var(--transicao-calma);
+}
+.modo-sono[hidden] { display: none; }
+.modo-sono.aberto { opacity: 1; }
+
+.modo-sono-sair {
+  align-self: flex-start;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: none;
+  border: 1px solid var(--borda-sutil);
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: color var(--transicao-calma), border-color var(--transicao-calma);
+}
+.modo-sono-sair:hover { color: var(--text-main); border-color: var(--borda-media); }
+
+.modo-sono-centro {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+/* Pulso lento: dá sinal de que algo está tocando sem exigir leitura */
+.pulso { position: relative; width: 190px; height: 190px; margin-bottom: 2rem; }
+.pulso span {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(96, 165, 250, 0.4);
+  animation: respiracaoLenta 7s ease-in-out infinite;
+}
+.pulso span:nth-child(2) { animation-delay: 2.3s; }
+.pulso span:nth-child(3) { animation-delay: 4.6s; }
+
+@keyframes respiracaoLenta {
+  0%   { transform: scale(0.62); opacity: 0; }
+  35%  { opacity: 0.55; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+.modo-sono.pausado .pulso span { animation-play-state: paused; }
+
+.modo-sono-tipo {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.modo-sono-titulo {
+  font-family: var(--font-serif);
+  font-size: clamp(1.5rem, 6vw, 2rem);
+  font-weight: 400;
+  color: var(--text-main);
+  margin: 0.35rem 0 2rem;
+}
+
+.botao-sono {
+  width: 76px; height: 76px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.16);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  color: var(--text-main);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background var(--transicao-calma), transform var(--transicao-calma);
+}
+.botao-sono:hover { background: rgba(59, 130, 246, 0.26); transform: scale(1.02); }
+
+.modo-sono-restante {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin: 1.5rem 0 0;
+  min-height: 1.2em;
+}
+
+.modo-sono-controles { display: grid; gap: 1.25rem; max-width: 28rem; width: 100%; margin: 0 auto; }
+.controle-linha { display: grid; gap: 0.6rem; }
+.controle-rotulo { font-size: 0.76rem; color: var(--text-dim); letter-spacing: 0.05em; }
+
+.modo-sono input[type="range"] {
+  width: 100%;
+  accent-color: var(--acento);
+  height: 26px;   /* área de toque generosa */
+}
+
+.timer-opcoes { display: flex; gap: 0.4rem; }
+
+.timer-opcao {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--borda-sutil);
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.7rem 0.2rem;
+  cursor: pointer;
+  transition: all var(--transicao-calma);
+}
+.timer-opcao.ativa { background: rgba(59, 130, 246, 0.16); border-color: var(--acento); color: var(--text-main); }
+
+/* ----------------------------------------------------------------------------
+   NAVEGAÇÃO INFERIOR — o caminho principal no celular
+   ---------------------------------------------------------------------------- */
+body.modo-app .mobile-bottom-nav {
+  background: rgba(11, 18, 32, 0.96);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--borda-sutil);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* No computador a navegação inferior vira uma barra centrada e discreta,
+   em vez de sumir: o mesmo caminho serve aos dois tamanhos. */
+@media (min-width: 900px) {
+  body.modo-app .mobile-bottom-nav {
+    display: flex;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    gap: 0.35rem;
+    border: 1px solid var(--borda-sutil);
+    border-radius: 999px;
+    bottom: 1.25rem;
+    padding: 0.35rem 0.5rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  }
+  body.modo-app .mob-nav-btn { padding: 0.5rem 1rem; border-radius: 999px; }
+  .mini-player { bottom: 5.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tela, .mini-player { animation: none; }
+  .pulso span { animation: none; opacity: 0.3; transform: scale(0.85); }
+  .escolha:hover, .escolha:focus-visible, .botao-sono:hover, .acao-principal:hover { transform: none; }
+}
