@@ -487,3 +487,72 @@ body.modo-app #stepResult.step-card {
 .title-input-wrapper[open] > summary::before { content: '− '; }
 
 .prompt-chips { gap: 0.45rem; }
+
+/* ============================================================
+   CONVERSA — ocupa a altura disponível
+   A caixa tinha altura fixa em vh e sobrava tela vazia embaixo,
+   com a conversa espremida num quarto do celular.
+   ============================================================ */
+/* Em vez de adivinhar quanto descontar da altura da janela — o que deixava
+   sobra de tela vazia — o conteúdo vira coluna flexível e a conversa ocupa
+   o que realmente restar. */
+body.modo-app .main-content {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 4.5rem);
+}
+
+/* Na conversa, a pagina inteira vira a caixa: nada rola fora dela. */
+body.modo-app.tela-chat .main-content {
+  height: calc(100dvh - 4.5rem);
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 1rem;
+}
+
+body.modo-app #viewChat.app-view.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Titulo e subtitulo eram moldura de pagina dentro do aplicativo: o menu ja
+   diz onde a pessoa esta, e cada linha ali roubava altura da conversa. */
+body.modo-app #viewChat .card-hero { display: none; }
+
+/* A barra inferior nao deve cobrir o campo de escrever */
+body.modo-app.tela-chat .mobile-bottom-nav { position: fixed; }
+body.modo-app.tela-chat #viewChat .chat-composer { margin-bottom: 4.5rem; }
+
+body.modo-app #viewChat .chat-card { flex: 1; display: flex; flex-direction: column; }
+body.modo-app #viewChat .card-hero { flex: 0 0 auto; }
+body.modo-app #viewChat .chat-area { flex: 1; min-height: 0; }
+
+body.modo-app #viewChat .chat-messages {
+  flex: 1;
+  min-height: 0;      /* deixa o flex encolher de verdade */
+  max-height: none;   /* o teto em vh era o que limitava */
+}
+
+/* ============================================================
+   ASSINANTE PRO — nenhuma oferta de assinatura em lugar nenhum
+   ============================================================ */
+body.plano-pro .daily-limit-banner,
+body.plano-pro .pro-upsell-history-card,
+body.plano-pro .counseling-pro-teaser-wrapper,
+body.plano-pro .btn-unlock-pro-small,
+body.plano-pro #btnUpgradeDailyLimit,
+body.plano-pro .somente-free { display: none !important; }
+
+/* O cadeado das rotinas longas some, e a nota sobre plano na tela
+   de Respirar deixa de fazer sentido para quem já assina */
+body.plano-pro .duracao::after,
+body.plano-pro #viewBreathe .tela-nota { display: none; }
+body.plano-pro .duration-btn.pro-locked .duration-num::after { content: ''; }
+
+/* Na conversa, cada respiro de página é altura roubada da leitura */
+body.modo-app.tela-chat .main-content { padding-top: 0.75rem; }
+body.modo-app.tela-chat #viewChat .step-card { padding: 0; gap: 0.5rem; }
+body.modo-app.tela-chat #viewChat .chat-area { gap: 0.5rem; }
+body.modo-app.tela-chat #viewChat .chat-composer { margin-bottom: 4rem; }

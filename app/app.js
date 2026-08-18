@@ -595,6 +595,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (menuEstaAberto()) fecharMenu();
     marcarItemAtivoNoMenu();
 
+    // A conversa recebe tratamento de tela cheia: sem :has() no CSS, a marca
+    // vem daqui e o layout deixa de depender de suporte do navegador.
+    document.body.classList.toggle('tela-chat', viewName === 'chat');
+
     if (viewName === 'dashboard') {
       renderizarPainel();
     } else if (viewName === 'settings') {
@@ -1385,6 +1389,19 @@ document.addEventListener('DOMContentLoaded', () => {
       navBtns.premium.title = isPro
         ? 'Sua assinatura Pro está ativa — ver detalhes'
         : 'Conhecer os planos';
+    }
+
+    // Nada no aplicativo deve convidar a assinar quem já assina.
+    document.querySelectorAll('[data-view="premium"], #btnOpenPremium .menu-item-icone + span strong')
+      .forEach(() => {});
+    const itemPlanos = document.querySelector('#menuLateral #btnOpenPremium');
+    if (itemPlanos) {
+      const titulo = itemPlanos.querySelector('strong');
+      const apoio = itemPlanos.querySelector('small');
+      if (titulo) titulo.textContent = isPro ? 'Assinatura' : 'Planos';
+      if (apoio) apoio.textContent = isPro
+        ? 'Validade e cancelamento'
+        : 'Assinatura e benefícios do Pro';
     }
 
     // Rotinas longas deixam de exibir cadeado

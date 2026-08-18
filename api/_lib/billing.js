@@ -149,12 +149,30 @@ async function applySubscriptionToProfile(subscription) {
   };
 
   const write = async (filtro, extra) => {
-    const rows = await supabaseAdmin(`profiles?${filtro}`, {
-      method: 'PATCH',
-      headers: { 'Prefer': 'return=representation' },
-      body: JSON.stringify({ ...patch, ...(extra || {}) })
-    });
-    return Array.isArray(rows) ? rows.length : 0;
+    const enviar = async (dados) => {
+      const rows = await supabaseAdmin(`profiles?${filtro}`, {
+        method: 'PATCH',
+        headers: { 'Prefer': 'return=representation' },
+        body: JSON.stringify(dados)
+      });
+      return Array.isArray(rows) ? rows.length : 0;
+    };
+
+    const dados = { ...patch, ...(extra || {}) };
+
+    try {
+      return await enviar(dados);
+    } catch (err) {
+      // subscription_ends_at é uma coluna nova. Se o schema.sql ainda não foi
+      // aplicado, o PATCH inteiro é recusado e a assinante NÃO recebe o Pro —
+      // um campo cosmético derrubando a ativação. Repetimos sem ele.
+      const colunaFaltando = /subscription_ends_at/.test(err.message || '');
+      if (!colunaFaltando) throw err;
+
+      console.warn('Coluna subscription_ends_at ausente no banco; gravando o plano sem ela. Rode database/schema.sql.');
+      const { subscription_ends_at, ...semColuna } = dados;
+      return await enviar(semColuna);
+    }
   };
 
   // 1ª tentativa: pelo cliente do Stripe já vinculado ao perfil.

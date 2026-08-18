@@ -42,8 +42,8 @@
   
   <!-- Stripe.js CDN -->
   <script defer src="https://js.stripe.com/v3/"></script>
-  <link rel="stylesheet" href="styles.css?v=3.1.2">
-  <link rel="stylesheet" href="sistema.css?v=3.1.2">
+  <link rel="stylesheet" href="styles.css?v=3.2.1">
+  <link rel="stylesheet" href="sistema.css?v=3.2.1">
 </head>
 <body class="theme-night">
   <!-- Glow decorativo suave de fundo -->
@@ -473,7 +473,7 @@
 
         <button type="button" id="btnIniciarRespiracao" class="acao-principal">Começar</button>
 
-        <p class="tela-nota">As sessões de 5 e 10 minutos fazem parte do plano Pro.</p>
+        <p class="tela-nota somente-free">As sessões de 5 e 10 minutos fazem parte do plano Pro.</p>
       </div>
     </section>
 
@@ -489,8 +489,9 @@
           <p class="tela-apoio">Escreva sem organizar. A IA separa o que pede ação, o que pode esperar e o que dá para soltar.</p>
         </div>
 
-        <!-- Explicação do Diário Pessoal -->
-        
+        <!-- Banner de Limite Diário -->
+        <div id="dailyLimitBanner" class="daily-limit-banner hidden">
+          <div class="limit-moon-badge">🌙 Ritual de hoje concluído</div>
           <h3>Você já descarregou sua mente hoje!</h3>
           <p>
             No plano gratuito, você tem direito a 1 desabafo noturno por dia. Para registrar sem limites a qualquer hora do dia, receber IA avançada e gráficos de bem-estar, faça o upgrade para o Pro.
@@ -1889,8 +1890,8 @@
     </div>
   </div>
 
-  <script src="config.js?v=3.1.2"></script>
-  <script src="app.js?v=3.1.2"></script>
+  <script src="config.js?v=3.2.1"></script>
+  <script src="app.js?v=3.2.1"></script>
   <!-- Vercel Web Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
   <!-- Vercel Speed Insights -->
