@@ -3974,7 +3974,10 @@ body.modo-visitante .header-container { justify-content: space-between; }
 }
 
 /* Painel */
-.menu-lateral {
+/* Mira o id, e não a classe: o elemento já trocou de classe uma vez
+   (app-sidebar) e as regras do painel deixaram de valer em silêncio —
+   o overlay passou a cobrir o menu, que ficava borrado e sem clique. */
+#menuLateral {
   position: fixed;
   top: 0;
   right: 0;
@@ -3991,8 +3994,8 @@ body.modo-visitante .header-container { justify-content: space-between; }
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-.menu-lateral[hidden] { display: flex; }        /* a saída é animada, não instantânea */
-.menu-lateral.aberto { transform: translateX(0); }
+#menuLateral[hidden] { display: flex; }        /* a saída é animada, não instantânea */
+#menuLateral.aberto { transform: translateX(0); }
 
 .menu-overlay {
   position: fixed;
@@ -4084,7 +4087,7 @@ body.modo-visitante .header-container { justify-content: space-between; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .menu-lateral, .menu-overlay { transition: none; }
+  #menuLateral, .menu-overlay { transition: none; }
 }
 
 /* ============================================================
