@@ -20,7 +20,11 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido.' });
   }
 
-  const user = await requireUser(req, res);
+  const user = await requireUser(
+    req,
+    res,
+    "Entre na sua conta para confirmarmos o seu pagamento."
+  );
   if (!user) return;
 
   const { session_id: sessionId } = req.query || {};

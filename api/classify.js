@@ -100,7 +100,11 @@ module.exports = async function handler(req, res) {
   // O aplicativo agora exige login: sem sessão não há triagem. Isso fecha de
   // vez o cenário em que este endpoint funcionava como proxy público do Gemini
   // na cota do projeto, e permite limitar por usuária em vez de por IP.
-  const user = await requireUser(req, res);
+  const user = await requireUser(
+    req,
+    res,
+    "Entre na sua conta para que a IA organize os seus pensamentos. O seu diário fica guardado só para você."
+  );
   if (!user) return;
 
   if (isRateLimited(`user:${user.id}`, MAX_POR_JANELA)) {

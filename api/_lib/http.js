@@ -140,7 +140,7 @@ async function getAuthenticatedUser(req) {
  * — a pessoa pagaria no cartão e nunca receberia o acesso Pro, e a correção
  * teria de ser manual, um a um, no painel do Stripe.
  */
-async function requireUser(req, res) {
+async function requireUser(req, res, mensagemSemSessao) {
   const { user, reason } = await getAuthContext(req);
   if (user) return user;
 
@@ -155,7 +155,7 @@ async function requireUser(req, res) {
 
   res.status(401).json({
     error: reason === 'sem-token'
-      ? 'Entre na sua conta para assinar. Assim a assinatura fica vinculada a você e vale em qualquer aparelho.'
+      ? (mensagemSemSessao || 'Entre na sua conta para continuar.')
       : 'Sua sessão expirou. Entre novamente para continuar.',
     code: 'AUTH_NECESSARIA'
   });
@@ -171,7 +171,7 @@ async function requireUser(req, res) {
  * servidor, lendo a mesma coluna que só o webhook do Stripe escreve.
  */
 async function requireProUser(req, res) {
-  const user = await requireUser(req, res);
+  const user = await requireUser(req, res, 'Entre na sua conta para conversar com a IA do Sono.');
   if (!user) return null;
 
   let perfil = null;

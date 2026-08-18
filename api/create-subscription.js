@@ -20,7 +20,11 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido.' });
   }
 
-  const user = await requireUser(req, res);
+  const user = await requireUser(
+    req,
+    res,
+    "Entre na sua conta para assinar. Assim a assinatura fica vinculada a você e vale em qualquer aparelho."
+  );
   if (!user) return;
 
   const plan = resolvePlan((req.body || {}).planType);

@@ -19,7 +19,11 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido.' });
   }
 
-  const user = await requireUser(req, res);
+  const user = await requireUser(
+    req,
+    res,
+    "Entre na sua conta para gerenciar a sua assinatura."
+  );
   if (!user) return;
 
   try {
