@@ -111,6 +111,22 @@ module.exports = async function handler(req, res) {
     resposta.gemini = await testarGemini();
   }
 
+  // ?modelos=1 lista o que a chave realmente pode usar hoje. Modelos sao
+  // descontinuados sem aviso, e uma lista fixa no codigo envelhece calada.
+  if (req.query?.modelos === '1' && process.env.GEMINI_API_KEY) {
+    try {
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
+        headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY }
+      });
+      const dados = await r.json();
+      resposta.modelosDisponiveis = (dados.models || [])
+        .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+        .map(m => m.name.replace('models/', ''));
+    } catch (err) {
+      resposta.modelosDisponiveis = { erro: err.message };
+    }
+  }
+
   // Com sessao valida, informa o plano lido pelo servidor — que e o mesmo
   // criterio usado para liberar a conversa com a IA.
   if (req.headers.authorization) {
