@@ -265,6 +265,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openModal(modal) {
     if (!modal) return;
+
+    // O modal de planos muda de conteúdo conforme a assinatura: vitrine de
+    // preços para quem não assina, estado da assinatura para quem já assina.
+    if (modal === modalPremium) {
+      try { renderizarPainelDaAssinante(); } catch (e) {}
+    }
+
     lastFocusedElement = document.activeElement;
     modal.classList.remove('hidden');
     modal.removeAttribute('hidden');
@@ -396,6 +403,115 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // NAVEGAÇÃO DESKTOP & MOBILE SINCRONIZADA
   // ==========================================
+  // ==========================================================================
+  // MENU LATERAL
+  // O cabeçalho não comportava as oito telas, e a rolagem horizontal deixava
+  // metade do aplicativo invisível. O menu concentra o mapa completo; o
+  // cabeçalho fica só com atalhos, e apenas quando há espaço.
+  // ==========================================================================
+  let focoAntesDoMenu = null;
+
+  function menuEstaAberto() {
+    return document.getElementById('menuLateral')?.classList.contains('aberto');
+  }
+
+  function abrirMenu() {
+    const painel = document.getElementById('menuLateral');
+    const fundo = document.getElementById('menuOverlay');
+    const botao = document.getElementById('btnOpenMenu');
+    if (!painel || !fundo) return;
+
+    focoAntesDoMenu = document.activeElement;
+
+    fundo.hidden = false;
+    painel.hidden = false;
+
+    // Força o cálculo de layout para que a transição tenha um estado inicial.
+    // requestAnimationFrame seria o caminho natural, mas ele não dispara em
+    // aba sem composição (segundo plano, janela minimizada) — e o menu ficava
+    // sem abrir. O reflow é síncrono e não depende de quadro nenhum.
+    void painel.offsetWidth;
+
+    fundo.classList.add('aberto');
+    painel.classList.add('aberto');
+
+    botao?.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+
+    marcarItemAtivoNoMenu();
+    setTimeout(() => painel.querySelector('.menu-item')?.focus(), 120);
+  }
+
+  function fecharMenu() {
+    const painel = document.getElementById('menuLateral');
+    const fundo = document.getElementById('menuOverlay');
+    const botao = document.getElementById('btnOpenMenu');
+    if (!painel || !fundo) return;
+
+    painel.classList.remove('aberto');
+    fundo.classList.remove('aberto');
+    botao?.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+
+    // Espera a animação terminar para tirar do fluxo e dos leitores de tela
+    setTimeout(() => {
+      if (!painel.classList.contains('aberto')) {
+        painel.hidden = true;
+        fundo.hidden = true;
+      }
+    }, 260);
+
+    if (focoAntesDoMenu && typeof focoAntesDoMenu.focus === 'function') {
+      try { focoAntesDoMenu.focus(); } catch (e) {}
+    }
+    focoAntesDoMenu = null;
+  }
+
+  /** Destaca no menu a tela que está aberta. */
+  function marcarItemAtivoNoMenu() {
+    const ativa = Object.keys(views).find(k => views[k]?.classList.contains('active'));
+    document.querySelectorAll('.menu-item[data-view]').forEach(item => {
+      item.classList.toggle('active', item.getAttribute('data-view') === ativa);
+    });
+  }
+
+  function initMenuLateral() {
+    document.getElementById('btnOpenMenu')?.addEventListener('click', () => {
+      menuEstaAberto() ? fecharMenu() : abrirMenu();
+    });
+    document.getElementById('btnFecharMenu')?.addEventListener('click', fecharMenu);
+    document.getElementById('menuOverlay')?.addEventListener('click', fecharMenu);
+
+    document.getElementById('btnMenuConta')?.addEventListener('click', () => {
+      fecharMenu();
+      openModal(modalAuth);
+    });
+
+    // Esc fecha o menu antes de qualquer modal
+    document.addEventListener('keydown', (e) => {
+      if ((e.key === 'Escape' || e.key === 'Esc') && menuEstaAberto()) {
+        e.stopPropagation();
+        fecharMenu();
+      }
+    }, true);
+
+    // Prende o foco dentro do painel enquanto ele estiver aberto
+    document.getElementById('menuLateral')?.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab') return;
+      const focaveis = [...document.querySelectorAll('#menuLateral button')].filter(b => b.offsetParent !== null);
+      if (focaveis.length === 0) return;
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      if (e.shiftKey && document.activeElement === primeiro) {
+        e.preventDefault();
+        ultimo.focus();
+      } else if (!e.shiftKey && document.activeElement === ultimo) {
+        e.preventDefault();
+        primeiro.focus();
+      }
+    });
+  }
+
   function initNavigation() {
     // Os botões com data-view são ligados em initNovoSite (fonte única).
     // Aqui ficam só os que não representam uma view.
@@ -460,6 +576,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-view]').forEach(el => {
       el.classList.toggle('active', el.getAttribute('data-view') === viewName);
     });
+
+    if (menuEstaAberto()) fecharMenu();
+    marcarItemAtivoNoMenu();
 
     if (viewName === 'night') {
       checkDailyLimitUI();
@@ -563,6 +682,110 @@ document.addEventListener('DOMContentLoaded', () => {
         const tag = btn.getAttribute('data-tag');
         openTagDetailModal(tag);
       });
+    });
+  }
+
+  // ==========================================================================
+  // PAINEL DA ASSINANTE
+  // Quem já paga não deve ver vitrine de preços ao abrir "Planos" — deve ver
+  // o estado da própria assinatura e quanto tempo de acesso ainda tem.
+  // ==========================================================================
+  const MS_POR_DIA = 24 * 60 * 60 * 1000;
+
+  function diasRestantes(dataISO) {
+    if (!dataISO) return null;
+    const fim = new Date(dataISO);
+    if (isNaN(fim.getTime())) return null;
+    return Math.max(0, Math.ceil((fim.getTime() - Date.now()) / MS_POR_DIA));
+  }
+
+  /** "12 dias", "1 mês e 3 dias" — linguagem de gente, não de sistema. */
+  function descreverTempoRestante(dias) {
+    if (dias === null) return null;
+    if (dias === 0) return 'termina hoje';
+    if (dias === 1) return '1 dia';
+    if (dias < 30) return `${dias} dias`;
+
+    const meses = Math.floor(dias / 30);
+    const resto = dias % 30;
+    const parteMeses = meses === 1 ? '1 mês' : `${meses} meses`;
+    if (resto === 0) return parteMeses;
+    return `${parteMeses} e ${resto === 1 ? '1 dia' : `${resto} dias`}`;
+  }
+
+  function renderizarPainelDaAssinante() {
+    const painel = document.getElementById('painelAssinante');
+    const grade = document.getElementById('gradeDePlanos');
+    const rodape = document.querySelector('#modalPremium .modal-footer-guarantee');
+    const cabecalho = document.querySelector('#modalPremium .modal-header');
+    if (!painel || !grade) return;
+
+    const isPro = isUserPro();
+    painel.classList.toggle('hidden', !isPro);
+    grade.classList.toggle('hidden', isPro);
+    if (rodape) rodape.classList.toggle('hidden', isPro);
+    if (cabecalho) cabecalho.classList.toggle('hidden', isPro);
+
+    if (!isPro) return;
+
+    const perfil = appState.userProfile || {};
+    const anual = perfil.plano === 'premium_anual';
+    const cancelando = perfil.subscription_status === 'canceling';
+    const atrasado = perfil.subscription_status === 'past_due';
+
+    const definir = (id, valor) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = valor;
+    };
+
+    definir('assinantePlano', anual ? 'Pro Anual' : 'Pro Mensal');
+
+    const dias = diasRestantes(perfil.subscription_ends_at);
+    const restante = descreverTempoRestante(dias);
+
+    if (perfil.subscription_ends_at && restante) {
+      const data = new Date(perfil.subscription_ends_at)
+        .toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+      definir('assinanteRotuloData', cancelando ? 'Acesso até' : 'Renova em');
+      definir('assinanteData', data);
+      definir('assinanteRestante', restante);
+    } else {
+      // Assinatura antiga, anterior ao registro da data de término
+      definir('assinanteRotuloData', cancelando ? 'Acesso até' : 'Renovação');
+      definir('assinanteData', 'a confirmar');
+      definir('assinanteRestante', '—');
+    }
+
+    const nome = (appState.currentUser?.user_metadata?.full_name || '').split(' ')[0];
+    definir('assinanteTexto', nome
+      ? `${nome}, seu acesso completo está ativo. Obrigado por sustentar este projeto.`
+      : 'Seu acesso completo está ativo. Obrigado por sustentar este projeto.');
+
+    const nota = document.getElementById('assinanteNota');
+    if (nota) {
+      if (cancelando) {
+        nota.textContent = restante
+          ? `O cancelamento já está agendado: você continua com tudo liberado por mais ${restante}, e depois disso a conta volta ao plano gratuito. Nenhuma nova cobrança será feita.`
+          : 'O cancelamento já está agendado. Nenhuma nova cobrança será feita.';
+        nota.className = 'assinante-nota aviso';
+      } else if (atrasado) {
+        nota.textContent = 'Houve um problema no último pagamento. Atualize a forma de pagamento em "Gerenciar assinatura" para não perder o acesso.';
+        nota.className = 'assinante-nota alerta';
+      } else {
+        nota.textContent = anual
+          ? 'A renovação é automática, uma vez por ano. Você pode cancelar quando quiser, sem multa.'
+          : 'A renovação é automática, todo mês. Você pode cancelar quando quiser, sem multa.';
+        nota.className = 'assinante-nota';
+      }
+    }
+  }
+
+  function initPainelDaAssinante() {
+    document.getElementById('btnAssinanteFechar')?.addEventListener('click', () => closeModal(modalPremium));
+    document.getElementById('btnAssinanteGerenciar')?.addEventListener('click', () => {
+      closeModal(modalPremium);
+      openModal(modalAuth);
+      document.getElementById('btnManageSubscription')?.focus();
     });
   }
 
@@ -1117,6 +1340,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.classList.toggle('plano-pro', isPro);
     document.body.classList.toggle('plano-free', !isPro);
 
+    const planoNoMenu = document.getElementById('menuPlanoAtual');
+    if (planoNoMenu) {
+      planoNoMenu.textContent = !logada
+        ? 'Entre para começar'
+        : (isPro ? 'Plano Pro ativo' : 'Plano gratuito');
+    }
+
     if (loggedUserPlanBadge) {
       let label = 'Gratuito';
       if (isPro) {
@@ -1152,6 +1382,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnSyncPlan) {
       btnSyncPlan.classList.toggle('hidden', !logado || isPro);
     }
+
+    renderizarPainelDaAssinante();
 
     // A conversa e recurso pago: se a view estiver aberta, revalida na hora
     if (views.chat && views.chat.classList.contains('active')) prepararChat();
@@ -3554,6 +3786,134 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   ];
 
+  /**
+   * Miniaturas dos cards, desenhadas em SVG dentro do próprio aplicativo.
+   *
+   * Foto de banco de imagens exigiria licença, download e peso — e o áudio
+   * aqui já é sintetizado justamente para não depender de arquivo externo.
+   * A arte acompanha a paleta e escala sem borrar em qualquer tela.
+   */
+  const ARTE_SOM = {
+    chuva: `
+      <defs><linearGradient id="ceuChuva" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#1B2C48"/><stop offset="100%" stop-color="#0B1220"/>
+      </linearGradient></defs>
+      <rect width="160" height="104" fill="url(#ceuChuva)"/>
+      <g fill="#0F1A2E"><ellipse cx="34" cy="90" rx="46" ry="26"/><ellipse cx="106" cy="96" rx="52" ry="28"/></g>
+      <g stroke="#7FB0F5" stroke-width="1.4" stroke-linecap="round" opacity="0.75">
+        <line x1="22" y1="14" x2="16" y2="34"/><line x1="46" y1="8" x2="40" y2="30"/>
+        <line x1="70" y1="18" x2="64" y2="38"/><line x1="96" y1="6" x2="90" y2="28"/>
+        <line x1="120" y1="16" x2="114" y2="36"/><line x1="142" y1="10" x2="136" y2="32"/>
+        <line x1="34" y1="46" x2="28" y2="64"/><line x1="84" y1="48" x2="78" y2="66"/>
+        <line x1="128" y1="50" x2="122" y2="68"/>
+      </g>`,
+    oceano: `
+      <defs><linearGradient id="ceuMar" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#101B33"/><stop offset="100%" stop-color="#16304F"/>
+      </linearGradient></defs>
+      <rect width="160" height="104" fill="url(#ceuMar)"/>
+      <circle cx="120" cy="26" r="13" fill="#E8EDF5" opacity="0.9"/>
+      <circle cx="115" cy="22" r="13" fill="#101B33"/>
+      <g fill="none" stroke="#6FA8E8" stroke-linecap="round">
+        <path d="M0 62 Q20 54 40 62 T80 62 T120 62 T160 62" stroke-width="2" opacity="0.8"/>
+        <path d="M0 76 Q22 68 44 76 T88 76 T132 76 T176 76" stroke-width="2.2" opacity="0.6"/>
+        <path d="M0 90 Q24 82 48 90 T96 90 T144 90" stroke-width="2.4" opacity="0.45"/>
+      </g>`,
+    vento: `
+      <rect width="160" height="104" fill="#0E1A2B"/>
+      <g fill="#152743">
+        <path d="M0 104 L0 70 Q30 56 58 72 L58 104 Z"/>
+        <path d="M96 104 L96 62 Q126 46 160 66 L160 104 Z"/>
+      </g>
+      <g fill="none" stroke="#8FC3A0" stroke-width="2" stroke-linecap="round" opacity="0.85">
+        <path d="M18 34 Q46 24 70 34 T118 30"/>
+        <path d="M30 50 Q56 42 78 50 T126 46"/>
+        <path d="M12 66 Q34 60 52 66"/>
+      </g>
+      <g fill="#8FC3A0" opacity="0.7">
+        <ellipse cx="128" cy="28" rx="5" ry="2.6" transform="rotate(-24 128 28)"/>
+        <ellipse cx="140" cy="46" rx="4" ry="2" transform="rotate(18 140 46)"/>
+      </g>`,
+    frequencia432: `
+      <rect width="160" height="104" fill="#0C1526"/>
+      <g fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round">
+        <path d="M0 52 Q10 22 20 52 T40 52 T60 52 T80 52 T100 52 T120 52 T140 52 T160 52" opacity="0.9"/>
+        <path d="M0 52 Q16 76 32 52 T64 52 T96 52 T128 52 T160 52" opacity="0.45"/>
+      </g>
+      <g fill="#93C5FD" opacity="0.85">
+        <circle cx="40" cy="52" r="3"/><circle cx="80" cy="52" r="3.6"/><circle cx="120" cy="52" r="3"/>
+      </g>`,
+    delta: `
+      <rect width="160" height="104" fill="#0B1424"/>
+      <g fill="none" stroke="#3B82F6" stroke-width="1.2" opacity="0.45">
+        <circle cx="80" cy="52" r="30"/><circle cx="80" cy="52" r="42"/>
+      </g>
+      <path d="M0 58 Q20 20 40 58 Q60 92 80 58 Q100 24 120 58 Q140 90 160 58"
+            fill="none" stroke="#7C9CF0" stroke-width="2" stroke-linecap="round" opacity="0.95"/>
+      <circle cx="80" cy="52" r="6" fill="#93C5FD"/>`,
+    lareira: `
+      <rect width="160" height="104" fill="#0D1421"/>
+      <ellipse cx="80" cy="92" rx="54" ry="14" fill="#16223A"/>
+      <g stroke="#5B7BB8" stroke-width="4" stroke-linecap="round">
+        <line x1="52" y1="92" x2="92" y2="80"/><line x1="68" y1="80" x2="108" y2="92"/>
+      </g>
+      <path d="M80 34 Q94 52 86 66 Q80 74 74 66 Q66 52 80 34 Z" fill="#60A5FA" opacity="0.92"/>
+      <path d="M80 48 Q88 58 83 68 Q80 73 77 68 Q72 58 80 48 Z" fill="#BFDBFE" opacity="0.85"/>`
+  };
+
+  const ARTE_HISTORIA = {
+    'casa-na-colina': `
+      <rect width="160" height="104" fill="#0C1728"/>
+      <circle cx="128" cy="24" r="11" fill="#E8EDF5" opacity="0.85"/>
+      <circle cx="123" cy="20" r="11" fill="#0C1728"/>
+      <path d="M0 104 Q46 58 92 78 Q126 92 160 76 L160 104 Z" fill="#142440"/>
+      <g transform="translate(58 52)">
+        <path d="M0 14 L14 2 L28 14 Z" fill="#1D3357"/>
+        <rect x="4" y="14" width="20" height="16" fill="#16273F"/>
+        <rect x="10" y="19" width="8" height="8" fill="#93C5FD" opacity="0.95"/>
+      </g>`,
+    'trem-noturno': `
+      <rect width="160" height="104" fill="#0B1523"/>
+      <g stroke="#1E3355" stroke-width="2"><line x1="0" y1="86" x2="160" y2="86"/><line x1="0" y1="94" x2="160" y2="94"/></g>
+      <g fill="#16273F">
+        <rect x="18" y="52" width="44" height="30" rx="4"/><rect x="70" y="52" width="34" height="30" rx="4"/>
+        <rect x="112" y="52" width="34" height="30" rx="4"/>
+      </g>
+      <g fill="#93C5FD" opacity="0.9">
+        <rect x="26" y="60" width="10" height="9" rx="1"/><rect x="44" y="60" width="10" height="9" rx="1"/>
+        <rect x="78" y="60" width="10" height="9" rx="1"/><rect x="120" y="60" width="10" height="9" rx="1"/>
+      </g>
+      <g fill="#E8EDF5" opacity="0.5">
+        <circle cx="30" cy="18" r="1.5"/><circle cx="76" cy="12" r="1.5"/><circle cx="132" cy="22" r="1.5"/>
+      </g>`,
+    'biblioteca-da-chuva': `
+      <rect width="160" height="104" fill="#0C1626"/>
+      <g fill="#16273F">
+        <rect x="10" y="24" width="58" height="70" rx="3"/><rect x="92" y="24" width="58" height="70" rx="3"/>
+      </g>
+      <g fill="#2A4370">
+        <rect x="16" y="32" width="8" height="22"/><rect x="27" y="30" width="7" height="24"/>
+        <rect x="37" y="34" width="9" height="20"/><rect x="49" y="31" width="7" height="23"/>
+        <rect x="98" y="33" width="8" height="21"/><rect x="109" y="30" width="7" height="24"/>
+        <rect x="119" y="35" width="9" height="19"/><rect x="131" y="32" width="7" height="22"/>
+      </g>
+      <rect x="70" y="20" width="20" height="60" rx="2" fill="#101E36"/>
+      <g stroke="#7FB0F5" stroke-width="1.2" stroke-linecap="round" opacity="0.8">
+        <line x1="76" y1="26" x2="74" y2="44"/><line x1="84" y1="30" x2="82" y2="50"/>
+        <line x1="79" y1="52" x2="77" y2="70"/>
+      </g>`
+  };
+
+  /** Monta a miniatura com a arte correspondente e, quando cabe, o botão de tocar. */
+  function montarMiniatura(chave, mapa, mostrarPlay) {
+    const desenho = mapa[chave] || '';
+    const svg = desenho
+      ? `<svg class="thumb-arte" viewBox="0 0 160 104" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${desenho}</svg>`
+      : '';
+    const play = mostrarPlay ? '<span class="media-play">&#9654;</span>' : '';
+    return `<div class="media-thumb">${svg}${play}</div>`;
+  }
+
   /** Ruído rosa em laço — base de quase todas as paisagens acima. */
   function criarRuidoRosa(ctx) {
     const tamanho = ctx.sampleRate * 3;
@@ -3673,7 +4033,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.className = 'media-card sound-card';
       card.setAttribute('data-som', som.id);
       card.innerHTML = `
-        <div class="media-thumb"><span class="media-play">▶</span></div>
+        ${montarMiniatura(som.id, ARTE_SOM, true)}
         <div class="media-info">
           <strong>${escapeHTML(som.titulo)}</strong>
           <span>${escapeHTML(som.subtitulo)}</span>
@@ -3708,7 +4068,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.className = 'media-card';
       if (item.tipo === 'som') card.setAttribute('data-som', dados.id);
       card.innerHTML = `
-        <div class="media-thumb"><span class="media-play">▶</span></div>
+        ${montarMiniatura(dados.id, item.tipo === "som" ? ARTE_SOM : ARTE_HISTORIA, item.tipo === "som")}
         <div class="media-info">
           <strong>${escapeHTML(dados.titulo)}</strong>
           <span>${escapeHTML(dados.subtitulo)}</span>
@@ -3791,7 +4151,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.type = 'button';
       card.className = 'media-card';
       card.innerHTML = `
-        <div class="media-thumb"><span style="font-size:1.8rem">${historia.icone}</span></div>
+        ${montarMiniatura(historia.id, ARTE_HISTORIA, false)}
         <div class="media-info">
           <strong>${escapeHTML(historia.titulo)}</strong>
           <span>${escapeHTML(historia.duracao)}</span>
@@ -4581,6 +4941,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
   const modulesToInit = [
     { name: 'Navigation', fn: initNavigation },
+    { name: 'MenuLateral', fn: initMenuLateral },
+    { name: 'PainelAssinante', fn: initPainelDaAssinante },
     { name: 'VoiceInput', fn: initVoiceInput },
     { name: 'PromptChips', fn: initPromptChips },
     { name: 'RoutineDuration', fn: initRoutineDuration },

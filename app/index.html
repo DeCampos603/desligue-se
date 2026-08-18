@@ -42,7 +42,7 @@
   
   <!-- Stripe.js CDN -->
   <script defer src="https://js.stripe.com/v3/"></script>
-  <link rel="stylesheet" href="styles.css?v=2.4.5">
+  <link rel="stylesheet" href="styles.css?v=2.6.0">
 </head>
 <body class="theme-night">
   <!-- Glow decorativo suave de fundo -->
@@ -65,16 +65,14 @@
         </div>
       </div>
 
-      <!-- Menu do aplicativo: existe apenas depois do login -->
-      <nav class="nav-controls somente-logada" aria-label="Navegação do aplicativo">
+      <!-- Atalhos: só o caminho mais usado, e só quando há espaço de sobra.
+           O mapa completo vive no menu lateral, para nada ficar escondido
+           atrás de rolagem horizontal. -->
+      <nav class="nav-controls somente-logada" aria-label="Atalhos">
         <button id="btnTabNight" class="nav-link active" data-view="night">Diário</button>
         <button id="btnTabChat" class="nav-link" data-view="chat">IA do Sono</button>
-        <button id="btnTabStories" class="nav-link" data-view="stories">Histórias</button>
         <button id="btnTabSounds" class="nav-link" data-view="sounds">Sons</button>
         <button id="btnTabRhythm" class="nav-link" data-view="rhythm">Meu Ritmo</button>
-        <button id="btnTabMorning" class="nav-link" data-view="morning">Check-in</button>
-        <button id="btnTabHistory" class="nav-link" data-view="history">Histórico</button>
-        <button id="btnOpenPremium" class="nav-link" title="Planos e assinatura">Planos</button>
       </nav>
 
       <div class="header-actions">
@@ -84,12 +82,82 @@
 
         <!-- Uma única ação de conta. Deslogada: "Entrar ou criar conta".
              Logada: nome da usuária, abrindo o painel da conta. -->
+        <button id="btnOpenMenu" class="btn-menu somente-logada" type="button"
+                aria-label="Abrir menu" aria-expanded="false" aria-controls="menuLateral">
+          <span class="icone-hamburguer" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="btn-menu-texto">Menu</span>
+        </button>
+
         <button id="btnOpenAuth" class="btn-header-primary" title="Entrar ou criar conta">
           <span id="userAvatarIcon" class="pill-icon">👤</span> <span id="userAuthLabel">Entrar</span>
         </button>
       </div>
     </div>
   </header>
+
+  <!-- Menu lateral: mapa completo do aplicativo, agrupado por intenção -->
+  <div id="menuOverlay" class="menu-overlay" hidden></div>
+
+  <aside id="menuLateral" class="menu-lateral" hidden aria-label="Menu do aplicativo">
+    <div class="menu-topo">
+      <span class="menu-titulo">Menu</span>
+      <button type="button" id="btnFecharMenu" class="menu-fechar" aria-label="Fechar menu">&times;</button>
+    </div>
+
+    <nav class="menu-corpo">
+      <div class="menu-grupo">
+        <h3>Antes de dormir</h3>
+        <button class="menu-item" data-view="night">
+          <span class="menu-item-icone" aria-hidden="true">🌙</span>
+          <span><strong>Diário</strong><small>Descarregue o dia e receba a triagem</small></span>
+        </button>
+        <button class="menu-item" data-view="chat">
+          <span class="menu-item-icone" aria-hidden="true">✨</span>
+          <span><strong>IA do Sono</strong><small>Converse até a mente baixar a guarda</small></span>
+        </button>
+      </div>
+
+      <div class="menu-grupo">
+        <h3>Para relaxar</h3>
+        <button class="menu-item" data-view="stories">
+          <span class="menu-item-icone" aria-hidden="true">📖</span>
+          <span><strong>Histórias</strong><small>Contos lentos, com narração</small></span>
+        </button>
+        <button class="menu-item" data-view="sounds">
+          <span class="menu-item-icone" aria-hidden="true">🌿</span>
+          <span><strong>Sons</strong><small>Paisagens sonoras com timer</small></span>
+        </button>
+      </div>
+
+      <div class="menu-grupo">
+        <h3>Acompanhar</h3>
+        <button class="menu-item" data-view="rhythm">
+          <span class="menu-item-icone" aria-hidden="true">🕐</span>
+          <span><strong>Meu Ritmo</strong><small>Seus horários e qualidade de sono</small></span>
+        </button>
+        <button class="menu-item" data-view="morning">
+          <span class="menu-item-icone" aria-hidden="true">☀️</span>
+          <span><strong>Check-in matinal</strong><small>Como foi a noite que passou</small></span>
+        </button>
+        <button class="menu-item" data-view="history">
+          <span class="menu-item-icone" aria-hidden="true">📚</span>
+          <span><strong>Histórico</strong><small>Todas as noites registradas</small></span>
+        </button>
+      </div>
+
+      <div class="menu-grupo">
+        <h3>Conta</h3>
+        <button class="menu-item" id="btnMenuConta">
+          <span class="menu-item-icone" aria-hidden="true">👤</span>
+          <span><strong>Minha conta</strong><small id="menuPlanoAtual">Plano gratuito</small></span>
+        </button>
+        <button class="menu-item" id="btnOpenPremium">
+          <span class="menu-item-icone" aria-hidden="true">⭐</span>
+          <span><strong>Planos</strong><small>Assinatura e benefícios do Pro</small></span>
+        </button>
+      </div>
+    </nav>
+  </aside>
 
   <!-- Container Principal -->
   <main class="main-content">
@@ -1093,7 +1161,38 @@
         </p>
       </div>
 
-      <div class="pricing-grid">
+      <!-- Quem já assina não vê vitrine de preços: vê o estado da assinatura -->
+      <div id="painelAssinante" class="painel-assinante hidden">
+        <div class="assinante-selo" aria-hidden="true">💜</div>
+        <h3 class="assinante-titulo">Obrigado por assinar o Desligue-se Pro</h3>
+        <p class="assinante-texto" id="assinanteTexto">
+          Sua assinatura está ativa.
+        </p>
+
+        <div class="assinante-dados">
+          <div class="assinante-dado">
+            <span class="assinante-rotulo">Seu plano</span>
+            <strong id="assinantePlano">—</strong>
+          </div>
+          <div class="assinante-dado">
+            <span class="assinante-rotulo" id="assinanteRotuloData">Renova em</span>
+            <strong id="assinanteData">—</strong>
+          </div>
+          <div class="assinante-dado">
+            <span class="assinante-rotulo">Tempo restante</span>
+            <strong id="assinanteRestante">—</strong>
+          </div>
+        </div>
+
+        <p class="assinante-nota" id="assinanteNota"></p>
+
+        <div class="assinante-acoes">
+          <button type="button" id="btnAssinanteGerenciar" class="btn-secondary">Gerenciar assinatura</button>
+          <button type="button" id="btnAssinanteFechar" class="btn-primary">Voltar ao aplicativo</button>
+        </div>
+      </div>
+
+      <div class="pricing-grid" id="gradeDePlanos">
         <!-- Plano Mensal -->
         <div class="pricing-card">
           <div class="pricing-badge">Mais Flexível</div>
@@ -1566,8 +1665,8 @@
     </button>
   </nav>
 
-  <script src="config.js?v=2.4.5"></script>
-  <script src="app.js?v=2.4.5"></script>
+  <script src="config.js?v=2.6.0"></script>
+  <script src="app.js?v=2.6.0"></script>
   <!-- Vercel Web Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
   <!-- Vercel Speed Insights -->

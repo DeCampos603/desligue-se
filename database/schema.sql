@@ -40,6 +40,10 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS terms_version TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS sensitive_data_consent_at TIMESTAMP WITH TIME ZONE;
 
+-- Fim do periodo pago vigente, vindo do Stripe (current_period_end).
+-- E o que permite mostrar a assinante quanto tempo de acesso ainda resta.
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS subscription_ends_at TIMESTAMP WITH TIME ZONE;
+
 CREATE INDEX IF NOT EXISTS profiles_stripe_customer_idx
   ON public.profiles (stripe_customer_id);
 
@@ -120,6 +124,7 @@ BEGIN
     NEW.plano := OLD.plano;
     NEW.subscription_status := OLD.subscription_status;
     NEW.stripe_customer_id := OLD.stripe_customer_id;
+    NEW.subscription_ends_at := OLD.subscription_ends_at;
   END IF;
 
   NEW.updated_at := timezone('utc'::text, now());

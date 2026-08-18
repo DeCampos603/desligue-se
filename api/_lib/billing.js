@@ -111,8 +111,13 @@ function mapSubscriptionToProfile(subscription) {
 
   const isPaid = ['active', 'trialing', 'past_due'].includes(stripeStatus);
 
+  // current_period_end vem em segundos; guardamos como data ISO
+  const fimDoPeriodo = subscription.current_period_end
+    ? new Date(subscription.current_period_end * 1000).toISOString()
+    : null;
+
   if (!isPaid) {
-    return { plano: 'free', subscription_status: stripeStatus };
+    return { plano: 'free', subscription_status: stripeStatus, subscription_ends_at: fimDoPeriodo };
   }
 
   // Descobre o plano pelo intervalo de cobrança do item da assinatura
@@ -121,7 +126,8 @@ function mapSubscriptionToProfile(subscription) {
 
   return {
     plano,
-    subscription_status: cancelAtPeriodEnd ? 'canceling' : stripeStatus
+    subscription_status: cancelAtPeriodEnd ? 'canceling' : stripeStatus,
+    subscription_ends_at: fimDoPeriodo
   };
 }
 
@@ -134,10 +140,11 @@ async function applySubscriptionToProfile(subscription) {
     ? subscription.customer
     : subscription.customer?.id;
 
-  const { plano, subscription_status } = mapSubscriptionToProfile(subscription);
+  const { plano, subscription_status, subscription_ends_at } = mapSubscriptionToProfile(subscription);
   const patch = {
     plano,
     subscription_status,
+    subscription_ends_at,
     updated_at: new Date().toISOString()
   };
 

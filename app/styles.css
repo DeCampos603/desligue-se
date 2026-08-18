@@ -3934,3 +3934,275 @@ body.modo-visitante .main-content { padding-bottom: 2rem; }
 
 /* No modo visitante o cabeçalho fica enxuto: marca à esquerda, ação à direita */
 body.modo-visitante .header-container { justify-content: space-between; }
+
+/* ============================================================
+   CABEÇALHO ENXUTO + MENU LATERAL
+   Oito itens não cabiam nem no computador; a rolagem horizontal
+   escondia telas inteiras. Agora o cabeçalho mostra atalhos só
+   quando sobra espaço, e o mapa completo fica no menu lateral.
+   ============================================================ */
+
+.btn-menu {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: 1px solid var(--borda-media);
+  color: var(--texto-forte);
+  border-radius: 10px;
+  padding: 0.5rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.btn-menu:hover { background: rgba(255, 255, 255, 0.06); border-color: var(--acento); }
+
+.icone-hamburguer {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  width: 16px;
+}
+.icone-hamburguer span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+/* Painel */
+.menu-lateral {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 1200;
+  width: min(88vw, 21rem);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--superficie-2);
+  border-left: 1px solid var(--borda-media);
+  box-shadow: -18px 0 48px rgba(0, 0, 0, 0.5);
+  transform: translateX(100%);
+  transition: transform 0.24s ease;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.menu-lateral[hidden] { display: flex; }        /* a saída é animada, não instantânea */
+.menu-lateral.aberto { transform: translateX(0); }
+
+.menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1150;
+  background: rgba(4, 8, 16, 0.6);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.24s ease;
+}
+.menu-overlay[hidden] { display: none; }
+.menu-overlay.aberto { opacity: 1; }
+
+.menu-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.15rem 0.75rem;
+  border-bottom: 1px solid var(--borda-sutil);
+  position: sticky;
+  top: 0;
+  background: var(--superficie-2);
+}
+.menu-titulo { font-family: var(--font-sans); font-size: 1rem; font-weight: 600; color: var(--texto-forte); }
+
+.menu-fechar {
+  background: none;
+  border: none;
+  color: var(--texto-suave);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+.menu-fechar:hover { color: var(--texto-forte); }
+
+.menu-corpo { padding: 0.9rem 0.75rem 2rem; }
+.menu-grupo { margin-bottom: 1.35rem; }
+
+.menu-grupo h3 {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--texto-suave);
+  margin: 0 0 0.5rem 0.6rem;
+  font-weight: 600;
+}
+
+.menu-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 0.7rem 0.6rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+.menu-item:hover { background: rgba(255, 255, 255, 0.05); }
+
+.menu-item.active {
+  background: rgba(59, 130, 246, 0.14);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.menu-item-icone { font-size: 1.2rem; line-height: 1.4; flex-shrink: 0; }
+.menu-item strong { display: block; font-size: 0.92rem; color: var(--texto-forte); font-weight: 500; }
+.menu-item small { display: block; font-size: 0.75rem; color: var(--texto-suave); margin-top: 0.1rem; line-height: 1.4; }
+
+/* Atalhos no cabeçalho: aparecem apenas quando há espaço de verdade.
+   Abaixo disso, tudo vive no menu lateral — sem rolagem lateral. */
+.nav-controls { overflow: visible; }
+
+@media (max-width: 1180px) {
+  body.modo-app .nav-controls { display: none !important; }
+}
+
+@media (min-width: 1181px) {
+  .btn-menu-texto { display: inline; }
+}
+
+@media (max-width: 560px) {
+  .btn-menu-texto { display: none; }
+  .btn-menu { padding: 0.5rem 0.6rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-lateral, .menu-overlay { transition: none; }
+}
+
+/* ============================================================
+   MINIATURAS DOS CARDS (arte em SVG, sem arquivo externo)
+   ============================================================ */
+.media-thumb {
+  position: relative;
+  height: 104px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, #182740 0%, #0C1424 100%);
+}
+
+.thumb-arte {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* O botão de tocar fica acima da arte, com contraste garantido */
+.media-thumb .media-play {
+  position: relative;
+  z-index: 1;
+  background: rgba(11, 18, 32, 0.55);
+  backdrop-filter: blur(3px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.media-card:hover .media-play { transform: scale(1.08); }
+.media-card.tocando .media-play { background: var(--acento); border-color: var(--acento); }
+
+/* Leve escurecida no rodapé da arte, para o título nunca competir com ela */
+.media-thumb::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 38%;
+  background: linear-gradient(180deg, transparent, rgba(11, 18, 32, 0.55));
+  pointer-events: none;
+}
+
+/* ============================================================
+   PAINEL DA ASSINANTE (modal de planos, quando o Pro está ativo)
+   ============================================================ */
+.painel-assinante {
+  text-align: center;
+  padding: 0.5rem 0.25rem 0;
+}
+
+.assinante-selo { font-size: 2.6rem; line-height: 1; margin-bottom: 0.6rem; }
+
+.assinante-titulo {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  color: var(--text-main);
+  margin: 0 0 0.5rem;
+}
+
+.assinante-texto {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 28rem;
+  margin: 0 auto 1.5rem;
+}
+
+.assinante-dados {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.assinante-dado {
+  background: var(--superficie-1);
+  border: 1px solid var(--borda-sutil);
+  border-radius: 12px;
+  padding: 0.85rem 0.6rem;
+}
+
+.assinante-rotulo {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+}
+
+.assinante-dado strong {
+  font-size: 0.95rem;
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.35;
+  display: block;
+}
+
+.assinante-nota {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+  background: rgba(59, 130, 246, 0.08);
+  border-left: 2px solid var(--acento);
+  border-radius: 8px;
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  margin: 0 0 1.35rem;
+}
+.assinante-nota.aviso { background: rgba(149, 167, 136, 0.1); border-left-color: var(--sage-calm); }
+.assinante-nota.alerta { background: rgba(255, 128, 128, 0.1); border-left-color: #FF9C9C; color: #FFC9C9; }
+
+.assinante-acoes { display: flex; gap: 0.7rem; justify-content: center; flex-wrap: wrap; }
+.assinante-acoes button { width: auto; padding: 0.7rem 1.4rem; }
+
+@media (max-width: 560px) {
+  .assinante-dados { grid-template-columns: 1fr; }
+  .assinante-acoes button { width: 100%; }
+}

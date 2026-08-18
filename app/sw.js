@@ -2,13 +2,13 @@
  * DESLIGUE-SE — Service Worker para Suporte PWA Offline & Instalação
  */
 
-const CACHE_NAME = 'desliguese-cache-v2.4.5';
+const CACHE_NAME = 'desliguese-cache-v2.6.0';
 const ASSETS_TO_CACHE = [
   './',
-  './index.html?v=2.4.5',
-  './styles.css?v=2.4.5',
-  './config.js?v=2.4.5',
-  './app.js?v=2.4.5',
+  './index.html?v=2.6.0',
+  './styles.css?v=2.6.0',
+  './config.js?v=2.6.0',
+  './app.js?v=2.6.0',
   './manifest.json',
   './favicon.svg'
 ];
