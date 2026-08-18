@@ -2870,17 +2870,6 @@ button:active, .nav-pill:active, .mob-nav-btn:active, .btn-primary:active, .btn-
 }
 
 /* ============================================================
-   AVISO DE NÃO PERSISTÊNCIA NO MODO VISITANTE
-   ============================================================ */
-.info-note-visitor {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px dashed rgba(59, 130, 246, 0.28);
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-/* ============================================================
    EXCLUSÃO DE CONTA (LGPD)
    ============================================================ */
 .account-danger-zone {
@@ -3719,11 +3708,6 @@ body.plano-pro .premium-mob-btn {
   color: var(--sage-calm);
 }
 
-/* Aviso de modo visitante só aparece para quem não entrou */
-body.esta-logada .info-note-visitor {
-  display: none;
-}
-
 /* Consentimento pendente: destaca a caixa que falta marcar */
 .terms-checkbox-label.consentimento-pendente {
   outline: 2px solid #FF9C9C;
@@ -3932,3 +3916,21 @@ body.esta-logada .info-note-visitor {
 @media (max-width: 600px) {
   .narration-speed { margin-left: 0; width: 100%; justify-content: space-between; }
 }
+
+/* ============================================================
+   DOIS MODOS DE INTERFACE
+   Visitante  → apenas a apresentação do produto
+   Autenticada → apenas o aplicativo
+   ============================================================ */
+
+/* Menu do app, barra inferior e afins não existem antes do login */
+body.modo-visitante .somente-logada { display: none !important; }
+
+/* A apresentação sai de cena assim que a pessoa entra */
+body.modo-app #viewHome { display: none !important; }
+
+/* Sem barra inferior, o conteúdo pode usar o rodapé inteiro */
+body.modo-visitante .main-content { padding-bottom: 2rem; }
+
+/* No modo visitante o cabeçalho fica enxuto: marca à esquerda, ação à direita */
+body.modo-visitante .header-container { justify-content: space-between; }

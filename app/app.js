@@ -19,7 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
   try {
     if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase && typeof window.supabase.createClient === 'function') {
       supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('✅ Supabase conectado:', SUPABASE_URL);
     }
   } catch (err) {
     console.warn('Supabase não inicializado localmente:', err);
@@ -89,9 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const mobNavBtns = {
     night: document.getElementById('btnMobNight'),
-    morning: document.getElementById('btnMobMorning'),
-    history: document.getElementById('btnMobHistory'),
-    premium: document.getElementById('btnMobPremium'),
+    chat: document.getElementById('btnMobChat'),
+    sounds: document.getElementById('btnMobSounds'),
+    rhythm: document.getElementById('btnMobRhythm'),
     auth: document.getElementById('btnMobAuth')
   };
 
@@ -157,7 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Modais
   const modalPremium = document.getElementById('modalPremium');
   const btnCloseModal = document.getElementById('btnCloseModal');
-  const btnDismissPremium = document.getElementById('btnDismissPremium');
 
   const modalAuth = document.getElementById('modalAuth');
   const btnCloseAuthModal = document.getElementById('btnCloseAuthModal');
@@ -405,8 +403,54 @@ document.addEventListener('DOMContentLoaded', () => {
     mobNavBtns.auth?.addEventListener('click', () => openModal(modalAuth));
   }
 
+  // Telas que só existem depois do login. A apresentação ('home') é o oposto:
+  // some assim que a pessoa entra, para não competir com o aplicativo.
+  const VIEWS_DO_APP = ['night', 'morning', 'history', 'stories', 'sounds', 'rhythm', 'chat'];
+
+  /**
+   * Define o modo da interface a partir do estado de autenticação.
+   *
+   * Visitante  → só a apresentação do produto e o convite para entrar.
+   * Autenticada → só o aplicativo; a apresentação sai de cena.
+   *
+   * Antes as duas coisas conviviam na mesma tela e a apresentação ficava
+   * pendurada acima de qualquer aba — era o que deixava o site confuso.
+   */
+  function aplicarModoDeAcesso() {
+    const logada = Boolean(appState.currentUser);
+
+    document.body.classList.toggle('modo-app', logada);
+    document.body.classList.toggle('modo-visitante', !logada);
+
+    const rotulo = document.getElementById('userAuthLabel');
+    const botaoConta = document.getElementById('btnOpenAuth');
+    if (rotulo && !logada) rotulo.textContent = 'Entrar';
+    if (botaoConta) {
+      botaoConta.title = logada ? 'Minha conta' : 'Entrar ou criar conta gratuita';
+      botaoConta.classList.toggle('btn-header-primary', !logada);
+      botaoConta.classList.toggle('btn-header-ghost', logada);
+    }
+
+    // Corrige a tela ativa caso ela não pertença ao modo atual
+    const ativa = Object.keys(views).find(k => views[k]?.classList.contains('active'));
+    if (!logada && ativa && ativa !== 'home') switchView('home');
+    if (logada && (!ativa || ativa === 'home')) switchView('night');
+  }
+
   function switchView(viewName) {
     if (!views[viewName]) return;
+
+    // Porta de entrada única: qualquer tentativa de abrir o aplicativo sem
+    // sessão vira convite para entrar, em vez de uma tela vazia ou quebrada.
+    if (VIEWS_DO_APP.includes(viewName) && !appState.currentUser) {
+      guardarRascunhoDaApresentacao();
+      openModal(modalAuth);
+      showAuthFeedback('Crie sua conta gratuita para começar — leva menos de um minuto e o seu diário fica guardado.', 'success');
+      return;
+    }
+
+    // Quem já entrou não volta para a página de vendas
+    if (viewName === 'home' && appState.currentUser) viewName = 'night';
 
     Object.keys(views).forEach(k => {
       views[k]?.classList.toggle('active', k === viewName);
@@ -1007,7 +1051,9 @@ document.addEventListener('DOMContentLoaded', () => {
     try { localStorage.removeItem('desliguese_last_dump_date'); } catch (e) {}
 
     renderPlanBadge();
+    aplicarModoDeAcesso();
     persistirConsentimento(user.id);
+    recuperarRascunhoDaApresentacao();
 
     // Carrega histórico associado ao usuário logado
     appState.history = loadHistoryFromLocalStorage();
@@ -1035,6 +1081,7 @@ document.addEventListener('DOMContentLoaded', () => {
     authViewLoggedIn?.classList.add('hidden');
 
     renderPlanBadge();
+    aplicarModoDeAcesso();
     updateHistoryUI();
     checkDailyLimitUI();
   }
@@ -1081,16 +1128,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // A pílula "Premium" vira indicador de status para quem já assina
-    [navBtns.premium, mobNavBtns.premium].forEach(btn => {
-      if (!btn) return;
-      const rotulo = btn.querySelector('.mob-nav-label');
-      if (rotulo) {
-        rotulo.textContent = isPro ? 'Pro' : 'Premium';
-      } else {
-        btn.lastChild.textContent = isPro ? ' Pro ativo' : ' Premium';
-      }
-      btn.title = isPro ? 'Sua assinatura Pro está ativa' : 'Planos Premium';
-    });
+    // O item do menu não muda de nome (era reescrito para "Premium" e apagava
+    // o rótulo "Planos"); só o título de apoio reflete o estado da assinatura.
+    if (navBtns.premium) {
+      navBtns.premium.title = isPro
+        ? 'Sua assinatura Pro está ativa — ver detalhes'
+        : 'Conhecer os planos';
+    }
 
     // Rotinas longas deixam de exibir cadeado
     durationBtns.forEach(btn => {
@@ -1270,15 +1314,9 @@ document.addEventListener('DOMContentLoaded', () => {
     //    O marcador local é de visitante e NÃO pode contaminar uma conta —
     //    era o que fazia o aviso de "1 por dia" aparecer para quem tinha
     //    acabado de entrar sem ter registrado nada naquele dia.
-    if (appState.currentUser) {
-      if (typeof appState.dailyEntriesToday === 'number') {
-        return appState.dailyEntriesToday >= FREE_ENTRIES_PER_DAY;
-      }
-    } else {
-      // 2. Visitante: marcador local é a única referência disponível
-      try {
-        if (localStorage.getItem('desliguese_last_dump_date') === todayStr) return true;
-      } catch (e) {}
+    // Só existe uso autenticado: a contagem do servidor é a referência.
+    if (typeof appState.dailyEntriesToday === 'number') {
+      return appState.dailyEntriesToday >= FREE_ENTRIES_PER_DAY;
     }
 
     // 3. Confere o histórico em memória usando SEMPRE o fuso local nos dois lados
@@ -2759,7 +2797,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Premium Modal
     const openPremium = () => openModal(modalPremium);
     navBtns.premium?.addEventListener('click', openPremium);
-    mobNavBtns.premium?.addEventListener('click', openPremium);
     btnCloseModal?.addEventListener('click', () => closeModal(modalPremium));
     modalPremium?.addEventListener('click', (e) => {
       if (e.target === modalPremium) closeModal(modalPremium);
@@ -3272,7 +3309,6 @@ document.addEventListener('DOMContentLoaded', () => {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
           .then((reg) => {
-            console.log('✅ Service Worker do Desligue-se registrado:', reg.scope);
           })
           .catch((err) => {
             console.warn('Falha ao registrar Service Worker:', err);
@@ -3310,7 +3346,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (deferredInstallPrompt) {
           deferredInstallPrompt.prompt();
           const { outcome } = await deferredInstallPrompt.userChoice;
-          console.log('Escolha de instalação PWA:', outcome);
           deferredInstallPrompt = null;
           if (outcome === 'accepted') {
             btnInstallApp.classList.add('hidden');
@@ -3325,7 +3360,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 5. Quando o app for instalado com sucesso
     window.addEventListener('appinstalled', () => {
-      console.log('🎉 Desligue-se instalado com sucesso como PWA!');
       if (btnInstallApp) btnInstallApp.classList.add('hidden');
       deferredInstallPrompt = null;
     });
@@ -3963,7 +3997,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if ('speechSynthesis' in window) {
       speechSynthesis.addEventListener?.('voiceschanged', () => {
         const voz = escolherVozPtBr();
-        if (voz) console.log('Voz da narração:', voz.name, `(${voz.lang})`);
+        // voz escolhida silenciosamente; o rótulo aparece na interface
       });
     }
 
@@ -4192,7 +4226,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Chamadas para ação da home
     const irParaDiario = () => switchView('night');
     document.getElementById('btnHeroStart')?.addEventListener('click', irParaDiario);
-    document.getElementById('btnHeaderStart')?.addEventListener('click', irParaDiario);
     document.getElementById('btnGoRhythm')?.addEventListener('click', () => switchView('rhythm'));
     document.getElementById('btnGoSounds')?.addEventListener('click', () => switchView('sounds'));
     document.getElementById('btnFinalCta')?.addEventListener('click', () => {
@@ -4204,16 +4237,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Escrita rápida direto da home
-    const rapido = document.getElementById('quickJournalInput');
     document.getElementById('btnQuickWrite')?.addEventListener('click', () => {
-      const texto = (rapido?.value || '').trim();
+      guardarRascunhoDaApresentacao();
       switchView('night');
-      if (texto && journalInput) {
-        journalInput.value = texto;
-        journalInput.dispatchEvent(new Event('input', { bubbles: true }));
-        if (rapido) rapido.value = '';
+      // switchView abre o login quando não há sessão; o rascunho fica guardado
+      // e é despejado no diário assim que a pessoa entrar.
+      if (appState.currentUser) {
+        recuperarRascunhoDaApresentacao();
+        setTimeout(() => journalInput?.focus(), 350);
       }
-      setTimeout(() => journalInput?.focus(), 350);
     });
 
     document.querySelectorAll('.mood-face').forEach(face => {
@@ -4454,6 +4486,31 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnChatToJournal')?.addEventListener('click', () => switchView('night'));
   }
 
+
+  const RASCUNHO_KEY = 'desliguese_rascunho_apresentacao';
+
+  /** Guarda o que a pessoa escreveu na home antes de ser levada ao login. */
+  function guardarRascunhoDaApresentacao() {
+    const campo = document.getElementById('quickJournalInput');
+    const texto = (campo?.value || '').trim();
+    if (!texto) return;
+    try { sessionStorage.setItem(RASCUNHO_KEY, texto); } catch (e) {}
+  }
+
+  /** Despeja esse rascunho no diário depois do login, e limpa o guardado. */
+  function recuperarRascunhoDaApresentacao() {
+    let texto = '';
+    try { texto = sessionStorage.getItem(RASCUNHO_KEY) || ''; } catch (e) {}
+    if (!texto || !journalInput) return;
+
+    journalInput.value = texto;
+    journalInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    const campo = document.getElementById('quickJournalInput');
+    if (campo) campo.value = '';
+    try { sessionStorage.removeItem(RASCUNHO_KEY); } catch (e) {}
+  }
+
   function escapeHTML(str) {
     if (!str) return '';
     return str
@@ -4510,6 +4567,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   try {
+    aplicarModoDeAcesso();
     renderizarConteudoNovoSite();
   } catch (err) {
     console.warn('[Desligue-se Init] Erro ao desenhar as telas novas:', err);

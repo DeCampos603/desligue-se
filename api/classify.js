@@ -11,21 +11,20 @@
  *  - limite de uso mais alto para usuárias autenticadas.
  */
 
-const { applyCors, getAuthenticatedUser } = require('./_lib/http');
+const { applyCors, requireUser } = require('./_lib/http');
 const { gerarTexto } = require('./_lib/gemini');
 
 // Orçamento total da função. O cliente espera 28s (ver app.js), então
 // precisamos responder antes disso — nem que seja com o pedido de fallback.
 const TOTAL_BUDGET_MS = 22000;
 
-// Limitador em memória. ATENÇÃO: em serverless cada instância tem o seu próprio
-// mapa, então isto só contém abuso casual. O limite real por usuária é aplicado
-// no banco (1 registro/dia no plano gratuito). Para bloqueio forte, migrar para
-// um contador compartilhado (Vercel KV / Upstash Redis).
+// Limitador em memória, por usuária. ATENÇÃO: em serverless cada instância tem
+// o seu próprio mapa, então isto contém abuso casual, não abuso determinado.
+// O limite real do plano gratuito é aplicado no banco (1 registro/dia).
+// Para bloqueio forte, migrar para um contador compartilhado (Vercel KV).
 const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const MAX_ANONYMOUS_PER_WINDOW = 5;
-const MAX_AUTHENTICATED_PER_WINDOW = 20;
+const MAX_POR_JANELA = 20;
 
 function isRateLimited(key, max) {
   const now = Date.now();
@@ -98,14 +97,13 @@ module.exports = async function handler(req, res) {
 
   const startedAt = Date.now();
 
-  // Usuárias autenticadas têm limite mais generoso; visitantes seguem podendo
-  // experimentar (a "degustação" do produto), mas com folga menor.
-  const user = await getAuthenticatedUser(req);
-  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
-  const rateKey = user ? `user:${user.id}` : `ip:${clientIp}`;
-  const maxRequests = user ? MAX_AUTHENTICATED_PER_WINDOW : MAX_ANONYMOUS_PER_WINDOW;
+  // O aplicativo agora exige login: sem sessão não há triagem. Isso fecha de
+  // vez o cenário em que este endpoint funcionava como proxy público do Gemini
+  // na cota do projeto, e permite limitar por usuária em vez de por IP.
+  const user = await requireUser(req, res);
+  if (!user) return;
 
-  if (isRateLimited(rateKey, maxRequests)) {
+  if (isRateLimited(`user:${user.id}`, MAX_POR_JANELA)) {
     return res.status(429).json({
       error: 'Muitas requisições em pouco tempo. Aguarde um minuto e tente novamente.',
       fallback: true

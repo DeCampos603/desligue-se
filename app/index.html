@@ -42,7 +42,7 @@
   
   <!-- Stripe.js CDN -->
   <script defer src="https://js.stripe.com/v3/"></script>
-  <link rel="stylesheet" href="styles.css?v=2.3.0">
+  <link rel="stylesheet" href="styles.css?v=2.4.1">
 </head>
 <body class="theme-night">
   <!-- Glow decorativo suave de fundo -->
@@ -65,27 +65,28 @@
         </div>
       </div>
 
-      <nav class="nav-controls" aria-label="Navegação principal">
-        <button id="btnTabHome" class="nav-link active" data-view="home">Início</button>
-        <button id="btnTabNight" class="nav-link" data-view="night">Diário</button>
+      <!-- Menu do aplicativo: existe apenas depois do login -->
+      <nav class="nav-controls somente-logada" aria-label="Navegação do aplicativo">
+        <button id="btnTabNight" class="nav-link active" data-view="night">Diário</button>
+        <button id="btnTabChat" class="nav-link" data-view="chat">IA do Sono</button>
         <button id="btnTabStories" class="nav-link" data-view="stories">Histórias</button>
         <button id="btnTabSounds" class="nav-link" data-view="sounds">Sons</button>
         <button id="btnTabRhythm" class="nav-link" data-view="rhythm">Meu Ritmo</button>
-        <button id="btnTabChat" class="nav-link" data-view="chat">IA do Sono</button>
         <button id="btnTabMorning" class="nav-link" data-view="morning">Check-in</button>
         <button id="btnTabHistory" class="nav-link" data-view="history">Histórico</button>
-        <button id="btnOpenPremium" class="nav-link" title="Planos Premium">Planos</button>
+        <button id="btnOpenPremium" class="nav-link" title="Planos e assinatura">Planos</button>
       </nav>
 
-      <!-- Ações do Cabeçalho (Visíveis no Mobile e Desktop) -->
       <div class="header-actions">
         <button id="btnInstallApp" class="nav-pill install-pill hidden" title="Instalar aplicativo no celular ou computador">
           <span class="pill-icon">📲</span> <span class="install-pill-label">Instalar App</span>
         </button>
-        <button id="btnOpenAuth" class="btn-header-ghost" title="Minha Conta / Login">
+
+        <!-- Uma única ação de conta. Deslogada: "Entrar ou criar conta".
+             Logada: nome da usuária, abrindo o painel da conta. -->
+        <button id="btnOpenAuth" class="btn-header-primary" title="Entrar ou criar conta">
           <span id="userAvatarIcon" class="pill-icon">👤</span> <span id="userAuthLabel">Entrar</span>
         </button>
-        <button id="btnHeaderStart" class="btn-header-primary">Começar agora</button>
       </div>
     </div>
   </header>
@@ -339,7 +340,6 @@
           <div class="info-text">
             <strong>Seu Diário Pessoal & Descarrego Noturno</strong>
             <p>Além de aliviar a mente para adormecer em paz, o que você escreve pode ficar guardado no seu diário para acompanhar suas reflexões dia após dia.</p>
-            <p class="info-note-visitor"><strong>Sem login, nada é gravado:</strong> no modo visitante o texto some ao fechar a página. Crie uma conta gratuita se quiser manter o seu histórico.</p>
           </div>
         </div>
 
@@ -1183,10 +1183,10 @@
     <div class="modal-card trial-modal-card">
       <button id="btnCloseTrialBlock" class="modal-close-btn" title="Fechar" aria-label="Fechar modal">&times;</button>
       <div class="modal-header">
-        <div class="badge-tag" style="background: rgba(59,130,246,0.25); color: var(--acento);">Degustação Gratuita Concluída</div>
-        <h2 class="modal-title">Você já aproveitou seu 1º registro de teste!</h2>
+        <div class="badge-tag" style="background: rgba(59,130,246,0.25); color: var(--acento);">Limite do plano gratuito</div>
+        <h2 class="modal-title">Você já fez o seu registro de hoje</h2>
         <p class="modal-subtitle">
-          Sem login e sem plano ativo, o acesso inicial é apenas uma degustação de demonstração.
+          No plano gratuito é um descarrego por dia. Amanhã ele volta a ficar disponível — ou você pode liberar agora, sem limite.
         </p>
       </div>
 
@@ -1254,13 +1254,13 @@
           </div>
           <div class="auth-terms-group">
             <label class="terms-checkbox-label">
-              <input type="checkbox" id="checkTermsConsent">
+              <input type="checkbox" id="checkTermsConsent" aria-label="Aceito os Termos de Uso, a Isenção Médica e a Política de Privacidade">
               <span>
                 Li e concordo com os <a href="#" id="linkOpenTermsAuth" class="terms-link">Termos de Uso, Isenção Médica & Privacidade (LGPD)</a>. Compreendo que este aplicativo é uma ferramenta de suporte de autocuidado e não substitui acompanhamento médico ou psicológico.
               </span>
             </label>
             <label class="terms-checkbox-label">
-              <input type="checkbox" id="checkSensitiveDataConsent">
+              <input type="checkbox" id="checkSensitiveDataConsent" aria-label="Autorizo o processamento do conteúdo dos meus desabafos, inclusive pela IA do Google Gemini">
               <span>
                 <strong>Consentimento específico (LGPD, art. 11):</strong> autorizo que o conteúdo dos meus desabafos — que pode revelar dados sobre a minha saúde mental — seja processado pelo Desligue-se e enviado ao serviço de inteligência artificial <strong>Google Gemini</strong>, inclusive fora do Brasil, com a finalidade exclusiva de organizar os meus relatos. Posso revogar este consentimento e excluir meus dados a qualquer momento.
               </span>
@@ -1447,7 +1447,7 @@
           </p>
 
           <p>
-            <strong>Modo visitante:</strong> se você usar o aplicativo sem criar conta, o seu relato é enviado para a triagem por IA, mas <strong>não é gravado</strong> em nenhum banco de dados nosso — ele desaparece quando você fecha a página.
+            <strong>É necessário ter conta:</strong> o Desligue-se só processa relatos de usuárias autenticadas. Sem conta, o site apresenta o produto, mas nenhum texto seu é enviado para a IA nem gravado.
           </p>
 
           <p><strong>Seus direitos (art. 18 da LGPD).</strong> A qualquer momento você pode:</p>
@@ -1543,14 +1543,14 @@
   </footer>
 
   <!-- Barra de Navegação Inferior Fixa para Celular (Mobile App Experience) -->
-  <nav class="mobile-bottom-nav">
-    <button id="btnMobHome" class="mob-nav-btn active" title="Início" data-view="home">
-      <span class="mob-nav-icon">🏠</span>
-      <span class="mob-nav-label">Início</span>
-    </button>
-    <button id="btnMobNight" class="mob-nav-btn" title="Diário Noturno" data-view="night">
+  <nav class="mobile-bottom-nav somente-logada">
+    <button id="btnMobNight" class="mob-nav-btn active" title="Diário Noturno" data-view="night">
       <span class="mob-nav-icon">🌙</span>
       <span class="mob-nav-label">Diário</span>
+    </button>
+    <button id="btnMobChat" class="mob-nav-btn" title="IA do Sono" data-view="chat">
+      <span class="mob-nav-icon">✨</span>
+      <span class="mob-nav-label">Conversar</span>
     </button>
     <button id="btnMobSounds" class="mob-nav-btn" title="Sons da Natureza" data-view="sounds">
       <span class="mob-nav-icon">🌿</span>
@@ -1562,12 +1562,12 @@
     </button>
     <button id="btnMobAuth" class="mob-nav-btn" title="Minha Conta">
       <span class="mob-nav-icon" id="mobAvatarIcon">👤</span>
-      <span class="mob-nav-label" id="mobAuthLabel">Entrar</span>
+      <span class="mob-nav-label" id="mobAuthLabel">Conta</span>
     </button>
   </nav>
 
-  <script src="config.js?v=2.3.0"></script>
-  <script src="app.js?v=2.3.0"></script>
+  <script src="config.js?v=2.4.1"></script>
+  <script src="app.js?v=2.4.1"></script>
   <!-- Vercel Web Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
   <!-- Vercel Speed Insights -->
