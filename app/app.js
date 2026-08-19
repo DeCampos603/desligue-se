@@ -598,6 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // A conversa recebe tratamento de tela cheia: sem :has() no CSS, a marca
     // vem daqui e o layout deixa de depender de suporte do navegador.
     document.body.classList.toggle('tela-chat', viewName === 'chat');
+    registrarRota(viewName, ABAS_DAS_NOITES.includes(arguments[0]) ? arguments[0] : null);
 
     if (viewName === 'dashboard') {
       renderizarPainel();
@@ -4042,6 +4043,9 @@ document.addEventListener('DOMContentLoaded', () => {
       somAtual.nos = som.construir(ctx, mestre) || [];
       somAtual.id = id;
 
+      // Sem isto o navegador móvel suspende o áudio ao apagar a tela
+      ligarSaidaDeMidia(ctx, mestre);
+
       document.querySelectorAll(`[data-som="${id}"]`).forEach(el => el.classList.add('tocando'));
 
       abrirPlayer({
@@ -4286,17 +4290,71 @@ document.addEventListener('DOMContentLoaded', () => {
     const vozes = speechSynthesis.getVoices().filter(v => /^pt/i.test(v.lang || ''));
     if (vozes.length === 0) return null;
 
-    // Vozes reconhecidamente mais naturais, em ordem de preferência
-    const preferidas = ['luciana', 'francisca', 'maria', 'google português do brasil', 'google portugues do brasil'];
-    for (const nome of preferidas) {
-      const achou = vozes.find(v => (v.name || '').toLowerCase().includes(nome));
-      if (achou) return achou;
-    }
-
-    // Prefere pt-BR sobre pt-PT, e voz local sobre remota (menos travadas)
     const brasileiras = vozes.filter(v => /pt[-_]?br/i.test(v.lang));
     const candidatas = brasileiras.length ? brasileiras : vozes;
-    return candidatas.find(v => v.localService) || candidatas[0];
+
+    // Pontuação por qualidade conhecida. Vozes neurais e "online" soam muito
+    // melhor que as locais antigas — vale até a latência extra da rede, porque
+    // aqui a leitura é lenta de propósito e ninguém está com pressa.
+    const nota = (v) => {
+      const nome = (v.name || '').toLowerCase();
+      let pontos = 0;
+      if (/natural|neural|premium|enhanced|wavenet|studio/.test(nome)) pontos += 50;
+      if (/google/.test(nome)) pontos += 30;   // vozes do Google são as melhores em pt-BR
+      if (/multilingual/.test(nome)) pontos += 10;
+      if (/francisca|thalita|luciana|maria|camila|brenda|leticia|yara/.test(nome)) pontos += 20;
+      if (/daniel|antonio|ricardo|julio|fabio/.test(nome)) pontos -= 5;  // história de dormir pede voz suave
+      if (!v.localService) pontos += 5;
+      return pontos;
+    };
+
+    return candidatas.slice().sort((a, b) => nota(b) - nota(a))[0];
+  }
+
+  /**
+   * Quebra o texto em unidades de fala com pausa própria.
+   *
+   * Ler um parágrafo inteiro numa tacada é o que deixa a voz robótica: o
+   * sintetizador mantém entonação e ritmo constantes do início ao fim. Falando
+   * frase a frase, cada uma recebe uma curva de entonação nova, e o silêncio
+   * entre elas passa a existir de verdade — que é como uma pessoa lê para
+   * outra dormir.
+   */
+  function fatiarParaNarracao(paragrafo) {
+    const partes = [];
+    // Mantém a pontuação junto: é dela que sai a entonação
+    const frases = paragrafo.match(/[^.!?…]+[.!?…]+|[^.!?…]+$/g) || [paragrafo];
+
+    frases.forEach(frase => {
+      const limpa = frase.trim();
+      if (!limpa) return;
+
+      // Frases longas ganham respiro nas vírgulas, como quem lê em voz alta
+      // 90 caracteres é onde uma frase começa a pedir fôlego em voz alta
+      if (limpa.length > 90 && limpa.includes(',')) {
+        const pedacos = limpa.split(/,\s*/);
+        pedacos.forEach((pedaco, i) => {
+          const ultimo = i === pedacos.length - 1;
+          partes.push({
+            texto: ultimo ? pedaco : pedaco + ',',
+            pausa: ultimo ? pausaPorPontuacao(pedaco) : 260
+          });
+        });
+      } else {
+        partes.push({ texto: limpa, pausa: pausaPorPontuacao(limpa) });
+      }
+    });
+
+    return partes;
+  }
+
+  /** Ponto pede mais silêncio que vírgula; reticências pedem mais ainda. */
+  function pausaPorPontuacao(texto) {
+    const fim = texto.trim().slice(-1);
+    if (fim === '…' || texto.endsWith('...')) return 900;
+    if (fim === '.' || fim === '!' || fim === '?') return 620;
+    if (fim === ',' || fim === ';') return 280;
+    return 480;
   }
 
   function definirStatusNarracao(texto) {
@@ -4331,34 +4389,53 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const texto = narrador.fila[narrador.indice];
+    const paragrafo = narrador.fila[narrador.indice];
     destacarParagrafo(narrador.indice);
     definirStatusNarracao(`Lendo ${narrador.indice + 1} de ${narrador.fila.length}`);
 
-    const fala = new SpeechSynthesisUtterance(texto);
-    fala.lang = 'pt-BR';
-    fala.rate = narrador.velocidade;
-    fala.pitch = 0.95;
-    fala.volume = 1;
-
+    const pedacos = fatiarParaNarracao(paragrafo);
     const voz = escolherVozPtBr();
-    if (voz) fala.voice = voz;
 
-    fala.onend = () => {
+    // Fala pedaço a pedaço, com pausa entre eles
+    const falarPedaco = (i) => {
       if (!narrador.tocando) return;
-      narrador.indice++;
-      // Silêncio entre parágrafos: é o respiro que a leitura corrida não tinha
-      setTimeout(falarProximoParagrafo, PAUSA_ENTRE_PARAGRAFOS_MS);
+
+      if (i >= pedacos.length) {
+        narrador.indice++;
+        // Silêncio maior entre parágrafos: é a virada de página
+        setTimeout(falarProximoParagrafo, PAUSA_ENTRE_PARAGRAFOS_MS);
+        return;
+      }
+
+      const { texto, pausa } = pedacos[i];
+      const fala = new SpeechSynthesisUtterance(texto);
+      fala.lang = 'pt-BR';
+      if (voz) fala.voice = voz;
+
+      // Variação mínima de altura e ritmo entre as frases. Sem isso, todas
+      // saem com exatamente a mesma curva — e é essa repetição matemática que
+      // o ouvido reconhece como "robô". A variação é pequena de propósito:
+      // o suficiente para soar vivo, não a ponto de chamar atenção.
+      const desvio = ((i * 37) % 7 - 3) / 100;   // -0.03 a +0.03, estável entre execuções
+      fala.pitch = Math.max(0.6, Math.min(1.2, 0.92 + desvio));
+      fala.rate = Math.max(0.5, Math.min(1.2, narrador.velocidade + desvio / 2));
+
+      // A última frase do parágrafo desce um pouco mais: é assim que quem lê
+      // sinaliza que um trecho terminou.
+      if (i === pedacos.length - 1) fala.pitch -= 0.04;
+
+      fala.volume = 1;
+      fala.onend = () => setTimeout(() => falarPedaco(i + 1), pausa);
+      fala.onerror = (e) => {
+        if (e.error === 'interrupted' || e.error === 'canceled') return;
+        console.warn('Falha na narração:', e.error);
+        encerrarNarracao(false);
+      };
+
+      speechSynthesis.speak(fala);
     };
 
-    fala.onerror = (e) => {
-      if (e.error === 'interrupted' || e.error === 'canceled') return;
-      console.warn('Falha na narração:', e.error);
-      encerrarNarracao(false);
-      showToast('A narração foi interrompida pelo navegador.', 'info');
-    };
-
-    speechSynthesis.speak(fala);
+    falarPedaco(0);
   }
 
   function narrarHistoria() {
@@ -5278,6 +5355,9 @@ document.addEventListener('DOMContentLoaded', () => {
     elementoPorId('sonoTitulo').textContent = titulo;
     atualizarBotoesDoPlayer();
     iniciarRelogioDoTimer();
+    publicarNoSistema({ titulo, subtitulo });
+    atualizarEstadoNoSistema();
+    guardarReproducao();
   }
 
   function fecharPlayer() {
@@ -5288,6 +5368,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const mini = elementoPorId('miniPlayer');
     if (mini) mini.hidden = true;
+    desligarSaidaDeMidia();
+    soltarTravaDeTela();
+    try { localStorage.removeItem(CHAVE_REPRODUCAO); } catch (e) {}
     fecharModoSono();
   }
 
@@ -5322,6 +5405,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     player.tocando = !player.tocando;
     atualizarBotoesDoPlayer();
+    atualizarEstadoNoSistema();
+
+    if (elementoDeMidia) {
+      player.tocando ? elementoDeMidia.play().catch(() => {}) : elementoDeMidia.pause();
+    }
   }
 
   // ---------- Modo Sono ----------
@@ -5334,6 +5422,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tela.classList.add('aberto');
     document.body.style.overflow = 'hidden';
     elementoPorId('btnSonoPlayPause')?.focus();
+    pedirTravaDeTela();
   }
 
   function fecharModoSono() {
@@ -5341,6 +5430,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!tela) return;
     tela.classList.remove('aberto');
     document.body.style.overflow = '';
+    soltarTravaDeTela();
     setTimeout(() => {
       if (!tela.classList.contains('aberto')) tela.hidden = true;
     }, 560);
@@ -5358,6 +5448,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     iniciarRelogioDoTimer();
     agendarDesligamentoDoSom();
+    guardarReproducao();
   }
 
   function iniciarRelogioDoTimer() {
@@ -5463,6 +5554,8 @@ document.addEventListener('DOMContentLoaded', () => {
       b.setAttribute('aria-selected', String(ativa));
     });
 
+    registrarRota('nights', chave);
+
     // Cada painel se redesenha ao aparecer
     if (chave === 'rhythm') renderizarRitmo();
     if (chave === 'morning') renderMorningView();
@@ -5494,6 +5587,239 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // ==========================================================================
+  // ROTEAMENTO — o aplicativo passa a ter endereço e memória
+  //
+  // Antes, trocar de tela não mexia na URL: recarregar devolvia a pessoa ao
+  // início, o botão voltar do Android fechava o app inteiro e não havia como
+  // abrir direto numa área. Cada tela agora tem um endereço em hash, que é
+  // curto, funciona em hospedagem estática e não exige regra de reescrita.
+  // ==========================================================================
+  const ROTAS = {
+    dashboard: 'inicio',
+    breathe: 'respirar',
+    sounds: 'sons',
+    stories: 'historias',
+    night: 'diario',
+    chat: 'conversa',
+    nights: 'noites',
+    settings: 'perfil',
+    home: 'apresentacao'
+  };
+
+  const TELA_POR_ROTA = Object.fromEntries(Object.entries(ROTAS).map(([k, v]) => [v, k]));
+  const CHAVE_ULTIMA_TELA = 'desliguese_ultima_tela';
+
+  let navegandoPeloHistorico = false;
+
+  /** Grava a tela atual na URL e no histórico do navegador. */
+  function registrarRota(viewName, aba) {
+    const rota = ROTAS[viewName];
+    if (!rota) return;
+
+    const alvo = `#/${rota}${aba && aba !== 'rhythm' ? '/' + aba : ''}`;
+    if (location.hash === alvo) return;
+
+    // replaceState quando é o próprio histórico mandando: empilhar de novo
+    // criaria um laço em que "voltar" nunca sai da mesma tela.
+    if (navegandoPeloHistorico) {
+      history.replaceState({ viewName, aba }, '', alvo);
+    } else {
+      history.pushState({ viewName, aba }, '', alvo);
+    }
+
+    try { localStorage.setItem(CHAVE_ULTIMA_TELA, JSON.stringify({ viewName, aba })); } catch (e) {}
+  }
+
+  function lerRotaDaUrl() {
+    const bruto = (location.hash || '').replace(/^#\/?/, '');
+    if (!bruto) return null;
+    const [rota, aba] = bruto.split('/');
+    const viewName = TELA_POR_ROTA[rota];
+    return viewName ? { viewName, aba } : null;
+  }
+
+  /**
+   * Decide qual tela abrir na entrada: primeiro a URL, depois a última visitada.
+   * Sem isso, recarregar no meio de uma sessão jogava tudo para o começo.
+   */
+  function restaurarRota() {
+    let destino = lerRotaDaUrl();
+
+    if (!destino) {
+      try {
+        const salvo = JSON.parse(localStorage.getItem(CHAVE_ULTIMA_TELA) || 'null');
+        if (salvo && ROTAS[salvo.viewName]) destino = salvo;
+      } catch (e) {}
+    }
+
+    if (!destino) return false;
+    if (VIEWS_DO_APP.includes(destino.viewName) && !appState.currentUser) return false;
+
+    navegandoPeloHistorico = true;
+    switchView(destino.viewName);
+    if (destino.aba) abrirAbaDasNoites(destino.aba);
+    navegandoPeloHistorico = false;
+    return true;
+  }
+
+  function initRoteamento() {
+    // Botão voltar do navegador e do Android
+    window.addEventListener('popstate', (e) => {
+      const destino = e.state || lerRotaDaUrl();
+      if (!destino) return;
+
+      navegandoPeloHistorico = true;
+      // Sair do Modo Sono e dos modais é o que "voltar" deve fazer primeiro
+      if (modoSonoAberto()) { fecharModoSono(); navegandoPeloHistorico = false; return; }
+      switchView(destino.viewName);
+      if (destino.aba) abrirAbaDasNoites(destino.aba);
+      navegandoPeloHistorico = false;
+    });
+  }
+
+  // ==========================================================================
+  // ÁUDIO COM A TELA APAGADA
+  //
+  // O som é sintetizado em Web Audio, e o navegador móvel suspende o
+  // AudioContext quando a tela apaga — justamente o momento em que o produto
+  // deveria continuar tocando. A saída é rotear o áudio para um elemento
+  // <audio>, que o sistema reconhece como mídia: aí ele mantém a reprodução,
+  // mostra controles na tela de bloqueio e não corta quando o app vai para
+  // segundo plano.
+  // ==========================================================================
+  let elementoDeMidia = null;
+  let travaDeTela = null;
+
+  function ligarSaidaDeMidia(ctx, origem) {
+    try {
+      const destino = ctx.createMediaStreamDestination();
+      origem.connect(destino);
+
+      if (!elementoDeMidia) {
+        elementoDeMidia = document.createElement('audio');
+        elementoDeMidia.id = 'saidaDeMidia';
+        // Nunca aparece; existe só para o sistema reconhecer que há mídia
+        elementoDeMidia.setAttribute('playsinline', '');
+        elementoDeMidia.loop = true;
+        document.body.appendChild(elementoDeMidia);
+      }
+
+      elementoDeMidia.srcObject = destino.stream;
+      const promessa = elementoDeMidia.play();
+      if (promessa) promessa.catch(err => console.warn('Saída de mídia recusada:', err.message));
+      return true;
+    } catch (err) {
+      console.warn('Não foi possível criar a saída de mídia:', err.message);
+      return false;
+    }
+  }
+
+  function desligarSaidaDeMidia() {
+    if (!elementoDeMidia) return;
+    try { elementoDeMidia.pause(); elementoDeMidia.srcObject = null; } catch (e) {}
+  }
+
+  /** Controles na tela de bloqueio e nos fones. */
+  function publicarNoSistema({ titulo, subtitulo }) {
+    if (!('mediaSession' in navigator)) return;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: titulo,
+      artist: 'Desligue-se',
+      album: subtitulo || 'Sons para dormir'
+    });
+
+    const acoes = {
+      play: () => { if (!player.tocando) alternarPlayPause(); },
+      pause: () => { if (player.tocando) alternarPlayPause(); },
+      stop: () => { if (player.tipo === 'som') pararSom(); else pararNarracao(); fecharPlayer(); }
+    };
+
+    for (const [acao, tratador] of Object.entries(acoes)) {
+      try { navigator.mediaSession.setActionHandler(acao, tratador); } catch (e) {}
+    }
+  }
+
+  function atualizarEstadoNoSistema() {
+    if (!('mediaSession' in navigator)) return;
+    try { navigator.mediaSession.playbackState = player.tocando ? 'playing' : 'paused'; } catch (e) {}
+  }
+
+  /** Mantém a tela acesa só enquanto a pessoa está olhando o Modo Sono. */
+  async function pedirTravaDeTela() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+      travaDeTela = await navigator.wakeLock.request('screen');
+    } catch (e) { /* negado ou sem suporte: seguimos sem */ }
+  }
+
+  function soltarTravaDeTela() {
+    try { travaDeTela?.release(); } catch (e) {}
+    travaDeTela = null;
+  }
+
+  // ==========================================================================
+  // RETOMAR O QUE ESTAVA TOCANDO
+  // ==========================================================================
+  const CHAVE_REPRODUCAO = 'desliguese_tocando';
+
+  function guardarReproducao() {
+    try {
+      if (!player.id) { localStorage.removeItem(CHAVE_REPRODUCAO); return; }
+      localStorage.setItem(CHAVE_REPRODUCAO, JSON.stringify({
+        tipo: player.tipo,
+        id: player.id,
+        minutosTimer: player.minutosTimer,
+        em: Date.now()
+      }));
+    } catch (e) {}
+  }
+
+  /**
+   * Oferece retomar, em vez de sair tocando sozinho: navegador nenhum permite
+   * áudio sem um gesto, e som inesperado é o oposto do que este app promete.
+   */
+  function oferecerRetomada() {
+    let salvo = null;
+    try { salvo = JSON.parse(localStorage.getItem(CHAVE_REPRODUCAO) || 'null'); } catch (e) {}
+    if (!salvo || !salvo.id) return;
+
+    // Depois de 12 horas a sugestão perde sentido
+    if (Date.now() - (salvo.em || 0) > 12 * 60 * 60 * 1000) {
+      try { localStorage.removeItem(CHAVE_REPRODUCAO); } catch (e) {}
+      return;
+    }
+
+    const catalogo = salvo.tipo === 'som' ? CATALOGO_SONS : HISTORIAS;
+    const item = catalogo.find(x => x.id === salvo.id);
+    if (!item) return;
+
+    const barra = document.getElementById('retomarBarra');
+    if (!barra) return;
+
+    document.getElementById('retomarTitulo').textContent = item.titulo;
+    barra.hidden = false;
+
+    document.getElementById('btnRetomar').onclick = () => {
+      barra.hidden = true;
+      if (salvo.minutosTimer !== undefined) definirTimer(salvo.minutosTimer);
+      if (salvo.tipo === 'som') {
+        switchView('sounds');
+        tocarSom(salvo.id);
+      } else {
+        switchView('stories');
+        abrirHistoria(salvo.id);
+        setTimeout(narrarHistoria, 400);
+      }
+    };
+
+    document.getElementById('btnDispensarRetomada').onclick = () => {
+      barra.hidden = true;
+      try { localStorage.removeItem(CHAVE_REPRODUCAO); } catch (e) {}
+    };
+  }
+
   function escapeHTML(str) {
     if (!str) return '';
     return str
@@ -5519,6 +5845,7 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: 'Navigation', fn: initNavigation },
     { name: 'MenuLateral', fn: initMenuLateral },
     { name: 'Player', fn: initPlayer },
+    { name: 'Roteamento', fn: initRoteamento },
     { name: 'Respirar', fn: initRespirar },
     { name: 'MinhasNoites', fn: montarMinhasNoites },
     { name: 'PainelAssinante', fn: initPainelDaAssinante },
@@ -5558,6 +5885,8 @@ document.addEventListener('DOMContentLoaded', () => {
   try {
     aplicarModoDeAcesso();
     renderizarConteudoNovoSite();
+    restaurarRota();
+    oferecerRetomada();
   } catch (err) {
     console.warn('[Desligue-se Init] Erro ao desenhar as telas novas:', err);
   }

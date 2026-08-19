@@ -42,8 +42,8 @@
   
   <!-- Stripe.js CDN -->
   <script defer src="https://js.stripe.com/v3/"></script>
-  <link rel="stylesheet" href="styles.css?v=3.2.1">
-  <link rel="stylesheet" href="sistema.css?v=3.2.1">
+  <link rel="stylesheet" href="styles.css?v=3.3.0">
+  <link rel="stylesheet" href="sistema.css?v=3.3.0">
 </head>
 <body class="theme-night">
   <!-- Glow decorativo suave de fundo -->
@@ -1831,6 +1831,18 @@
        Fica acima da navegação inferior e acompanha a pessoa por
        todas as telas. Tocar nele abre o Modo Sono.
        ============================================================ -->
+
+  <!-- Retomar o que tocava: oferecido, nunca automático — som inesperado é o
+       oposto do que este aplicativo promete, e navegador nenhum permite áudio
+       sem um gesto da pessoa. -->
+  <div id="retomarBarra" class="retomar-barra" hidden>
+    <span class="retomar-texto">Continuar <strong id="retomarTitulo">—</strong>?</span>
+    <div class="retomar-acoes">
+      <button type="button" id="btnRetomar" class="retomar-sim">Continuar</button>
+      <button type="button" id="btnDispensarRetomada" class="retomar-nao" aria-label="Dispensar">&times;</button>
+    </div>
+  </div>
+
   <div id="miniPlayer" class="mini-player" hidden>
     <button type="button" class="mini-player-corpo" id="btnAbrirModoSono" aria-label="Abrir modo sono">
       <span class="mini-player-arte" id="miniArte" aria-hidden="true"></span>
@@ -1890,8 +1902,8 @@
     </div>
   </div>
 
-  <script src="config.js?v=3.2.1"></script>
-  <script src="app.js?v=3.2.1"></script>
+  <script src="config.js?v=3.3.0"></script>
+  <script src="app.js?v=3.3.0"></script>
   <!-- Vercel Web Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
   <!-- Vercel Speed Insights -->
