@@ -132,21 +132,18 @@ function mapSubscriptionToProfile(subscription) {
 }
 
 /**
- * Grava o plano no perfil da usuária. Só o servidor faz isso —
- * o navegador não tem permissão para alterar estas colunas.
+ * Escreve as colunas de cobrança no perfil certo.
+ *
+ * Duas tentativas, nesta ordem:
+ *   1. pelo cliente do Stripe já vinculado ao perfil;
+ *   2. pelo id da usuária, que viaja junto na assinatura
+ *      (subscription_data[metadata][userId]).
+ *
+ * Sem a segunda, qualquer falha no vínculo do customer virava pagamento sem
+ * ativação — e o PATCH "com sucesso" em zero linhas não deixava nem rastro.
  */
-async function applySubscriptionToProfile(subscription) {
-  const customerId = typeof subscription.customer === 'string'
-    ? subscription.customer
-    : subscription.customer?.id;
-
-  const { plano, subscription_status, subscription_ends_at } = mapSubscriptionToProfile(subscription);
-  const patch = {
-    plano,
-    subscription_status,
-    subscription_ends_at,
-    updated_at: new Date().toISOString()
-  };
+async function escreverCobrancaNoPerfil(patch, { customerId, userId }) {
+  const dadosBase = { ...patch, updated_at: new Date().toISOString() };
 
   const write = async (filtro, extra) => {
     const enviar = async (dados) => {
@@ -158,7 +155,7 @@ async function applySubscriptionToProfile(subscription) {
       return Array.isArray(rows) ? rows.length : 0;
     };
 
-    const dados = { ...patch, ...(extra || {}) };
+    const dados = { ...dadosBase, ...(extra || {}) };
 
     try {
       return await enviar(dados);
@@ -175,17 +172,11 @@ async function applySubscriptionToProfile(subscription) {
     }
   };
 
-  // 1ª tentativa: pelo cliente do Stripe já vinculado ao perfil.
   let afetadas = 0;
   if (customerId) {
     afetadas = await write(`stripe_customer_id=eq.${encodeURIComponent(customerId)}`);
   }
 
-  // 2ª tentativa: pelo id da usuária, que viajamos junto na assinatura
-  // (subscription_data[metadata][userId]). Sem esta rede de proteção, qualquer
-  // falha no vínculo do customer resultava em pagamento sem ativação — e o
-  // PATCH "com sucesso" em zero linhas não deixava nem rastro no log.
-  const userId = subscription.metadata?.userId;
   if (afetadas === 0 && userId && userId !== 'guest') {
     afetadas = await write(
       `id=eq.${encodeURIComponent(userId)}`,
@@ -196,6 +187,23 @@ async function applySubscriptionToProfile(subscription) {
     }
   }
 
+  return afetadas;
+}
+
+/**
+ * Grava o plano no perfil da usuária a partir da assinatura do Stripe.
+ * Só o servidor faz isso — o navegador não tem permissão para alterar
+ * estas colunas.
+ */
+async function applySubscriptionToProfile(subscription) {
+  const customerId = typeof subscription.customer === 'string'
+    ? subscription.customer
+    : subscription.customer?.id;
+  const userId = subscription.metadata?.userId;
+
+  const patch = mapSubscriptionToProfile(subscription);
+  const afetadas = await escreverCobrancaNoPerfil(patch, { customerId, userId });
+
   if (afetadas === 0) {
     console.error(
       `ASSINATURA ÓRFÃ: ${subscription.id} (customer ${customerId}, userId ${userId || 'ausente'}) ` +
@@ -204,7 +212,40 @@ async function applySubscriptionToProfile(subscription) {
     return false;
   }
 
-  console.log(`${afetadas} perfil(is) atualizado(s) para ${plano} (${subscription_status}).`);
+  console.log(`${afetadas} perfil(is) atualizado(s) para ${patch.plano} (${patch.subscription_status}).`);
+  return true;
+}
+
+/**
+ * Retira o acesso pago fora do fluxo normal de assinatura: estorno e
+ * contestação (chargeback). O Stripe não emite customer.subscription.deleted
+ * nesses casos, então sem isto a pessoa recebia o dinheiro de volta e
+ * continuava com o Pro.
+ *
+ * `motivo` vai para o log; `status` é o que fica gravado no perfil
+ * ('refunded' ou 'disputed'), para dar contexto no suporte.
+ */
+async function revogarAcessoPago({ customerId, userId, status, motivo, referencia }) {
+  const patch = {
+    plano: 'free',
+    subscription_status: status,
+    // O acesso termina agora, não no fim do período já pago:
+    // o dinheiro do período voltou (ou está sendo disputado).
+    subscription_ends_at: new Date().toISOString()
+  };
+
+  const afetadas = await escreverCobrancaNoPerfil(patch, { customerId, userId });
+
+  if (afetadas === 0) {
+    console.error(
+      `REVOGAÇÃO SEM DESTINO: ${motivo} (${referencia || 'sem referência'}, ` +
+      `customer ${customerId || 'ausente'}, userId ${userId || 'ausente'}) ` +
+      'não corresponde a nenhum perfil. Verifique à mão se alguém ficou com acesso indevido.'
+    );
+    return false;
+  }
+
+  console.log(`${motivo}: ${afetadas} perfil(is) rebaixado(s) para free (${status}). Ref: ${referencia || '-'}`);
   return true;
 }
 
@@ -215,5 +256,6 @@ module.exports = {
   appendLineItems,
   getOrCreateStripeCustomer,
   mapSubscriptionToProfile,
-  applySubscriptionToProfile
+  applySubscriptionToProfile,
+  revogarAcessoPago
 };

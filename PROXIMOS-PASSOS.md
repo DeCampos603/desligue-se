@@ -122,11 +122,14 @@ O que esse gatilho faz: impede que alguém se promova a Premium pelo console do 
 
 1. Vá em **Stripe → Developers → Webhooks → Add endpoint**.
 2. Endpoint URL: `https://desliguese.vercel.app/api/webhook`
-3. Em *Select events*, marque exatamente estes quatro:
+3. Em *Select events*, marque exatamente estes sete:
    - `checkout.session.completed`
    - `customer.subscription.created`
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
+   - `charge.refunded` — estorno integral retira o acesso e encerra a assinatura
+   - `charge.dispute.created` — contestação no cartão retira o acesso na hora
+   - `charge.dispute.closed` — registra o desfecho da contestação
 4. Salve e copie o **Signing secret** (começa com `whsec_`).
 5. Cole na Vercel como `STRIPE_WEBHOOK_SECRET` e faça o redeploy.
 

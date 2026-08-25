@@ -118,6 +118,12 @@ Em **Developers → Webhooks**, cadastre `https://SEU-DOMINIO/api/webhook` com o
 - `customer.subscription.created`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
+- `charge.refunded`
+- `charge.dispute.created`
+- `charge.dispute.closed`
+
+Os três últimos retiram o acesso quando o dinheiro volta: sem eles, quem pede
+estorno ou abre contestação no cartão continua com o Pro.
 
 Copie o *signing secret* para `STRIPE_WEBHOOK_SECRET`. **Sem o webhook, nenhum pagamento libera o plano Pro** — por design: o navegador não concede acesso a si mesmo.
 

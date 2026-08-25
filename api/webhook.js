@@ -14,12 +14,15 @@
  *             customer.subscription.created
  *             customer.subscription.updated
  *             customer.subscription.deleted
+ *             charge.refunded          <- estorno retira o acesso
+ *             charge.dispute.created   <- contestação retira o acesso
+ *             charge.dispute.closed
  *   Copie o "Signing secret" (whsec_...) para STRIPE_WEBHOOK_SECRET na Vercel.
  */
 
 const crypto = require('crypto');
 const { stripeRequest } = require('./_lib/http');
-const { applySubscriptionToProfile } = require('./_lib/billing');
+const { applySubscriptionToProfile, revogarAcessoPago } = require('./_lib/billing');
 
 // Desliga o parser automático da Vercel: a verificação de assinatura exige o
 // corpo exatamente como o Stripe o enviou, byte a byte.
@@ -79,6 +82,38 @@ async function fetchSubscription(subscriptionId) {
   return stripeRequest('GET', `subscriptions/${encodeURIComponent(subscriptionId)}`);
 }
 
+function idDe(valor) {
+  if (!valor) return null;
+  return typeof valor === 'string' ? valor : (valor.id || null);
+}
+
+/**
+ * Descobre a assinatura por trás de uma cobrança: cobranca -> fatura -> assinatura.
+ * Devolve null para cobranças avulsas (sem fatura ou sem assinatura).
+ */
+async function assinaturaDaCobranca(charge) {
+  const faturaId = idDe(charge.invoice);
+  if (!faturaId) return null;
+
+  const fatura = await stripeRequest('GET', `invoices/${encodeURIComponent(faturaId)}`);
+
+  // O campo mudou de lugar entre versões da API do Stripe; aceitamos os três.
+  const assinaturaId =
+    idDe(fatura.subscription) ||
+    idDe(fatura.parent?.subscription_details?.subscription) ||
+    idDe(fatura.lines?.data?.[0]?.subscription);
+
+  if (!assinaturaId) return null;
+  return fetchSubscription(assinaturaId);
+}
+
+/** Encerra a assinatura no Stripe para que não haja cobrança no próximo ciclo. */
+async function encerrarAssinatura(assinatura, motivo) {
+  if (!assinatura || assinatura.status === 'canceled') return assinatura;
+  console.log(`Encerrando a assinatura ${assinatura.id} — ${motivo}.`);
+  return stripeRequest('DELETE', `subscriptions/${encodeURIComponent(assinatura.id)}`);
+}
+
 async function handleEvent(event) {
   switch (event.type) {
     case 'checkout.session.completed': {
@@ -96,6 +131,95 @@ async function handleEvent(event) {
       // e não com o retrato que veio no evento (que pode chegar fora de ordem).
       const subscription = await fetchSubscription(event.data.object.id);
       await applySubscriptionToProfile(subscription);
+      return;
+    }
+
+    case 'charge.refunded': {
+      const charge = event.data.object;
+      const integral = Number(charge.amount_refunded || 0) >= Number(charge.amount || 0);
+
+      // Estorno parcial (um crédito de cortesia, um ajuste) não tira o acesso.
+      if (!integral) {
+        console.log(
+          `Estorno parcial em ${charge.id} (${charge.amount_refunded} de ${charge.amount}). ` +
+          'Acesso mantido.'
+        );
+        return;
+      }
+
+      const assinatura = await assinaturaDaCobranca(charge);
+
+      // Cobrança avulsa: não há assinatura para encerrar, só o acesso a retirar.
+      if (!assinatura) {
+        await revogarAcessoPago({
+          customerId: idDe(charge.customer),
+          status: 'refunded',
+          motivo: 'Estorno integral de cobrança avulsa',
+          referencia: charge.id
+        });
+        return;
+      }
+
+      // Estorno de uma fatura antiga (compensação por um mês ruim, por exemplo)
+      // não é pedido de saída: quem continua assinando continua com o acesso.
+      const ultimaFatura = idDe(assinatura.latest_invoice);
+      const faturaEstornada = idDe(charge.invoice);
+      if (ultimaFatura && faturaEstornada && ultimaFatura !== faturaEstornada) {
+        console.log(
+          `Estorno da fatura antiga ${faturaEstornada} (a atual é ${ultimaFatura}). ` +
+          `Assinatura ${assinatura.id} segue ativa e o acesso foi mantido.`
+        );
+        return;
+      }
+
+      // Devolver o dinheiro e continuar cobrando no mês seguinte seria pior do
+      // que não devolver: encerramos a assinatura junto.
+      await encerrarAssinatura(assinatura, `estorno integral da cobrança ${charge.id}`);
+      await revogarAcessoPago({
+        customerId: idDe(charge.customer) || idDe(assinatura.customer),
+        userId: assinatura.metadata?.userId,
+        status: 'refunded',
+        motivo: 'Estorno integral',
+        referencia: charge.id
+      });
+      return;
+    }
+
+    case 'charge.dispute.created': {
+      const dispute = event.data.object;
+      const chargeId = idDe(dispute.charge);
+      const charge = chargeId
+        ? await stripeRequest('GET', `charges/${encodeURIComponent(chargeId)}`)
+        : null;
+      const assinatura = charge ? await assinaturaDaCobranca(charge) : null;
+
+      // Contestação retira o acesso na hora, mesmo antes do desfecho: o dinheiro
+      // já saiu da conta e o banco pode levar semanas para decidir.
+      await encerrarAssinatura(assinatura, `contestação ${dispute.id}`);
+      await revogarAcessoPago({
+        customerId: idDe(charge?.customer) || idDe(assinatura?.customer),
+        userId: assinatura?.metadata?.userId,
+        status: 'disputed',
+        motivo: 'Contestação (chargeback) aberta',
+        referencia: dispute.id
+      });
+      return;
+    }
+
+    case 'charge.dispute.closed': {
+      const dispute = event.data.object;
+      if (dispute.status !== 'won') {
+        console.log(`Contestação ${dispute.id} encerrada como "${dispute.status}". Acesso segue retirado.`);
+        return;
+      }
+      // Ganhamos a disputa: o dinheiro ficou. Mas a assinatura foi encerrada e
+      // não dá para recriá-la sem uma nova autorização do cartão — restaurar
+      // exige contato humano. Não fingimos que está resolvido.
+      console.warn(
+        `CONTESTAÇÃO GANHA: ${dispute.id} (cobrança ${idDe(dispute.charge)}). ` +
+        'O acesso foi retirado quando a disputa abriu e NÃO volta sozinho — ' +
+        'fale com a pessoa e reative à mão se for o caso.'
+      );
       return;
     }
 
